@@ -1,0 +1,10 @@
+/target/
+/.direnv/
+/result
+__pycache__/
+*.py[cod]
+/evals/output/
+/evals/corpus/
+/evals/.env
+
+/dist/

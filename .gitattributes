@@ -1,0 +1,2 @@
+# Keep imported dependency bytes intact, including upstream whitespace.
+vendor/libsql/** -whitespace

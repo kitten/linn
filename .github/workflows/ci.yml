@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+    inputs:
+      release_tag:
+        type: string
+        default: ""
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@0a0da11f76bfa89d9193817a437868f94cbf82dc # v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      - name: Check release version
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: nix develop -c python3 scripts/package_release.py --version --tag "$RELEASE_TAG"
+      - run: nix develop -c cargo fmt --check
+      - run: nix develop -c cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - run: nix develop -c cargo test --workspace --all-features
+      - run: nix develop -c python3 scripts/check_llp_refs.py
+      - run: nix develop -c python3 -m unittest discover -s scripts -p 'test_*.py'
+      - run: nix develop -c actionlint
+
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            system: aarch64-darwin
+          - runner: ubuntu-24.04
+            system: x86_64-linux
+          - runner: ubuntu-24.04-arm
+            system: aarch64-linux
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@0a0da11f76bfa89d9193817a437868f94cbf82dc # v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      - name: Build and test native package
+        env:
+          SYSTEM: ${{ matrix.system }}
+        run: |
+          nix build --print-build-logs ".#packages.$SYSTEM.linn"
+          nix build --print-build-logs --no-link ".#checks.$SYSTEM.package-smoke"
+      - name: Package binary and license notices
+        env:
+          SYSTEM: ${{ matrix.system }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: nix develop -c python3 scripts/package_release.py --package result --system "$SYSTEM" --output dist --tag "$RELEASE_TAG"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linn-${{ matrix.system }}
+          path: dist/*
+          if-no-files-found: error
+          overwrite: true
+          compression-level: 0
+          retention-days: 14
