@@ -62,7 +62,7 @@ enum Command {
     Sync,
     #[command(
         about = "List current records, newest first; no search terms needed",
-        after_help = "Examples:\n  linn list --kind note --since 7d\n  linn list --expiring-within 30d\n\nLists metadata across repositories. Use show <record> to read a record.\nClosed, superseded, expired and unaccepted records are excluded."
+        after_help = "Examples:\n  linn list --kind note --since 7d\n  linn list --scope\n  linn list --scope owner/repo\n  linn list --expiring-within 30d\n\nLists metadata across repositories. Use show <record> to read a record.\nClosed, superseded, expired and unaccepted records are excluded."
     )]
     List(listing::ListArgs),
     #[command(

@@ -320,6 +320,12 @@ mention it only in the filter reference, not examples or introductory guidance.
 Browse current record metadata across repositories without search terms. This does
 not invoke retrieval, POS or embeddings, load bodies, or infer agent sessions.
 
+- `--scope <repository>` selects exact original scope, case-insensitively.
+  `--scope` or `--scope .` derives the current repository using the Git rules
+  above and errors outside a repository. Unscoped records do not match.
+  Omitting the option continues to list across repositories. Cursors retain the
+  resolved scope and conflict with an explicit scope, so continuation does not
+  depend on the working directory. Older cursors without scope stay unfiltered.
 - Default: 20 records, creation timestamp descending, then record id descending.
 - `--kind note|doc` restricts the kind. `--since 7d` accepts a positive duration
   (`m`, `h`, `d`, `w`) or RFC3339 timestamp; creation at the boundary is included.

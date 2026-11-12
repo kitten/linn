@@ -8,6 +8,8 @@ pub struct ListQuery {
     pub kind: Option<String>,
     #[serde(default)]
     pub writer: Option<String>,
+    #[serde(default)]
+    pub scope: Option<String>,
     pub since: Option<String>,
     pub expires_before: Option<String>,
 }
@@ -149,6 +151,10 @@ fn list_statement(
         sql.push_str(" AND w.writer=?");
         values.push(writer.clone().into());
     }
+    if let Some(scope) = &query.scope {
+        sql.push_str(" AND EXISTS (SELECT 1 FROM records scoped WHERE scoped.id=h.record AND scoped.original_scope=? COLLATE NOCASE)");
+        values.push(scope.clone().into());
+    }
     if expiry {
         sql.push_str(&format!(" AND {expiry_key}>? AND {expiry_key}<=?"));
         values.push(query.now.clone().into());
@@ -201,6 +207,40 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn scope_filters_original_scope_before_pagination() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("scope.db");
+        let records = [
+            serde_json::json!({"id":"a","body":"Alpha","scope":"Owner/Repo"}),
+            serde_json::json!({"id":"b","body":"Beta","scope":"owner/repo"}),
+            serde_json::json!({"id":"c","body":"Other","scope":"other/repo"}),
+            serde_json::json!({"id":"d","body":"Unscoped"}),
+        ]
+        .into_iter()
+        .map(|v| serde_json::from_value(v).unwrap())
+        .collect();
+        drop(Store::build(&path, records).await.unwrap());
+        let store = Store::open(&path).await.unwrap();
+        let query = ListQuery {
+            now: "2026-11-12T00:00:00Z".into(),
+            kind: None,
+            writer: None,
+            scope: Some("OWNER/REPO".into()),
+            since: None,
+            expires_before: None,
+        };
+        let first = store.list_records(&query, None, 1, None).await.unwrap();
+        assert_eq!(first.records[0].record, "b");
+        let next = store
+            .list_records(&query, first.next.as_ref(), 1, Some(&first.publication))
+            .await
+            .unwrap();
+        assert_eq!(next.records[0].record, "a");
+        assert!(next.next.is_none());
+        assert!(store.records.is_empty());
+    }
+
+    #[tokio::test]
     async fn indexed_pages_filter_lifecycle_and_stay_metadata_only() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("listing.db");
@@ -223,6 +263,7 @@ mod tests {
             now: "2026-11-11T00:00:00Z".into(),
             kind: None,
             writer: None,
+            scope: None,
             since: None,
             expires_before: None,
         };
@@ -355,6 +396,7 @@ mod writer_tests {
             now: "2026-11-11T00:00:00Z".into(),
             kind: None,
             writer: Some("a@example.test".into()),
+            scope: None,
             since: None,
             expires_before: None,
         };

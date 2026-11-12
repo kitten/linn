@@ -823,6 +823,8 @@ Rust index is maintained. `record_expiry_list` indexes expiry and record id on
 `record_read_index`, restricted to lifecycle-eligible rows. SQLite maintains these
 indexes with the existing header/catalog writes, rebuild and forget operations.
 
+Listing optionally checks exact original scope via a record primary-key lookup,
+without loading bodies or changing shared-search scope semantics.
 Listing drives an ordered index range and joins metadata by record primary key.
 Use a sort-key/id seek cursor rather than OFFSET: first seek remaining ids at
 the cursor’s timestamp, then seek beyond that timestamp if needed. These two

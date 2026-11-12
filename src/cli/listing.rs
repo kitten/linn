@@ -6,6 +6,9 @@ use time::{Duration, OffsetDateTime, format_description::well_known::Rfc3339};
 
 #[derive(clap::Args)]
 pub(super) struct ListArgs {
+    #[arg(long, num_args = 0..=1, default_missing_value = ".", conflicts_with = "cursor",
+        help = "Exact repository scope; omit the value or use . for the current repository")]
+    scope: Option<String>,
     #[arg(long, help = "Exact stored writer email", conflicts_with = "cursor")]
     writer: Option<String>,
     #[arg(long, value_parser = ["note", "doc"], conflicts_with = "cursor")]
@@ -114,6 +117,15 @@ pub(super) async fn run(store: &Store, args: ListArgs, now: &str, json: bool) ->
                 now: now.into(),
                 kind: args.kind,
                 writer: args.writer,
+                scope: args.scope.map(|value| {
+                    if value == "." {
+                        paths::scope().ok_or_else(|| Error::Invalid(
+                            "current directory has no repository scope; use --scope <repository>".into()
+                        ))
+                    } else {
+                        Ok(value)
+                    }
+                }).transpose()?,
                 since,
                 expires_before,
             },
@@ -173,6 +185,24 @@ pub(super) async fn run(store: &Store, args: ListArgs, now: &str, json: bool) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn scope_argument_and_cursor_conflicts() {
+        use clap::Parser;
+        for (flags, expected) in [
+            (vec!["--scope"], Some(".")),
+            (vec!["--scope", "."], Some(".")),
+            (vec!["--scope", "owner/repo"], Some("owner/repo")),
+            (vec![], None),
+        ] {
+            let cli = Args::try_parse_from([vec!["linn", "list"], flags].concat()).unwrap();
+            let Command::List(args) = cli.command else {
+                panic!("expected list")
+            };
+            assert_eq!(args.scope.as_deref(), expected);
+        }
+        assert!(Args::try_parse_from(["linn", "list", "--scope", "--cursor", "token"]).is_err());
+    }
+
     #[test]
     fn duration_validation() {
         assert_eq!(duration("7d").unwrap().whole_seconds(), 604800);
