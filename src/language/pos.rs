@@ -320,12 +320,10 @@ impl Store {
     }
     async fn prepare_pos(&mut self) -> Result<usize> {
         self.materialize_structure().await?;
-        let started = std::time::Instant::now();
         let mut prepared = Vec::new();
         let mut reused = 0;
         let mut unit_cache =
             std::collections::HashMap::<&str, std::sync::Arc<Vec<NominalRelation>>>::new();
-        let mut reused_units = 0;
         let existing = self.db.prepare(
             "SELECT data FROM pos_relations WHERE block=? AND record=? AND body_hash=? AND identity=?",
         ).await?;
@@ -378,7 +376,6 @@ impl Store {
                     ));
                 }
                 let relations = if let Some(cached) = unit_cache.get(unit) {
-                    reused_units += 1;
                     cached.clone()
                 } else {
                     let relations = std::sync::Arc::new(self.nominal_annotations(unit).await?);
@@ -394,7 +391,6 @@ impl Store {
                 serde_json::to_vec(&annotations)?,
             ));
         }
-        let annotated_units = unit_cache.len();
         drop(unit_cache);
         drop(existing);
         let tx = self
@@ -434,10 +430,6 @@ impl Store {
         )
         .await?;
         tx.commit().await?;
-        eprintln!(
-            "POS projection write: {}",
-            serde_json::json!({"blocks":self.rows.len(),"reused":reused,"annotated_units":annotated_units,"reused_units":reused_units,"ms":started.elapsed().as_secs_f64()*1000.})
-        );
         Ok(reused)
     }
     pub(crate) async fn projected_pos_bonuses(

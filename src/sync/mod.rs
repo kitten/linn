@@ -145,7 +145,6 @@ pub async fn run(replica: &Replica) -> Result<Counts> {
         ..Counts::default()
     };
     for remote in &remotes {
-        eprintln!("Pulling {}…", remote.name);
         let result = async {
             let mut session = ssh::Session::open(&ssh::Origin::parse(&remote.origin)?)?;
             let count = pull(
@@ -177,7 +176,6 @@ pub async fn run(replica: &Replica) -> Result<Counts> {
     }
     replica.finish().await?;
     for remote in &remotes {
-        eprintln!("Pushing {}…", remote.name);
         let result = async {
             let mut session = ssh::Session::open(&ssh::Origin::parse(&remote.origin)?)?;
             let count = push(

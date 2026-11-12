@@ -68,7 +68,7 @@ pub(super) async fn export(
     };
     // Stage before opening the destination: a failed selection never leaves a partial file.
     let mut spool = tempfile::tempfile()?;
-    let count = store.export_bundle(&selection, &mut spool).await?;
+    store.export_bundle(&selection, &mut spool).await?;
     spool.seek(SeekFrom::Start(0))?;
     if let Some(path) = args.output.filter(|p| p != Path::new("-")) {
         let parent = path
@@ -85,7 +85,6 @@ pub(super) async fn export(
         io::copy(&mut spool, &mut out)?;
         out.flush()?;
     }
-    eprintln!("Exported {count} items.");
     Ok(0)
 }
 

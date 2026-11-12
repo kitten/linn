@@ -7,7 +7,12 @@
 
 ## Runtime
 
-One native Rust binary uses Clap-derived arguments, typed errors, and separate parsing, execution and presentation. Results go to stdout; diagnostics and progress to stderr. Resolve paths in order: --store, LINN_STORE, store in $XDG_CONFIG_HOME/linn/config.toml, then $XDG_DATA_HOME/linn/store.db. Defaults are ~/.config and ~/.local/share. Relative XDG values are invalid, including when an explicit store is supplied. Never default to cwd.
+One native Rust binary uses Clap-derived arguments, typed errors, and separate parsing, execution and presentation. Results go to stdout; warnings, errors and opt-in diagnostics to stderr. Resolve paths in order: --store, LINN_STORE, store in $XDG_CONFIG_HOME/linn/config.toml, then $XDG_DATA_HOME/linn/store.db. Defaults are ~/.config and ~/.local/share. Relative XDG values are invalid, including when an explicit store is supplied. Never default to cwd.
+
+Routine internal debug statistics, including POS projection publication counts
+and elapsed time, are not printed by default. Existing explicit timing and trace
+diagnostics remain opt-in. Routine indexing, rebuild, sync and export progress
+messages are omitted; warnings and errors stay on stderr.
 
 ## Command structure
 

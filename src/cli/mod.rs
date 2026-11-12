@@ -482,7 +482,6 @@ pub async fn run() -> Result<i32> {
                 stored_body: None,
                 projected_eligible: None,
             };
-            eprintln!("Indexing record…");
             store.add(record).await?;
             if args.json {
                 println!("{}", json!({"record":id}));
@@ -558,7 +557,6 @@ pub async fn run() -> Result<i32> {
             }
         },
         Command::Rebuild => {
-            eprintln!("Rebuilding derived indexes…");
             store.rebuild().await?;
             if args.json {
                 println!("{}", json!({"rebuilt":true}));

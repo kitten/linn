@@ -294,7 +294,6 @@ impl Replica {
         let pending = rows.next().await?.is_some();
         drop(rows);
         if pending {
-            eprintln!("Publishing synced records…");
             let mut store = Store::open_for_rebuild(&self.path).await?;
             store.rebuild().await?;
         }
