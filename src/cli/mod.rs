@@ -66,10 +66,12 @@ enum Command {
     )]
     List(listing::ListArgs),
     #[command(
-        about = "Find sections. Use specific words expected in the answer; keep identifiers exact.",
-        after_help = r#"Add context when needed to distinguish the result.
+        about = "Find sections in notes and documents",
+        after_help = r#"Use specific words expected in the answer; keep identifiers exact.
+Add context when needed to distinguish the result.
 "double quotes" keep an exact phrase or name together. Do not add the repository name.
-Open results with linn show <ref>; cite the fetch id of the result you rely on.
+Searches cover all repositories. Open results with linn show <ref> before relying
+on them. Related pointers and near misses are hints; no qualifying result is OK.
 Continue with linn search:more <cursor>, try another query, or stop.
 
 Filters:
@@ -103,9 +105,10 @@ Use --json for cards, related pointers, near misses and the next cursor."#
     )]
     Outline { reference: String },
     #[command(
-        about = "Import a file unchanged as a document, or stdin (-) as a note. Write specific decisions, gotchas and procedures; link supporting files.",
+        about = "Import a file unchanged as a document, or stdin (-) as a note.",
         after_help = r#"Save useful engineering discoveries automatically: one finding, its context and
-available sources per note. Write original text, not keyword hints.
+available sources per note. Save new discoveries, not retrieved knowledge or its
+summaries. Write original text, not keyword hints.
 Keep tasks elsewhere and enduring documentation in the repository.
 Correct notes with --parent <ref> or linn add:close <ref> --reason correct.
 Use --stale-after only for known expiry."#
@@ -114,13 +117,13 @@ Use --stale-after only for known expiry."#
         file: String,
         #[arg(long)]
         label: Option<String>,
-        #[arg(long)]
+        #[arg(long, help = "Omit repository scope from this record")]
         unscoped: bool,
-        #[arg(long)]
+        #[arg(long, help = "Correct an existing record with a new child")]
         parent: Option<String>,
         #[arg(long)]
         stale_after: Option<String>,
-        #[arg(long)]
+        #[arg(long, help = "Source path for a stdin note; derived for files")]
         source_path: Option<String>,
     },
     #[command(
