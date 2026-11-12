@@ -66,16 +66,11 @@ enum Command {
     )]
     List(listing::ListArgs),
     #[command(
-        about = "Find sections. Use a few words expected in the answer; keep identifiers exact. An honest miss is better than a weak hit.",
-        after_help = r#"Results are pointers. Open a section with linn show <ref> before relying on it.
-Accept only a result that states what your task needs for the same project,
-package, platform and detail. A related topic or shared words is not an answer.
-Cite the fetch id of the one result you rely on.
-
-Queries: usually 2 to 6 words from the answer's own text. Keep identifiers exact.
-"double quotes" keep an exact phrase or name together. Do not add the repository
-name. If nothing fits, use search:more, write another query, or stop. Near misses
-are hints, not results; read one before treating it as an answer.
+        about = "Find sections. Use specific words expected in the answer; keep identifiers exact.",
+        after_help = r#"Add context when needed to distinguish the result.
+"double quotes" keep an exact phrase or name together. Do not add the repository name.
+Open results with linn show <ref>; cite the fetch id of the result you rely on.
+Continue with linn search:more <cursor>, try another query, or stop.
 
 Filters:
   path:<glob>        source path; use when the task names a file or directory
@@ -83,7 +78,7 @@ Filters:
   kind:note|doc      stored notes or imported documents
   under:"heading"   heading path contains the value
   id:<ref>           the record a reference names
-  writer:<email>    exact stored writer
+  writer:<email>     exact stored writer
   scope:<org/repo>   accepted; does not narrow this shared-search store
 
 A reference is a record id, a fetch id, or a unique body-hash prefix of at least

@@ -14,6 +14,12 @@ and elapsed time, are not printed by default. Existing explicit timing and trace
 diagnostics remain opt-in. Routine indexing, rebuild, sync and export progress
 messages are omitted; warnings and errors stay on stderr.
 
+Top-level help carries the shared search and evidence-use guidance. Search
+subcommand help expands query syntax, filters, references and pagination without
+repeating the full evidence-use policy. Query guidance favors specific source
+words and exact identifiers, with distinguishing context as needed, rather than
+a prescribed word count.
+
 ## Command structure
 
 ```
