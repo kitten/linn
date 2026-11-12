@@ -135,6 +135,7 @@ struct FeatureSlot {
 
 #[derive(Serialize, Deserialize, Clone)]
 struct FeatureMap {
+    #[serde(with = "packed_slots")]
     slots: Vec<FeatureSlot>,
 }
 
@@ -230,7 +231,9 @@ impl From<ModelFields> for Model {
 #[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct Model {
     pub(crate) outcome_labels: Vec<String>,
+    #[serde(with = "packed_outcomes")]
     pub(crate) outcomes: Vec<u8>,
+    #[serde(with = "packed_parameters")]
     pub(crate) parameters: Vec<f32>,
     pmap: FeatureMap,
 }
@@ -880,5 +883,92 @@ impl Chunker {
                 }
             }
         }
+    }
+}
+
+// Explicit little-endian bytes avoid per-element Serde dispatch in large models.
+// No struct padding or native-endian representations enter the asset.
+mod packed_slots {
+    use super::FeatureSlot;
+    use serde::{Deserialize, Deserializer, Serializer, de::Error};
+    pub(super) fn serialize<S: Serializer>(
+        values: &[FeatureSlot],
+        s: S,
+    ) -> Result<S::Ok, S::Error> {
+        let mut bytes = Vec::with_capacity(values.len() * 13);
+        for v in values {
+            bytes.extend_from_slice(&v.key.to_le_bytes());
+            bytes.extend_from_slice(&v.offset.to_le_bytes());
+            bytes.push(v.length);
+        }
+        s.serialize_bytes(&bytes)
+    }
+    pub(super) fn deserialize<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<Vec<FeatureSlot>, D::Error> {
+        let bytes = <&[u8]>::deserialize(d)?;
+        if bytes.len() % 13 != 0 {
+            return Err(D::Error::custom("invalid feature slots"));
+        }
+        Ok(bytes
+            .chunks_exact(13)
+            .map(|b| FeatureSlot {
+                key: u64::from_le_bytes(b[..8].try_into().unwrap()),
+                offset: u32::from_le_bytes(b[8..12].try_into().unwrap()),
+                length: b[12],
+            })
+            .collect())
+    }
+}
+mod packed_outcomes {
+    use serde::{Deserialize, Deserializer, Serializer};
+    pub(super) fn serialize<S: Serializer>(values: &[u8], s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_bytes(values)
+    }
+    pub(super) fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<u8>, D::Error> {
+        Ok(<&[u8]>::deserialize(d)?.to_vec())
+    }
+}
+mod packed_parameters {
+    use serde::{Deserialize, Deserializer, Serializer, de::Error};
+    pub(super) fn serialize<S: Serializer>(values: &[f32], s: S) -> Result<S::Ok, S::Error> {
+        let mut bytes = Vec::with_capacity(values.len() * 4);
+        for v in values {
+            bytes.extend_from_slice(&v.to_le_bytes());
+        }
+        s.serialize_bytes(&bytes)
+    }
+    pub(super) fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<f32>, D::Error> {
+        let bytes = <&[u8]>::deserialize(d)?;
+        if bytes.len() % 4 != 0 {
+            return Err(D::Error::custom("invalid model parameters"));
+        }
+        Ok(bytes
+            .chunks_exact(4)
+            .map(|b| f32::from_le_bytes(b.try_into().unwrap()))
+            .collect())
+    }
+}
+
+#[cfg(test)]
+mod packed_tests {
+    use super::*;
+    #[test]
+    fn parameters_preserve_every_float_bit_and_reject_partial_values() {
+        #[derive(Serialize, Deserialize)]
+        struct Parameters(#[serde(with = "packed_parameters")] Vec<f32>);
+        let bits = [
+            0, 0x80000000, 1, 0x7f800000, 0xff800000, 0x7fc12345, 0x3f800000,
+        ];
+        let original = Parameters(bits.map(f32::from_bits).to_vec());
+        let bytes = bincode::serialize(&original).unwrap();
+        let decoded: Parameters = bincode::deserialize(&bytes).unwrap();
+        assert_eq!(
+            decoded.0.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+            bits
+        );
+        let partial = bincode::serialize(&vec![1u8, 2, 3]).unwrap();
+        assert!(bincode::deserialize::<Parameters>(&partial).is_err());
+        assert!(bincode::deserialize::<FeatureMap>(&partial).is_err());
     }
 }

@@ -11002,3 +11002,21 @@ or empty configuration. Email is unverified metadata, never retrieval evidence.
 A nullable generated SQL column exposes the immutable envelope field without
 duplicating it. Existing attribution and missing legacy fields remain unchanged;
 no device identity or backfill is introduced.
+
+## Packed NLP model loading (2026-11-12)
+
+Performance-only change to the embedded NLP asset, version 3: pack chunker
+feature slots, outcome ids and float32 parameters as byte arrays, decoding
+explicit little-endian values without changing annotation or scoring.
+`examples/nlp_load.rs` measures only `Tokenizer::from_compiled`, excluding
+annotation, process startup and destruction. Release builds on aarch64-darwin;
+30 alternating fresh processes per version, with filesystem caches warm:
+unchanged checkout median 29.2275 ms, packed median 26.795 ms (8.3% lower).
+Ranges were 28.642–84.730 ms and 26.418–80.813 ms respectively. These are
+fresh-process measurements, not cold filesystem measurements. The historical
+117 ms probe is not a matched baseline for the current checkout.
+An initial 15-process sample during concurrent builds was noisy and slower
+(28.709 ms baseline median, 32.971 ms packed); a later 25-process packed sample
+had median 29.939 ms. Use the alternating comparison for this decision.
+Workspace tests include differential token/tag/chunk/span parity against the
+unchanged registry engine. No retrieval tuning or holdout scoring was run.

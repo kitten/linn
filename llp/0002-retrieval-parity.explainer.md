@@ -1402,6 +1402,10 @@ or expand bf16 parameters. Evaluation visits context features, outcomes and
 parameters in their original order, preserving float32 additions and softmax.
 Outcome ids retain their original byte representation; widen them only for
 array indexing rather than expanding the whole outcome array during loading.
+Serialize feature slots, outcome ids and float32 parameters as packed byte
+arrays. Slots and parameters use explicit little-endian fields without struct
+padding; loading decodes the same integer values and float32 bits in bulk,
+including signed zero and NaN payloads. Reject incomplete packed elements.
 The original wire layout remains a build-time compatibility decoder; changing
 the compiled asset layout changes its format marker, not annotation semantics.
 

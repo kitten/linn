@@ -165,7 +165,7 @@ impl Tokenizer {
 
     /// Loads the lookup-ready asset produced by Linn's build script.
     pub fn from_compiled(bytes: &[u8]) -> Result<Self, Error> {
-        let payload = bytes.strip_prefix(b"LINN-NLP-2\0").ok_or_else(|| {
+        let payload = bytes.strip_prefix(b"LINN-NLP-3\0").ok_or_else(|| {
             std::io::Error::new(std::io::ErrorKind::InvalidData, "wrong NLP asset format")
         })?;
         Ok(bincode::deserialize(payload)?)
@@ -173,7 +173,7 @@ impl Tokenizer {
 
     /// Prepares a self-contained runtime asset without changing linguistic data.
     pub fn compile_asset(&self) -> Result<Vec<u8>, Error> {
-        let mut bytes = b"LINN-NLP-2\0".to_vec();
+        let mut bytes = b"LINN-NLP-3\0".to_vec();
         bincode::serialize_into(&mut bytes, self)?;
         Ok(bytes)
     }
