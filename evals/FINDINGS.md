@@ -11020,3 +11020,503 @@ An initial 15-process sample during concurrent builds was noisy and slower
 had median 29.939 ms. Use the alternating comparison for this decision.
 Workspace tests include differential token/tag/chunk/span parity against the
 unchanged registry engine. No retrieval tuning or holdout scoring was run.
+
+## 2026-11-13 — Detached runtime and application boundary
+
+Implemented LLP 0007 on Unix without changing retrieval arithmetic, thresholds,
+models, indexed evidence or original-byte ingestion. Application operations and
+text/JSON rendering are separate; the CLI automatically connects to a detached
+same-binary owner. Store handles and immutable model resources are reused.
+SSH coordination stays outside the dispatcher, while local replica operations
+and remote stdio requests use that dispatcher. No automatic background sync.
+
+Native aarch64-darwin validation through the flake passed formatting, workspace
+clippy with all targets/features and warnings denied, workspace tests with all
+features, Nix package build/tests and packaged release smoke. The release smoke
+also passed with the pre-change 4dc9516 executable as the compatible stdio peer.
+Runtime tests cover eight concurrent cold clients, XDG-root changes, symlink
+aliases, detached parent-pipe closure, initiator exit, stop/restart, forced crash/restart,
+non-socket preservation, build mismatch, per-request diagnostics, external forget,
+direct/IPC page parity and simultaneous two-way peer pulls. Protocol unit tests
+cover oversized/truncated frames and values larger than a single frame. The
+existing optional candidate_vector_corpus_bits test passed on a copied store;
+that is arithmetic evidence, not a neutral retrieval gate.
+
+### Closed small-store smoke measurement
+
+Baseline: release build from 4dc9516. Candidate build identity:
+`31040666e876a0594d5ec71cba7b2f74a6002b460706e21a0da018bbd6418287`.
+This measurement predates the final bootstrap-only readiness/error hardening;
+that subsequent change preserves the healthy execution path and retrieval.
+Used a consistent online backup of the account's existing store: 22 records,
+20,246,528 bytes. No generated surrogate documents were indexed for the search
+comparison. Ten varied queries, including an identifier miss and queries reaching
+POS/fallback paths, ran in three sequential baseline/candidate rounds. Thirty
+full first-page responses matched, including ordered IDs, card text, hints,
+related pointers and pagination context. Only captured UTC clock fields were
+normalized in cursors. Twelve pages had cards, exposing eleven distinct records.
+Four concurrent clients also preserved the expected ordered IDs. List and outline
+JSON matched the baseline. Private store copies, ordered IDs, timing samples and diagnostics remain outside
+the repository; full responses were compared in memory, not retained as a corpus.
+None of these private artifacts is committed.
+
+| Invocation through exit | Median ms | Observed p95 ms |
+|---|---:|---:|
+| Fresh baseline CLI | 42.064 | 62.452 |
+| CLI using resident owner | 24.716 | 31.644 |
+
+The sample includes the first search (51.229 ms), not just repeated hot queries.
+A cold daemon-starting list took 132.700 ms end-to-end, with 6.164 ms separately
+reported store opening and 6.834 ms application execution. Separate warm diagnostic
+probes had application-operation median 3.161 ms and maximum 5.621 ms, excluding
+CLI startup, Git scope discovery, transport and rendering. These scopes are not
+interchangeable. RSS snapshots were 6,592 KiB after metadata-only startup and
+180,080 KiB after the query mix; these are snapshots, not peak-memory bounds.
+
+Earlier completed implementation probes, before final buffered JSON and build
+identity hardening, measured baseline/resident medians 39.206/23.564 ms and
+39.204/25.701 ms with the same query sequence and accepted algorithm. An initial
+harness attempt stopped when a readback assumed an empty query had a first card;
+its timings were discarded, and readback selection was fixed without changing
+queries or retrieval. No ranker configuration was selected from these timings.
+
+A separate external-write probe ingested the repository's original README through
+the baseline into a disposable copy. The following resident search reopened in
+0.422 ms and took 31.270 ms end-to-end (7.647 ms application execution), preserving
+the baseline JSON response. This probe preceded final JSON buffering and build-ID
+hardening; it demonstrates invalidation, not an independently controlled latency
+comparison. The captured originals and float-bit check remained intact.
+
+OS caches were warm from backup/preceding work, and builds/tests shared the host.
+These measurements are a small operational smoke test, not the curated/scale dev
+page, a cold-disk guarantee, a controlled throughput study, an h2 confirmation or
+a neutral gate table. Curated/scale corpora were absent from this checkout and the
+shared checkout, so those retrieval runs were not performed. No closed retrieval
+study was reopened, and no holdout was used for tuning. Native Linux and Windows
+execution were not available in this run; Windows remains a separate delivery.
+
+
+The subsequent thin-client correction moved missing-database creation, import
+validation, default label derivation and SSH coordination behind daemon requests.
+The timing table above predates that correction and bootstrap readiness hardening;
+it is not a fresh measurement of the resulting branch or its subsequent
+dispatcher-thread and admission changes. Regression checks cover
+readback with a resident handle while client file opens are denied, invalid
+imports leaving a missing database absent, SSH subprocess parent PID matching
+the authenticated owner, and stop draining network workers plus internal replica
+steps. These checks establish process ownership and liveness, not new retrieval
+measurements or full neutral validation.
+
+
+## 2026-11-13: Daemon versus pre-daemon CLI wall latency before descriptor cleanup optimization
+
+Measured the current branch after the dispatcher-thread, admission and response
+barrier corrections against pre-daemon commit `4dc9516dc9804efb342e00af43de6ff309df420c`.
+Both executables were built with the same flake devshell and release profile,
+using `rustc 1.97.1 (8bab26f4f 2026-07-14) (built from a source tarball)`. Candidate build identity:
+`f147da108584e4332a2e4bbdd863704da4c663a9bdd8a46d9966bcbb7ece21a0`. Machine: Apple M3 Ultra, macOS-27.0.1-arm64-arm-64bit-Mach-O.
+
+Used separate byte-identical database copies from one read-only online backup
+of the account store: 24 original records, 20,537,344 bytes.
+The ten query strings are the unchanged mixed hit/miss selection from the earlier
+operational probe, listed below. No surrogate documents, tuning, gold scoring
+or holdout runs were introduced. This remains a small real-store sample, not
+a representative curated/scale benchmark.
+
+Timed ordinary default-text `linn --store <copy> search <query>` from process
+creation through exit, including output capture, Git caller context, transport
+and rendering. Each invocation executes the binary directly; Nix shell entry
+is outside the timer. Both variants used the same repository cwd and caller
+environment with diagnostic flags removed.
+
+| Condition | Pairs | Before median / p95 / max, ms | Current median / p95 / max, ms |
+|---|---:|---:|---:|
+| Resident, repeated queries | 100 | 41.411 / 64.126 / 74.876 | 24.289 / 29.424 / 31.795 |
+| Resident, first pass | 10 | 41.679 / 73.123 / 73.123 | 26.181 / 66.770 / 66.770 |
+| First search starts daemon | 10 | 40.495 / 71.387 / 71.387 | 128.246 / 162.030 / 162.030 |
+
+For cold searches, stop the owner before each query. For the resident first pass,
+start a fresh daemon with a metadata-only list, then measure each query once;
+this includes first-use model/query work. Metadata-only startup separately took
+99.248 ms. Its diagnostics separately reported store opening and
+application execution. The first resident search took 42.667 ms.
+Repeated queries followed that measured pass: ten rounds of the same ten
+queries, randomized with seed 34709. Alternate baseline/candidate execution order
+across pairs. Report every sample without filtering outliers. p95 uses the nearest
+index with ties-to-even; with ten samples this selects the maximum. File and code
+caches were warm from backup, copies, builds and preceding runs: cold here means
+fresh daemon/application resources, not cold disk. No parallel build or test was
+running during the timed search loop.
+
+Repeated-query per-query medians, ten samples per variant:
+
+| Query | Before, ms | Current, ms |
+|---|---:|---:|
+| `git send` | 41.265 | 24.180 |
+| `publication marker` | 43.811 | 23.701 |
+| `XDG_RUNTIME_DIR` | 24.023 | 21.471 |
+| `native routing` | 41.660 | 24.889 |
+| `daemon double fork` | 34.726 | 21.971 |
+| `Metro transform cache` | 64.578 | 27.633 |
+| `configured devshell` | 43.407 | 26.084 |
+| `Swift async actor` | 44.329 | 26.253 |
+| `worktree remote branch` | 35.563 | 22.520 |
+| `nanometerquux42` | 40.109 | 23.810 |
+
+All 120 timed default-text response pairs matched after normalizing only cursor
+clocks, with identical exit codes. Ten additional complete JSON response pairs
+also matched ordered cards, hints, related pointers and pagination context after
+normalizing cursor clocks. Four queries returned cards, covering twelve distinct
+records; an honest miss remains a valid invocation. Original bodies and envelopes
+were fingerprinted unchanged in both copies after the run. Raw individual timings,
+ordered IDs, diagnostics and private store copies remain outside the repository.
+
+This run shows lower resident invocation latency and a higher first-daemon-search
+cost on this sample. It does not measure concurrent throughput, establish a
+production p95, replace dev/holdout page validation or claim a neutral gate.
+
+
+## 2026-11-13: Native macOS descriptor cleanup and final CLI latency
+
+The preceding first-start cost exposed an avoidable macOS bootstrap sweep over
+RLIMIT_NOFILE. This host's soft limit is 1,048,575. An isolated C probe measured
+82.778 ms closing every number from 3 to that limit, versus 0.005 ms listing and
+closing actual descriptors with libproc. This probe isolates descriptor cleanup;
+it is not the complete application startup timer.
+
+The final implementation enumerates actual macOS descriptors before daemonizing
+and before threads are created. It validates the complete list and reports
+startup failure on errors; the macOS descriptor-limit fallback is removed.
+The pinned source review and differences from zmx's limited-range cleanup are
+recorded in src/runtime/README.md; LLP 0007 records the adopted decision.
+
+Final release build identity: `df8a6cbbb421e8c79788a1893523425d3f8565cbdc8e0383edc0f285f1b41a75`. Same toolchain, machine,
+cwd, 24-record snapshot (20,537,344 bytes), ten query strings and timing/parity
+method as the preceding run. The immutable backup was reused exactly rather than
+recapturing a possibly changed live store. Builds and tests finished before the
+measurement loops. All 120 paired text responses and ten full JSON response
+pairs matched, normalizing cursor clocks only, with equal exit codes. Original
+body/envelope fingerprints remained unchanged in both store copies.
+
+| Condition | Pairs | Before daemon: median / p95 / max, ms | Final daemon: median / p95 / max, ms |
+|---|---:|---:|---:|
+| Resident, repeated queries | 100 | 37.021 / 57.133 / 58.435 | 21.486 / 24.800 / 26.369 |
+| Resident, first pass | 10 | 36.705 / 58.133 / 58.133 | 22.490 / 54.627 / 54.627 |
+| First search starts daemon | 10 | 38.942 / 71.141 / 71.141 | 42.324 / 76.440 / 76.440 |
+
+Metadata-only daemon startup separately took 12.476 ms,
+compared with 99.248 ms in the earlier run. Repeated-query median latency is
+42.0% lower than the pre-daemon baseline in this final run. File/code caches
+remain warm; first startup means fresh daemon/application resources.
+
+A separate, directly paired startup comparison alternated the saved pre-fix
+daemon executable with the final executable on identical snapshot copies. Both
+owners were stopped before every search; the ten queries ran twice (20 pairs).
+All text responses and exit codes matched after cursor-clock normalization.
+
+| Cold search | Median, ms | Observed p95, ms | Maximum, ms |
+|---|---:|---:|---:|
+| Daemon before native cleanup | 125.242 | 148.554 | 191.038 |
+| Daemon with native cleanup | 40.608 | 62.391 | 66.950 |
+
+Final repeated-query medians, ten samples per query per variant:
+
+| Query | Before daemon, ms | Final daemon, ms |
+|---|---:|---:|
+| `git send` | 36.275 | 21.488 |
+| `publication marker` | 37.998 | 21.167 |
+| `XDG_RUNTIME_DIR` | 20.947 | 18.507 |
+| `native routing` | 36.878 | 21.602 |
+| `daemon double fork` | 30.734 | 19.714 |
+| `Metro transform cache` | 57.168 | 23.866 |
+| `configured devshell` | 38.792 | 22.985 |
+| `Swift async actor` | 39.272 | 22.913 |
+| `worktree remote branch` | 31.475 | 19.969 |
+| `nanometerquux42` | 36.120 | 21.307 |
+
+The first resident pass is measured, not a hidden warmup; repeated results
+reuse warmed query/model state. Reported p95 uses nearest-index ties-to-even
+and is the maximum for the ten-sample groups. The separate paired comparison
+helps distinguish the startup fix from host drift between the two full runs.
+Individual raw samples and private stores remain outside the repository. These
+are operational latency diagnostics, not concurrent throughput, a production
+latency distribution, full curated/scale parity, gold scoring or a neutral gate.
+
+
+A separate inherited-pipe probe placed a non-close-on-exec descriptor at 4096,
+then reduced the child's soft descriptor limit to 128. The saved pre-fix daemon
+kept the caller's pipe open after the CLI exited; the final daemon closed it
+while remaining alive. The integration test covers this case. This also shows
+why a soft-limit sweep is not a reliable substitute for enumerating open entries.
+
+
+## 2026-11-13: File-based Git scope and runtime simplification
+
+Compared the saved daemon build `df8a6cbbb421e8c79788a1893523425d3f8565cbdc8e0383edc0f285f1b41a75` with the final git2
+implementation `19a5646dd274723faa464350b32d78a7ddc97fe13a8769a9a75150db95b08365`. This is an incremental comparison after
+the native descriptor-cleanup fix, not another pre-daemon comparison. Both use
+the same toolchain and release settings as the preceding runs.
+
+The final CLI reads caller scope through git2 0.21.0/libgit2 1.9.7 file
+configuration, without Git subprocesses or a command fallback. Network features
+are disabled. Per explicit decision, injected GIT_CONFIG_COUNT/PARAMETERS remote
+configuration is outside caller-scope support. Regression cases preserve legacy
+headers, URL rewrites, first effective fetch URL, URL-less remote precedence,
+global/includes/worktree config, canonical local roots and quoted metadata.
+A fake Git executable confirms search does not execute Git for scope; pagination
+uses cursor-pinned scope/clock and omits the discarded caller lookup entirely.
+Writer attribution and filter-aware original-file evidence keep their existing
+Git operations. LLP 0004 records the adopted boundary.
+
+The direct-read investigation measured repository discovery plus config-byte IO
+at about 0.064 ms, excluding a complete semantic resolver. A minimal gix 0.90
+remote-API probe handled normal discovery in about 0.3 ms internally, but differed
+on legacy/quoted metadata. Its config-based version covered those cases. The
+git2 probe handled them directly but omitted command-injected remotes, the
+explicitly accepted exception. The probe packages remain outside the product
+workspace; only git2 was adopted as a product dependency. These component timings are not
+end-to-end search measurements.
+
+The runtime now keeps application/ownership state in its dispatcher, validates
+the known bound socket path directly instead of reparsing discovery JSON per
+operation, starts sync workers directly in JoinSet blocking tasks, and drops the
+extra store LocalSet and unused public replica-over-IPC adapter. Bilateral sync
+tests use whole Sync operations. Across the three runtime implementation modules,
+source lines decreased from 1,202 to 1,043 (159 fewer); this count excludes the
+new integration-test file and dependency sources. The CLI paths module decreased
+from 304 to 294 lines including its tests.
+
+Used the unchanged 24-record, 20,537,344-byte original snapshot from the previous
+runs and the same ten query strings. Separate identical store copies, actual
+repository cwd/caller context, default-text output, direct executable launch
+through process exit, alternating pair order, fixed shuffle seed 34709, warm
+OS caches and no concurrent build/test load. The measured first resident pass
+includes first-use work; repeated queries follow it. No outliers were removed.
+
+| Condition | Pairs | Previous daemon: median / p95 / max, ms | Final: median / p95 / max, ms |
+|---|---:|---:|---:|
+| Resident repeated search | 100 | 20.723 / 23.169 / 24.010 | 9.752 / 12.371 / 14.544 |
+| Resident first pass | 10 | 22.600 / 55.088 / 55.088 | 11.041 / 42.665 / 42.665 |
+| First search starts daemon | 10 | 41.526 / 78.740 / 78.740 | 30.119 / 64.049 / 64.049 |
+| Cursor replay | 20 | 23.183 / 24.477 / 24.876 | 11.233 / 11.414 / 11.601 |
+
+The repeated-search median is 52.9% lower in these paired samples. Metadata-only
+startup was 11.818/12.170 ms before/after, measured separately.
+The release executable grew from 102,669,120 to 103,153,408 bytes
+(+484,288 bytes, about 473 KiB).
+
+Cursor replay used the first cursor-bearing query in the fixed selection
+(`Metro transform cache`), with one identical pinned cursor for both variants.
+Twenty default-text replay pairs and an additional exact JSON replay pair
+matched. All 120 search text pairs and ten full search JSON pairs matched after
+normalizing only cursor clocks, with equal exit codes. Original body/envelope
+fingerprints remained unchanged in both copies. Individual timings, ordered IDs,
+probe fixtures and copied stores remain outside the repository.
+
+Final repeated-query medians, ten samples per query per variant:
+
+| Query | Previous daemon, ms | Final, ms |
+|---|---:|---:|
+| `git send` | 20.737 | 9.777 |
+| `publication marker` | 20.824 | 9.745 |
+| `XDG_RUNTIME_DIR` | 18.663 | 7.771 |
+| `native routing` | 20.430 | 9.772 |
+| `daemon double fork` | 19.198 | 8.362 |
+| `Metro transform cache` | 23.134 | 12.197 |
+| `configured devshell` | 22.476 | 11.542 |
+| `Swift async actor` | 21.661 | 11.052 |
+| `worktree remote branch` | 20.323 | 9.065 |
+| `nanometerquux42` | 20.445 | 9.427 |
+
+p95 uses nearest-index ties-to-even; the ten-sample groups therefore report the
+maximum as p95. This remains a small, single-client operational latency sample,
+not concurrent throughput, a production distribution, a curated/scale retrieval
+validation, a neutral gate or holdout scoring. Retrieval algorithms, thresholds,
+models and original bytes were not changed or retuned.
+
+## 2026-11-13: End-to-end search with streamed local JSON
+
+Compared the release build before this review (after body-SHA-256 source refs)
+with the final release build. Both are Nix packages built with the same pinned
+toolchain, release settings and embedded assets. Native Apple M3 Ultra/macOS
+27.0.1; the same frozen 24-record, 20,537,344-byte store and ten query strings
+as the previous measurements. Separate byte-identical copies, repository cwd
+and caller scope, warm OS caches, no concurrent build/test load, alternating
+pair order, ten shuffled resident rounds with seed 34709, and no outlier removal.
+Timers include direct executable launch through exit, scope lookup, IPC and
+default-text rendering; Nix shell entry is outside the timer. Cold means a new
+daemon/application, not a cold disk or fresh machine.
+
+| Condition | Pairs | Before: median / p95 / max, ms | Final: median / p95 / max, ms |
+|---|---:|---:|---:|
+| Resident repeated search | 100 | 9.362 / 11.659 / 12.592 | 9.123 / 11.369 / 11.864 |
+| Resident first pass | 10 | 11.199 / 42.362 / 42.362 | 10.553 / 40.727 / 40.727 |
+| First search starts daemon | 10 | 29.646 / 50.387 / 50.387 | 28.646 / 61.981 / 61.981 |
+| Cursor replay | 20 | 11.103 / 13.317 / 13.542 | 11.033 / 12.765 / 12.941 |
+
+The resident median is 2.5% lower in this paired run (0.238 ms); this is a
+small operational improvement. Cold median is about 29 ms. Its ten mixed-query
+samples have a higher observed maximum/p95 after the change; that small group
+does not establish a production tail distribution. p95 uses the existing
+nearest-index ties-to-even rule, so ten-sample p95 is the maximum.
+
+All 120 default-text search pairs and ten full JSON query pairs matched after
+normalizing only ordinary cursor clocks. Twenty text cursor-replay pairs and
+one exact JSON replay pair matched using the same pinned cursor. Ordered card
+IDs, page content and exit codes matched; original body/envelope fingerprints
+remained unchanged in both stores. Retrieval algorithms, arithmetic, thresholds,
+models and ordering were not changed. This is not curated/scale validation,
+a neutral gate or holdout scoring.
+
+The implementation streams JSON over the existing Chunk/End wire format with
+no JSON spooling. Every encoder uses a synchronous serde worker bridged by a
+two-slot bounded channel. Single-chunk values decode in bounded memory; larger
+values use a blocking reader over another two-slot channel. This avoids probing
+encoded size on the IPC thread: escaping one large string can scan its entire
+contents before a capped writer fills. Channel closure cancels codec workers
+on transport loss. Query and replica operations with no byte input pass no input
+handle, eliminating the two empty input files as well as four JSON-envelope
+spools formerly used by an ordinary query. Original-data application staging
+for add/import/export retains its validation and snapshot semantics. Frame
+prefix and payload now use one write buffer. Codec code lives in runtime/wire.rs;
+no dependencies or protocol variants were added.
+
+Boundary tests cover exact one-chunk JSON, spill into a second chunk, messages
+larger than the frame limit, malformed/truncated replies, cancellation and
+small/large transfers with an unavailable temporary directory. CLI query tests
+use an unavailable temp directory too. Existing ownership, schema fencing,
+concurrency, response-delivery/forget barriers and sync behavior remain covered.
+All 149 workspace tests passed (two existing fixture-dependent tests ignored),
+as did Clippy, formatting, Nix build, release/older-peer checks and LLP references.
+
+A separate diagnostic probe measured process-plus-help median 4.435 ms
+and status median 4.676 ms (30 samples each), healthy store opening
+0.651 ms, and in-daemon application-operation median 2.752 ms
+(one warm diagnostic sample for each of the ten queries). These are illustrative
+component probes, not an additive breakdown of the paired timing run. Process/CLI
+work is a substantial part of this small-store end-to-end latency.
+
+Other recorded configurations in this review: an initial run against the
+previously measured git2 build yielded 9.788/12.133 ms resident median/p95 for
+that older build and 9.347/11.707 ms for the build entering this review. Streaming
+with a synchronous bounded-size encoding probe, before combining frame writes,
+yielded 9.211/12.098 ms for its baseline and 9.002/12.081 ms for streaming. Combining
+frame writes with that probe still present yielded 9.365/11.861 ms baseline and
+9.024/11.494 ms candidate. The final code removes the encoding probe for large-message
+responsiveness and simpler consistent encoding. The small differences across
+runs reinforce treating the gain as modest, rather than attributing a precise
+standalone benefit to frame-write batching or choosing a size probe for its timing.
+
+Before build: `f7af365fdb3418718d1843aa9bac4f2f3370422455261d6a6d3982da20d37a51`.
+Final build: `0b8aab44ba1e944651ac3638fe1ee1860b249cb97f12a394b9e2100f7c5b1e92`.
+Release bytes: 105,959,320 before, 106,281,416 final
+(+322,096 bytes).
+Metadata-only startup was 11.306/11.019 ms before/final, measured separately.
+Raw samples, ordered page IDs, copied stores and probe scripts remain outside
+the repository.
+
+Final repeated-query medians (ten samples per query per variant):
+
+| Query | Before, ms | Final, ms |
+|---|---:|---:|
+| `git send` | 9.449 | 9.216 |
+| `publication marker` | 9.336 | 9.064 |
+| `XDG_RUNTIME_DIR` | 7.300 | 7.037 |
+| `native routing` | 9.316 | 9.240 |
+| `daemon double fork` | 7.795 | 7.459 |
+| `Metro transform cache` | 11.649 | 11.455 |
+| `configured devshell` | 11.024 | 10.670 |
+| `Swift async actor` | 10.501 | 10.141 |
+| `worktree remote branch` | 8.424 | 8.178 |
+| `nanometerquux42` | 9.166 | 8.847 |
+
+## 2026-11-13: Bounded resident query work and reusable replica connections
+
+Performance-only cache/ownership changes under LLP 0007. The application acquires
+its Store once per operation and holds the checked snapshot around the complete
+read. A lazily retained Replica serves internal sync steps and read-only remote
+configuration without dropping the warm Store. Mutating replica requests still
+invalidate the Store; errors discard both handles. Incoming sync Items move into
+the dispatcher without cloning envelopes. Transaction/schema, physical-identity,
+publication and original-data delivery guards remain in place.
+
+Clock changes clear eligibility hits and statistics. Query/scope changes clear
+ranking work and negative probes, while positive corpus stemming and current-clock
+positive document frequencies remain reusable. Immutable FTS-hit and candidate
+feature memos, and same-clock eligibility hits, use fixed soft budgets at query
+boundaries (256 entries, 64 KiB key payload, 65,536 allocated ID slots per map).
+Oversized maps are dropped as a whole. Negative probe cleanup visits recorded
+keys, not corpus-wide maps. No runtime cache knob, model change, arithmetic
+change, threshold adjustment or ordering change was introduced.
+
+A counting Rust global allocator linked the actual library and repeated
+`publication marker` 1,000 times after warming the frozen 24-record store.
+Changing the logical clock by one second per call previously retained 3,144,280
+additional bytes; the final library retained 188 bytes of probe/working overhead
+with no growth across samples. Fixed-clock repeats retained 532 bytes in both
+versions. Every serialized Call matched its warmed baseline on every iteration.
+These are retained Rust heap deltas, not RSS, excluding native SQLite/model
+allocations. Clocks were synthetic; this was not a 1,000-second wall-clock run.
+The final probe results are `/tmp/linn-cache-after-vt1_1qrh/results.json`; baseline
+results are `/tmp/linn-cache-review-eu06e1ws/results.json`.
+
+Final end-to-end timing compares release binaries built with the same pinned
+flake, compiler, profile and embedded assets on native macOS/Apple M3 Ultra.
+Separate copies of the same frozen 24-record, 20,537,344-byte store and existing
+ten-query sample were used, with repository cwd/caller scope, warm OS caches,
+alternating pair order and ten shuffled resident rounds (seed 34709). Each timer
+includes a fresh CLI launch through exit, Git context, IPC and default rendering.
+No concurrent build, allocator probe or test load; no outlier removal. Cold means
+a newly started daemon, not a cold filesystem.
+
+| Condition | Pairs | Before median / p95, ms | Final median / p95, ms |
+|---|---:|---:|---:|
+| Resident repeated search | 100 | 8.853 / 11.476 | 9.187 / 12.214 |
+| Resident first pass | 10 | 11.746 / 43.169 | 11.499 / 42.643 |
+| First search starts daemon | 10 | 28.688 / 49.875 | 28.751 / 52.129 |
+| Cursor replay | 20 | 10.360 / 11.181 | 10.402 / 11.288 |
+
+Bounding retained state costs 0.334 ms (3.8%) at the resident median in this run;
+it is not a query-speedup claim. Cold and cursor medians were nearly unchanged.
+The ten-sample groups do not establish a production tail distribution; p95 uses
+the existing nearest-index ties-to-even rule. Metadata-only startup measured
+10.756/10.804 ms before/final in separate single samples, not a breakdown of
+query latency. A diagnostic probe confirmed read-only `sync:remote list` no
+longer causes a store-open phase on the following query; its individual operation
+timings are not a benchmark of sync speedup.
+
+All 120 text query pairs and ten full JSON query pairs matched after normalizing
+only ordinary cursor clocks. Twenty text cursor-replay pairs and one exact JSON
+replay matched with the same pinned cursor. Ordered cards, full page contents,
+exit codes and original body/envelope fingerprints matched. This small fixture
+is not curated/scale validation, a neutral gate or holdout scoring.
+
+Other tested cache configurations, not selected:
+
+- Clearing all query memos, including stemming and statistics, on every query
+  change: resident median/p95 9.765/12.853 ms against its paired baseline
+  9.012/11.607 ms (`/tmp/lqcachefix-ivhplg06/results.json`).
+- Keeping positive corpus stemming and current-clock positive DF while still
+  clearing posting/feature memos: 9.448/12.361 ms against 8.724/11.189 ms
+  (`/tmp/lqcachefix-av1vrrrf/results.json`).
+- Budgeting immutable posting/feature memos but clearing eligibility hits on each
+  query change: 9.218/11.496 ms against 8.794/11.207 ms
+  (`/tmp/lqcachefix-xkngeyxe/results.json`).
+
+Each configuration preserved page parity. A preliminary timing run of the final
+configuration overlapped the allocator probe; its timings are excluded for that
+experimental-condition violation, not for sample values. Its raw results remain
+at `/tmp/lqcachefix-854m6wo4/results.json`. The isolated final timing results are
+`/tmp/lqcachefix-v8_ac_rn/results.json`, produced by
+`/tmp/linn-cachefix-latency.py`. Original stores, raw results and temporary probe
+sources remain outside the repository.
+
+Binary SHA-256: before
+`edd2051ce9da18ac8faba3104ff2ed8ed314e084a3b4b879bf7b645b65b04345`, final
+`0f9b8d22b4b8ced89a2406093eda236dda71c9e6296407abe41468a3e2c754b4`.
+Release bytes: 106,290,680 before; 106,293,320 final (+2,640).
+All 157 workspace tests passed, with two existing fixture-dependent ignores;
+Clippy, formatting, LLP references, Nix build and packaged/previous-peer smoke
+checks passed. Regression tests cover clock/query/scope changes, bounded memos,
+read-only replica reuse and write invalidation. Native Linux/Windows runs and
+curated/scale retrieval outcomes remain unverified here.
