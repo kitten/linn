@@ -305,7 +305,7 @@ impl Store {
         }
         let database = Builder::new_local(path).build().await?;
         let db = database.connect()?;
-        db.execute_batch("PRAGMA secure_delete=ON; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA temp_store=MEMORY; PRAGMA mmap_size=268435456;").await?;
+        db.execute_batch("PRAGMA secure_delete=ON; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA temp_store=MEMORY; PRAGMA cache_size=-65536; PRAGMA mmap_size=268435456;").await?;
         migrations::apply(&db).await?;
         let model = db.transaction().await?;
         migrations::check(&model).await?;
@@ -3605,6 +3605,7 @@ mod lookup_tests {
             ("foreign_keys", 1),
             ("busy_timeout", 5000),
             ("temp_store", 2),
+            ("cache_size", -65536),
             ("mmap_size", 268435456),
         ] {
             let mut rows = built.db.query(&format!("PRAGMA {name}"), ()).await.unwrap();

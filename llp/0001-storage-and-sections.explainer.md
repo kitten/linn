@@ -551,10 +551,15 @@ The SQLite engine and local-only feature set remain unchanged.
 
 Initialize connection settings with `execute_batch`, so every statement runs:
 `secure_delete=ON`, `foreign_keys=ON`, `busy_timeout=5000`,
-`temp_store=MEMORY`, and `mmap_size=268435456` (a 256 MiB mapping limit).
+`temp_store=MEMORY`, `cache_size=-65536` (a 64 MiB pager-cache budget), and
+`mmap_size=268435456` (a 256 MiB mapping limit).
 The read mapping uses SQLite's file-backed pager and locking; it is neither a
 separate data file nor a preload of all documents. Scratch tokenization stays
-in temporary in-memory tables. Reads keep the engine's default page-cache budget.
+in temporary in-memory tables. The fixed read-cache budget retains native index
+and data pages across requests to the resident connection; it allocates on demand,
+not by preloading documents or corpus-wide Rust maps. Keep the 256 MiB mapping,
+the existing statement preparation and planner-statistics behavior: the resident
+scale experiment did not justify their more expensive alternatives.
 Rebuild and forget temporarily request a 32 MiB pager cache (`cache_size=-32768`)
 to reduce page churn during bulk index writes. Save the prior connection setting
 and restore it after success or error, then request unused pager memory release

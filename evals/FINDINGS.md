@@ -11575,3 +11575,139 @@ Raw samples, per-query medians, diagnostics, identities and parity results:
 raw output and binaries remain uncommitted. Binary SHA-256: before
 `f3d0f8e6f7e0c1b9f88a22562c9d7ec60b569caee31e7063da0cb65e47828a7a`, after
 `0f9b8d22b4b8ced89a2406093eda236dda71c9e6296407abe41468a3e2c754b4`.
+
+## Resident libSQL connection experiments (2026-11-13)
+
+The long-lived daemon changes the reuse window from the earlier fresh-process
+SQL setting studies. This is a new resident-workload measurement, not a rerun
+of those closed trials. Compared the current `ba0ac4d` implementation with four
+isolated changes: a 64 MiB connection pager budget, a 1 GiB mapping instead of
+256 MiB, a bounded native prepared-read-statement pool, and refreshed planner
+statistics. Retrieval algorithms, model arithmetic and stored original bytes
+remain unchanged. No holdout data or scores were used.
+
+Native macOS/Apple M3 Ultra; all four source variants and the baseline built
+through the same pinned Nix devshell, release profile, toolchain and embedded
+assets. The same prepared scale-q4 snapshot from the preceding measurement was
+APFS-cloned into five separate store paths. Each daemon had its own connection,
+mutable query workspace and caches. The existing 29 stratified dev queries were
+used, with the same repository cwd/caller scope and live operation clock.
+
+Each query group invoked all five binaries in shuffled order (seed 34709), with
+one complete first traversal then three shuffled resident rounds. Each timer
+includes a fresh CLI launch through exit, default text output, Git context, IPC
+and store execution. No overlapping builds, tests or probes, no forced OS-cache
+flush, and no samples removed. First-traversal samples are reported separately;
+they include the initial population of model and query resources. Percentiles
+use nearest-index ties-to-even, as in the preceding daemon measurements.
+
+| Variant | Resident samples | Median / p95, ms | Median / p95 change | Final daemon RSS, MiB |
+|---|---:|---:|---:|---:|
+| Baseline, default pager / 256 MiB mapping | 87 | 132.305 / 342.970 | — | 1,111.3 |
+| 64 MiB pager | 87 | 120.610 / 311.112 | -8.8% / -9.3% | 1,192.0 |
+| 1 GiB mapping | 87 | 135.165 / 348.967 | +2.2% / +1.7% | 1,835.3 |
+| Prepared-statement pool | 87 | 141.975 / 371.943 | +7.3% / +8.4% | 1,110.8 |
+| Refreshed planner statistics | 87 | 134.130 / 394.928 | +1.4% / +15.1% | 1,114.8 |
+
+The 64 MiB pager improves all 29 per-query three-repeat medians, with a 10.0%
+median of per-query reductions and 9.8% lower mean latency. Its observed RSS
+increase is 80.7 MiB, not a promise that total RSS grows by exactly the pager
+budget difference. RSS includes native/model allocations and resident mapped
+pages; the larger mapping's 724.0 MiB increase is not all private Rust heap.
+
+First-traversal median/p95 in the same order as the table: 167.323/495.368,
+151.216/443.978, 165.461/465.339, 178.824/490.578 and 151.438/657.973 ms.
+Single metadata-only startup samples were 19.133, 17.904, 16.081, 17.970 and
+13.861 ms; these are not controlled startup-speed claims. No whole-database
+preload was added.
+
+The statement-pool prototype retained at most 64 idle native read-only SELECT/WITH
+statements, with SQL text at most 4 KiB each. Active statement/row leases stayed
+outside the pool until the last handle dropped. Returning a native statement
+reset it and cleared bindings; failed/finalized statements were not reused.
+Idle entries contained no connection references, avoiding reference cycles.
+Two temporary integration tests passed for parameter clearing, overlapping live
+results, abandoned-result lock release, native schema reprepare and eviction
+workloads. This implementation regressed all 29 per-query medians and is not
+adopted; the result does not prove that every possible targeted statement-reuse
+implementation would regress. The patch and test source remain outside the
+repository at `/tmp/linn-resident-sql-statement-experiment.patch` and
+`/tmp/linn-statement-tests.rs`.
+
+The pinned native engine reports SQLite 3.45.1. On an unused connection,
+`PRAGMA optimize=0x10002` took 0.360 ms and created no planner statistics; its
+newer startup-mask behavior is absent in this engine. That no-op was not used
+as the statistics timing candidate. The actual statistics candidate ran
+`PRAGMA analysis_limit=1000; ANALYZE; PRAGMA optimize;` inside an immediate
+transaction after checking schema 5, before daemon startup. It created 51
+sqlite_stat1 rows and took 7,511.977 ms, excluded from query timings. For
+`Cursor Co-Authored-By setting`, refreshed statistics increased the per-query
+median from 45.834 to 639.616 ms. This statistics policy is not adopted.
+
+All 464 candidate/baseline text-page comparisons and exit codes matched across
+first traversal and resident rounds. All 116 candidate/baseline full JSON pages
+matched, normalizing only ordinary cursor clocks; ordered cards, original spans,
+text, hints and related pointers were preserved. Original body/envelope
+fingerprints match across all five stores. This is sampled product-page parity,
+not full scale retrieval-score or neutral/holdout validation.
+
+Decision: retain only `cache_size=-65536` for ordinary Store connections. Keep
+256 MiB mapping, current statement preparation and current planner-statistics
+behavior. Rebuild/forget retain their separately measured temporary 32 MiB
+write budget and restore the 64 MiB ordinary budget afterward. Secure deletion,
+durability, transactions, publication checks, schema fences and journal mode
+are unchanged. No runtime algorithm flag or configuration control was added.
+
+Raw timings, per-query values, binary fingerprints, diagnostics and parity:
+`/tmp/linn-resident-sql-gypuy5a5/results.json`; driver:
+`/tmp/linn-resident-sql-bench.py`. All experimental stores, binaries, prototypes
+and raw output remain uncommitted. The baseline and 64 MiB candidate are also
+verified separately below as final Nix packages.
+
+### Final packaged pager-cache confirmation
+
+An independent paired run compares the existing Nix release with the final Nix
+package containing only the pager setting and its settings assertion. Same
+29-query sample, prepared snapshot, caller context and alternating pair order;
+three resident rounds shuffled with seed 34709. Both isolated owners are stopped
+before every first-request pair. No concurrent build/test/probe load or outlier
+removal; a fresh owner is not a cold filesystem.
+
+| Condition | Pairs | Baseline median / p95, ms | 64 MiB pager median / p95, ms |
+|---|---:|---:|---:|
+| First query, both owners newly started | 29 | 213.014 / 515.544 | 202.548 / 490.113 |
+| Resident repeated query | 87 | 133.948 / 348.143 | 120.484 / 315.548 |
+
+Resident median falls 10.1%, p95 9.4%; all 29 per-query medians improve again.
+First-request median falls 4.9%. Resident maxima are 412.636/373.257 ms;
+first-request maxima are 4,181.287/4,205.449 ms, including the first sampled
+query. A separate candidate metadata-only startup sample is 13.661 ms. Final
+candidate RSS is 1,188.0 MiB. These sampled p95s are not production tail bounds.
+
+All 145 paired text pages and exit codes matched, as did 29 additional full JSON
+pages after normalizing only ordinary cursor clocks. The 29 first-traversal
+pairs are included in parity but not in the above timing table: only the
+candidate had metadata-only initialization before that traversal; baseline
+started its owner with its first query. Both were warm before resident timing.
+Original body/envelope fingerprints are unchanged. Raw confirmation:
+`/tmp/linn-resident-sql-confirm-jr8du1bk/results.json`; driver:
+`/tmp/linn-resident-sql-confirm.py`.
+
+A preliminary packaged run at `/tmp/linn-resident-sql-confirm-1t4_f37t/results.json`
+used the earlier pre-daemon comparator's stop routine, stopping only the
+candidate between first requests. Its first-request and first-traversal timing
+comparisons are invalid and excluded for that setup error. Its valid warm run
+measured 133.685/345.814 ms versus 120.454/319.871 ms, with full sampled parity.
+The final run above corrects teardown of both owners; neither run selected a new
+configuration or removed sample outliers.
+
+Final package: `/nix/store/ddxrms0q9idbpyn88fp6wi0zjz5f43p8-linn-0.1.1/bin/linn`.
+SHA-256 baseline
+`0f9b8d22b4b8ced89a2406093eda236dda71c9e6296407abe41468a3e2c754b4`, final
+`06985a4cc77a1790b93490bc7fdc031874867553655ae30a78aa0197f540463e`.
+Both packaged executables are 106,293,320 bytes. All 157 workspace tests passed,
+with two existing fixture-dependent ignores. Formatting, strict workspace
+Clippy, LLP references, diff checks, Nix build and packaged release smoke with
+the previous compatible peer passed. No experimental cache/library/statistics
+code remains in the final implementation. Only native macOS scale CLI behavior
+was measured; full retrieval scoring and other platforms were not rerun.
