@@ -14,7 +14,7 @@ pub struct ListQuery {
     pub expires_before: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ListedRecord {
     pub record: String,
     pub label: String,
@@ -46,7 +46,7 @@ impl Store {
         {
             return Err(Error::Invalid("invalid listing options".into()));
         }
-        let snapshot = self.db.transaction().await?;
+        let snapshot = self.application_snapshot().await?;
         let result = async {
             let mut rows = self
                 .db

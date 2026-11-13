@@ -78,6 +78,7 @@ impl Store {
     ) -> Result<u64> {
         self.ensure_usable()?;
         let tx = self.db.transaction().await?;
+        super::migrations::check(&tx).await?;
         let result = async {
             // Pin the publication snapshot before reading selection metadata.
             let mut rows = tx.query("SELECT value FROM projections WHERE key='structure'", ()).await?;
@@ -208,7 +209,7 @@ pub fn stage(reader: &mut impl BufRead) -> Result<std::fs::File> {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Imported {
     pub changed: u64,
     pub unchanged: u64,

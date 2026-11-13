@@ -45,7 +45,9 @@ impl Store {
     pub(super) fn write_outcome(&mut self, result: Result<()>) -> Result<()> {
         result.map_err(|e| {
             self.write_failed = true;
-            Error::Invalid(format!("{e}; write may have committed: reopen the store, and run index:rebuild if publication is incomplete"))
+            let mut error = crate::error::ApplicationError::new(e, true);
+            error.message = format!("{}; write may have committed: reopen the store, and run index:rebuild if publication is incomplete", error.message);
+            error.into()
         })
     }
 }

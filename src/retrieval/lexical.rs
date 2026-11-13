@@ -289,11 +289,11 @@ impl Store {
         }
         feature_ids.sort_unstable();
         feature_ids.dedup();
-        if std::env::var_os("LINN_POS_TRACE").is_some() {
-            eprintln!(
+        if crate::diagnostics::enabled("LINN_POS_TRACE") {
+            crate::diagnostics::emit(format!(
                 "{}",
                 serde_json::json!({"stage":"feature_selection","query":q.original,"matcher_b":b,"positive_rows":counts.len(),"feature_rows":feature_ids.len()})
-            );
+            ));
         }
         self.load_candidate_frequencies(
             q.terms
@@ -322,12 +322,12 @@ impl Store {
                 } else {
                     lexical + bonus
                 };
-                if std::env::var_os("LINN_POS_TRACE").is_some() {
+                if crate::diagnostics::enabled("LINN_POS_TRACE") {
                     let row = &self.rows[&id];
-                    eprintln!(
+                    crate::diagnostics::emit(format!(
                         "{}",
                         serde_json::json!({"stage":"primary_score", "query":q.original,"row":id,"record":row.record,"lexical":lexical,"bonus":bonus,"score":score})
-                    );
+                    ));
                 }
                 memo.insert(id, score);
                 score
@@ -358,15 +358,15 @@ impl Store {
             });
         }
         ranking.sort_by(|a, b| rank_cmp(a, b, self));
-        if std::env::var_os("LINN_POS_RANK_TRACE").is_some() {
+        if crate::diagnostics::enabled("LINN_POS_RANK_TRACE") {
             let rows: Vec<_> = ranking.iter().map(|r| {
                 let row=&self.rows[&r.sid];
                 serde_json::json!({"row":r.sid,"tier":r.tier,"score":r.score,"record":row.record,"body_hash":row.hash,"span":[row.start,row.end]})
             }).collect();
-            eprintln!(
+            crate::diagnostics::emit(format!(
                 "{}",
                 serde_json::json!({"stage":"raw_rank","query":q.original,"matcher_b":b,"rows":rows})
-            );
+            ));
         }
         let mut confidence = None;
         if b {
@@ -460,8 +460,11 @@ impl Store {
                 .then_with(|| ia.cmp(ib))
         });
         let cut: Vec<_> = rows.into_iter().take(5).map(|(_, r)| r.sid).collect();
-        if std::env::var_os("LINN_POS_RANK_TRACE").is_some() {
-            eprintln!("{}", serde_json::json!({"stage":"record_cut","rows":cut}));
+        if crate::diagnostics::enabled("LINN_POS_RANK_TRACE") {
+            crate::diagnostics::emit(format!(
+                "{}",
+                serde_json::json!({"stage":"record_cut","rows":cut})
+            ));
         }
         cut
     }
@@ -1538,10 +1541,10 @@ mod indexed_tests {
         let sparse = Store::open(std::path::Path::new(&path)).await.unwrap();
         let matrix = full.block_matrix().await.unwrap();
         assert!(!matrix.ids.is_empty(), "requires a populated copied store");
-        eprintln!(
+        crate::diagnostics::emit(format!(
             "checking selected float32 scores across {} rows",
             matrix.ids.len()
-        );
+        ));
         for stride in [37, 101] {
             let ids: Vec<_> = matrix.ids.iter().step_by(stride).copied().collect();
             for text in [

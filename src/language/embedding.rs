@@ -143,6 +143,14 @@ pub fn unit(mut v: Vec<f32>) -> Vec<f32> {
     }
     v
 }
+pub(crate) fn shared_encoder() -> Result<std::sync::Arc<Encoder>> {
+    static ENCODER: once_cell::sync::OnceCell<std::sync::Arc<Encoder>> =
+        once_cell::sync::OnceCell::new();
+    ENCODER
+        .get_or_try_init(|| Encoder::load().map(std::sync::Arc::new))
+        .cloned()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

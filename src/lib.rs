@@ -12,3 +12,5 @@ pub use cli::paths;
 pub use language::embedding as embed;
 pub use retrieval::{lexical as search, query};
 pub use storage::{self as store, record, sections};
+
+pub mod diagnostics;

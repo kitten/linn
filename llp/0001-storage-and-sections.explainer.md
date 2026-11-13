@@ -478,6 +478,18 @@ than editing an already published step. All pending steps run under one write
 transaction, so any failure leaves the original schema version and data intact.
 Per-connection temporary tables and runtime PRAGMAs still initialize on each open.
 
+The migration list is the single source for the supported schema version.
+Existing connections must
+check exact `user_version` inside each product read snapshot and before persistent
+SQL in every write transaction, after acquiring its write lock. A check before
+BEGIN alone cannot fence a writer waiting behind a migration. Guard startup
+model/structure publication and remote configuration as well as original-data
+writes. Reject a changed version with a typed schema error; never let a resident
+old handle downgrade or rebuild newer storage. An already-pinned old read may
+finish against its old snapshot; SQLite prevents it from upgrading to a write
+after a conflicting migration commits. Publication/model identity checks remain
+separate; SQL schema equality alone does not prove binary compatibility.
+
 Migrations preserve original bodies, immutable envelopes, hashes, references and
 tombstones. Rebuildable index data may be replaced. Model and derived-publication
 versions remain separate compatibility checks. Test upgrades from supported old

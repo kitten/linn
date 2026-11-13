@@ -249,11 +249,11 @@ impl Store {
             let started = std::time::Instant::now();
             let matrix = self.fallback_matrix("forms", forms.len()).await?;
             let _ = forms.matrix.set(matrix);
-            if std::env::var_os("LINN_STARTUP_TIMINGS").is_some() {
-                eprintln!(
+            if crate::diagnostics::enabled("LINN_STARTUP_TIMINGS") {
+                crate::diagnostics::emit(format!(
                     "linn query: {}",
                     serde_json::json!({"phase":"form-vector-read","rows":forms.len(),"ms":started.elapsed().as_secs_f64()*1000.})
-                );
+                ));
             }
         }
         Ok(forms.matrix.get().unwrap())
@@ -722,54 +722,8 @@ impl Store {
         Ok(calls)
     }
     pub async fn agent(&mut self, q: &str, ctx: &Context) -> Result<Vec<Call>> {
-        self.ensure_usable()?;
-        self.set_query_clock(&ctx.now);
-        let snapshot = self.db.transaction().await?;
-        let result = async {
-            let mut ready = self
-                .db
-                .query("SELECT value FROM projections WHERE key='structure'", ())
-                .await?;
-            let stamp = ready
-                .next()
-                .await?
-                .map(|row| row.get::<Vec<u8>>(0))
-                .transpose()?;
-            if stamp.as_ref() != Some(&self.structure_stamp) {
-                return Err(crate::error::Error::Invalid(
-                    "store changed; reopen it before searching".into(),
-                ));
-            }
-            drop(ready);
-            let mut calls = self.agent_inner(q, ctx).await?;
-            let ids = calls
-                .iter()
-                .flat_map(|call| {
-                    call.cards.iter().map(|c| c.record.clone()).chain(
-                        call.hints
-                            .iter()
-                            .chain(&call.related)
-                            .map(|p| p.record.clone()),
-                    )
-                })
-                .collect::<Vec<_>>();
-            self.load_record_headers(ids).await?;
-            for call in &mut calls {
-                let count = (call.cards.len(), call.hints.len(), call.related.len());
-                call.cards.retain(|card| self.record_eligible(&card.record));
-                call.hints.retain(|p| self.hint_eligible(&p.record));
-                call.related.retain(|p| self.hint_eligible(&p.record));
-                if (call.cards.len(), call.hints.len(), call.related.len()) != count {
-                    call.text = if call.cards.is_empty() {
-                        "Nothing qualified.".into()
-                    } else {
-                        card_lines(&call.cards, false)
-                    };
-                }
-            }
-            Ok(calls)
-        }
-        .await;
+        let snapshot = self.application_snapshot().await?;
+        let result = self.agent_in_snapshot(q, ctx).await;
         let rollback = snapshot.rollback().await;
         match result {
             Ok(calls) => {
@@ -778,6 +732,52 @@ impl Store {
             }
             Err(error) => Err(error),
         }
+    }
+    /// The caller holds a checked snapshot for the complete application read.
+    pub(crate) async fn agent_in_snapshot(&mut self, q: &str, ctx: &Context) -> Result<Vec<Call>> {
+        self.set_query_clock(&ctx.now);
+        let mut ready = self
+            .db
+            .query("SELECT value FROM projections WHERE key='structure'", ())
+            .await?;
+        let stamp = ready
+            .next()
+            .await?
+            .map(|row| row.get::<Vec<u8>>(0))
+            .transpose()?;
+        if stamp.as_ref() != Some(&self.structure_stamp) {
+            return Err(crate::error::Error::Invalid(
+                "store changed; reopen it before searching".into(),
+            ));
+        }
+        drop(ready);
+        let mut calls = self.agent_inner(q, ctx).await?;
+        let ids = calls
+            .iter()
+            .flat_map(|call| {
+                call.cards.iter().map(|c| c.record.clone()).chain(
+                    call.hints
+                        .iter()
+                        .chain(&call.related)
+                        .map(|p| p.record.clone()),
+                )
+            })
+            .collect::<Vec<_>>();
+        self.load_record_headers(ids).await?;
+        for call in &mut calls {
+            let count = (call.cards.len(), call.hints.len(), call.related.len());
+            call.cards.retain(|card| self.record_eligible(&card.record));
+            call.hints.retain(|p| self.hint_eligible(&p.record));
+            call.related.retain(|p| self.hint_eligible(&p.record));
+            if (call.cards.len(), call.hints.len(), call.related.len()) != count {
+                call.text = if call.cards.is_empty() {
+                    "Nothing qualified.".into()
+                } else {
+                    card_lines(&call.cards, false)
+                };
+            }
+        }
+        Ok(calls)
     }
     async fn qualified_suffix_query(&mut self, q: &str, ctx: &Context) -> Result<String> {
         let Ok(parsed) = query::Query::parse(q) else {

@@ -30,7 +30,7 @@ struct StartupTiming {
 impl StartupTiming {
     fn new() -> Self {
         Self {
-            enabled: std::env::var_os("LINN_STARTUP_TIMINGS").is_some(),
+            enabled: crate::diagnostics::enabled("LINN_STARTUP_TIMINGS"),
             last: Instant::now(),
         }
     }
@@ -38,15 +38,16 @@ impl StartupTiming {
         let elapsed = self.last.elapsed();
         self.last = Instant::now();
         if self.enabled {
-            eprintln!(
+            crate::diagnostics::emit(format!(
                 "linn startup: {}",
                 serde_json::json!({"phase":phase,"ms":elapsed.as_secs_f64()*1000.})
-            );
+            ));
         }
     }
 }
 
 pub const NOW: &str = "2026-11-05T00:00:00Z";
+pub const SCHEMA_VERSION: usize = migrations::VERSION;
 pub fn current_time() -> String {
     time::OffsetDateTime::now_utc()
         .replace_nanosecond(0)
@@ -289,9 +290,11 @@ impl Store {
         let db = database.connect()?;
         db.execute_batch("PRAGMA secure_delete=ON; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA temp_store=MEMORY; PRAGMA mmap_size=268435456;").await?;
         migrations::apply(&db).await?;
-        db.execute_batch(SCRATCH).await?;
+        let model = db.transaction().await?;
+        migrations::check(&model).await?;
+        model.execute_batch(SCRATCH).await?;
         // @ref LLP 0001#embedding-publication
-        let mut identity = db
+        let mut identity = model
             .query(
                 "SELECT value FROM projections WHERE key='block-model-v1'",
                 (),
@@ -303,7 +306,9 @@ impl Store {
             .map(|row| row.get::<Vec<u8>>(0))
             .transpose()?;
         if identity.as_deref() != Some(crate::language::embedding::ARTIFACT_MODEL.as_bytes()) {
-            let mut records = db.query("SELECT EXISTS(SELECT 1 FROM records)", ()).await?;
+            let mut records = model
+                .query("SELECT EXISTS(SELECT 1 FROM records)", ())
+                .await?;
             let populated = records.next().await?.unwrap().get::<i64>(0)? != 0;
             drop(records);
             if populated && !rebuilding {
@@ -312,13 +317,15 @@ impl Store {
                 ));
             }
             if !populated {
-                db.execute(
-                    "INSERT OR REPLACE INTO projections VALUES('block-model-v1',?)",
-                    [crate::language::embedding::ARTIFACT_MODEL.as_bytes()],
-                )
-                .await?;
+                model
+                    .execute(
+                        "INSERT OR REPLACE INTO projections VALUES('block-model-v1',?)",
+                        [crate::language::embedding::ARTIFACT_MODEL.as_bytes()],
+                    )
+                    .await?;
             }
         }
+        model.commit().await?;
         timing.mark("database-open-schema-scratch");
         let mut st = Self {
             query_clock: current_time(),
@@ -476,8 +483,12 @@ impl Store {
             snapshot.rollback().await?;
             if st.structure_stamp == structure_version() {
                 let stamp = structure_stamp();
-                let changed = st
+                let tx = st
                     .db
+                    .transaction_with_behavior(libsql::TransactionBehavior::Immediate)
+                    .await?;
+                st.verify_source_version(&tx).await?;
+                let changed = tx
                     .execute(
                         "UPDATE projections SET value=? WHERE key='structure' AND value=?",
                         params![stamp.clone(), st.structure_stamp.clone()],
@@ -488,6 +499,7 @@ impl Store {
                         "store changed during open; reopen it".into(),
                     ));
                 }
+                tx.commit().await?;
                 st.structure_stamp = stamp;
             }
         } else {
@@ -513,6 +525,7 @@ impl Store {
         rebuilding: bool,
     ) -> Result<(libsql::Transaction, i64)> {
         let snapshot = db.transaction().await?;
+        migrations::check(&snapshot).await?;
         // This read pins the snapshot before recording its version or reading indexes.
         let mut pending = snapshot
             .query("SELECT 1 FROM sync_state WHERE key='pending'", ())
@@ -530,7 +543,7 @@ impl Store {
     }
     pub fn encoder(&mut self) -> Result<Arc<Encoder>> {
         if self.encoder.is_none() {
-            self.encoder = Some(Arc::new(Encoder::load()?));
+            self.encoder = Some(crate::language::embedding::shared_encoder()?);
         }
         Ok(self.encoder.as_ref().unwrap().clone())
     }
@@ -599,11 +612,11 @@ impl Store {
             return Ok(None);
         };
         let matrix = self.fallback_matrix(kind, rows).await?;
-        if std::env::var_os("LINN_STARTUP_TIMINGS").is_some() {
-            eprintln!(
+        if crate::diagnostics::enabled("LINN_STARTUP_TIMINGS") {
+            crate::diagnostics::emit(format!(
                 "linn query: {}",
                 serde_json::json!({"phase":"numerical-array-read","kind":kind,"rows":rows,"ms":started.elapsed().as_secs_f64()*1000.})
-            );
+            ));
         }
         Ok(Some((metadata, matrix)))
     }
@@ -827,11 +840,11 @@ impl Store {
         }
         let matrix = crate::retrieval::similarity::Matrix::from_values(values, count).unwrap();
         let scores = matrix.multiply(query);
-        if std::env::var_os("LINN_STARTUP_TIMINGS").is_some() {
-            eprintln!(
+        if crate::diagnostics::enabled("LINN_STARTUP_TIMINGS") {
+            crate::diagnostics::emit(format!(
                 "linn query: {}",
                 serde_json::json!({"phase":"candidate-vector-score","rows":count,"selected":selected.len(),"ms":started.elapsed().as_secs_f64()*1000.})
-            );
+            ));
         }
         Ok(selected
             .into_iter()
@@ -902,11 +915,11 @@ impl Store {
             eligible,
             expires,
         });
-        if std::env::var_os("LINN_STARTUP_TIMINGS").is_some() {
-            eprintln!(
+        if crate::diagnostics::enabled("LINN_STARTUP_TIMINGS") {
+            crate::diagnostics::emit(format!(
                 "linn query: {}",
                 serde_json::json!({"phase":"block-matrix-read","rows":cache.ids.len(),"ms":started.elapsed().as_secs_f64()*1000.})
-            );
+            ));
         }
         self.vector_matrix = Some(cache.clone());
         Ok(cache)
@@ -1034,7 +1047,16 @@ impl Store {
         self.prepare_record_headers().await?;
         Ok(())
     }
+    pub(crate) async fn application_snapshot(&self) -> Result<libsql::Transaction> {
+        self.ensure_usable()?;
+        let (snapshot, version) = Self::source_snapshot(&self.db, false).await?;
+        if version != self.source_version {
+            return Err(Error::Invalid("store changed; reopen it".into()));
+        }
+        Ok(snapshot)
+    }
     pub(crate) async fn verify_source_version(&self, db: &Connection) -> Result<()> {
+        migrations::check(db).await?;
         let mut version = db.query("PRAGMA data_version", ()).await?;
         if version.next().await?.unwrap().get::<i64>(0)? != self.source_version {
             return Err(Error::Invalid(
@@ -2576,6 +2598,7 @@ impl Store {
     pub fn tree_eligible(&self, r: &Record) -> bool {
         self.validity.eligible(r, "") && r.body_nonblank()
     }
+
     pub(crate) fn set_query_clock(&mut self, now: &str) {
         if self.query_clock != now {
             self.query_clock = now.to_owned();
@@ -3065,6 +3088,7 @@ impl Store {
             .db
             .transaction_with_behavior(libsql::TransactionBehavior::Immediate)
             .await?;
+        migrations::check(&snapshot).await?;
         let mut rows = snapshot.query("PRAGMA quick_check", ()).await?;
         while let Some(row) = rows.next().await? {
             let result: String = row.get(0)?;
@@ -4604,6 +4628,87 @@ Cobalt quasar closed secret."}),
 #[cfg(test)]
 mod sync_snapshot_tests {
     use super::*;
+
+    #[tokio::test]
+    async fn numerical_timings_use_request_diagnostics() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("timings.db");
+        let record = serde_json::from_value::<Record>(serde_json::json!({
+            "id":"r", "state":"accepted", "body":"A complete original routing decision."
+        }))
+        .unwrap();
+        drop(Store::build(&path, vec![record]).await.unwrap());
+        let mut store = Store::open(&path).await.unwrap();
+        let flags = crate::diagnostics::Diagnostics {
+            startup: true,
+            ..Default::default()
+        };
+        let (result, lines) = crate::diagnostics::capture(flags, async {
+            store.fallback_artifact::<Vec<String>>("beam").await?;
+            let mut rows = store.db.query("SELECT id FROM vectors LIMIT 1", ()).await?;
+            let id = rows.next().await?.unwrap().get::<i64>(0)? as usize;
+            drop(rows);
+            store.candidate_vector_scores(&[id], &[0.; 512]).await?;
+            store.block_matrix().await?;
+            Ok::<_, Error>(())
+        })
+        .await;
+        result.unwrap();
+        for phase in [
+            "numerical-array-read",
+            "candidate-vector-score",
+            "block-matrix-read",
+        ] {
+            assert!(
+                lines.iter().any(|line| line.contains(phase)),
+                "missing {phase}: {lines:?}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn resident_search_and_list_reject_schema_pending_and_external_changes() {
+        for (change, message) in [
+            (
+                format!("PRAGMA user_version={}", SCHEMA_VERSION + 1),
+                "store schema",
+            ),
+            (
+                "INSERT INTO sync_state VALUES('pending',1)".into(),
+                "publication incomplete",
+            ),
+            (
+                "INSERT INTO sync_remotes VALUES('peer','ssh://peer',NULL)".into(),
+                "reopen",
+            ),
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("resident.db");
+            let mut store = Store::open(&path).await.unwrap();
+            let database = Builder::new_local(&path).build().await.unwrap();
+            let writer = database.connect().unwrap();
+            writer.execute_batch(&change).await.unwrap();
+            let error = store
+                .agent("missing", &Context::default())
+                .await
+                .unwrap_err();
+            assert!(error.to_string().contains(message), "{error}");
+            let query = listing::ListQuery {
+                now: "2026-11-13T00:00:00Z".into(),
+                kind: None,
+                writer: None,
+                scope: None,
+                since: None,
+                expires_before: None,
+            };
+            let error = store
+                .list_records(&query, None, 10, None)
+                .await
+                .err()
+                .unwrap();
+            assert!(error.to_string().contains(message), "{error}");
+        }
+    }
 
     #[tokio::test]
     async fn pending_sync_and_source_reads_share_a_pinned_snapshot() {

@@ -203,11 +203,11 @@ impl Store {
                 {
                     continue;
                 }
-                if std::env::var_os("LINN_POS_TRACE").is_some() {
-                    eprintln!(
+                if crate::diagnostics::enabled("LINN_POS_TRACE") {
+                    crate::diagnostics::emit(format!(
                         "{}",
                         serde_json::json!({"pos_relation": [surfaces[i],surfaces[i+1]], "bytes":[a.span().byte().start,b.span().byte().end],"tags":[at,bt],"reason":"adjacent possible modifier/nominal NP"})
-                    );
+                    ));
                 }
                 out.push(NominalRelation {
                     left: streams[i].clone(),
@@ -356,12 +356,12 @@ impl Store {
                 }
             }
 
-            if std::env::var_os("LINN_POS_TIMINGS").is_some() && prepared.len() % 1000 == 0 {
-                eprintln!(
+            if crate::diagnostics::enabled("LINN_POS_TIMINGS") && prepared.len() % 1000 == 0 {
+                crate::diagnostics::emit(format!(
                     "POS annotation: {}/{} blocks",
                     prepared.len(),
                     self.rows.len()
-                );
+                ));
             }
             let mut annotations = Vec::new();
             for unit in source_units {
@@ -472,7 +472,7 @@ impl Store {
                 ));
             }
         }
-        if std::env::var_os("LINN_POS_TRACE").is_some() {
+        if crate::diagnostics::enabled("LINN_POS_TRACE") {
             for &id in ids {
                 let witness = self.projected_pos_bonus(id, pairs).await?;
                 if f64::to_bits(scores[&id]) != witness.to_bits() {
@@ -506,11 +506,11 @@ impl Store {
             });
             if let Some((base, r)) = witness {
                 score += idf;
-                if std::env::var_os("LINN_POS_TRACE").is_some() {
-                    eprintln!(
+                if crate::diagnostics::enabled("LINN_POS_TRACE") {
+                    crate::diagnostics::emit(format!(
                         "{}",
                         serde_json::json!({"stage":"stored_source_relation","record":row.record,"body_hash":row.hash,"block":id,"generation":self.structure_stamp,"identity":POS_IDENTITY,"unit_base":base,"relation":r,"bonus":idf})
-                    );
+                    ));
                 }
             }
         }
@@ -729,11 +729,11 @@ mod projection_tests {
 }
 
 fn pos_timing(phase: &str, duration: std::time::Duration) {
-    if std::env::var_os("LINN_POS_TIMINGS").is_some() {
-        eprintln!(
+    if crate::diagnostics::enabled("LINN_POS_TIMINGS") {
+        crate::diagnostics::emit(format!(
             "POS timing: {}",
             serde_json::json!({"phase":phase,"ms":duration.as_secs_f64()*1000.})
-        );
+        ));
     }
 }
 

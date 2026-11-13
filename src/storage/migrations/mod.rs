@@ -9,6 +9,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("0004-sync.sql"),
     include_str!("0005-writer-filters.sql"),
 ];
+pub(super) const VERSION: usize = MIGRATIONS.len();
 
 async fn version(db: &Connection) -> Result<usize> {
     let mut rows = db.query("PRAGMA user_version", ()).await?;
@@ -22,9 +23,22 @@ async fn version(db: &Connection) -> Result<usize> {
 
 fn supported(version: usize, latest: usize) -> Result<()> {
     if version > latest {
-        return Err(Error::Invalid(format!(
-            "store schema {version} is newer than this binary supports ({latest})"
-        )));
+        return Err(Error::Schema {
+            found: version,
+            supported: latest,
+        });
+    }
+    Ok(())
+}
+
+/// Check inside the same snapshot/write transaction as product SQL.
+pub(super) async fn check(db: &Connection) -> Result<()> {
+    let found = version(db).await?;
+    if found != VERSION {
+        return Err(Error::Schema {
+            found,
+            supported: VERSION,
+        });
     }
     Ok(())
 }
