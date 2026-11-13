@@ -76,6 +76,7 @@
                 ];
               }
               ''
+                export LINN_TEST_TMPDIR="$TMPDIR"
                 python3 ${self}/scripts/check_release.py --binary ${self.packages.${system}.linn}/bin/linn
                 test -s ${self.packages.${system}.linn}/share/doc/linn/LICENSE
                 test -s ${self.packages.${system}.linn}/share/doc/linn/THIRD_PARTY_NOTICES

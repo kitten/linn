@@ -36,9 +36,11 @@ serde = { version = "1", features = ["derive", "rc"] }
 serde_json = "1"
 sha2 = "0.10"
 thiserror = "2"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.54", features = ["macros", "rt-multi-thread", "io-util", "sync", "time", "net"] }
 safetensors = "0.5.3"
 bytemuck = "1.24"
+interprocess = { version = "=2.4.8", features = ["tokio"] }
+git2 = { version = "=0.21.0", default-features = false, features = ["vendored-libgit2", "unstable-sha256"] }
 
 [profile.release]
 lto = "thin"
@@ -54,6 +56,10 @@ libsql = { path = "vendor/libsql" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cblas = "0.5"
+
+[target."cfg(unix)".dependencies]
+daemonize-next = "=0.1.0"
+libc = "0.2.191"
 
 [dev-dependencies]
 
