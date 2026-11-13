@@ -3,11 +3,29 @@
 **Type:** Explainer\
 **Status:** Active\
 **Systems:** CLI, Paths, Packaging\
-**Related:** LLP 0000, LLP 0001, LLP 0002, LLP 0003, LLP 0005, LLP 0006
+**Related:** LLP 0000, LLP 0001, LLP 0002, LLP 0003, LLP 0005, LLP 0006, LLP 0007
 
 ## Runtime
 
 One native Rust binary uses Clap-derived arguments, typed errors, and separate parsing, execution and presentation. Results go to stdout; warnings, errors and opt-in diagnostics to stderr. Resolve paths in order: --store, LINN_STORE, store in $XDG_CONFIG_HOME/linn/config.toml, then $XDG_DATA_HOME/linn/store.db. Defaults are ~/.config and ~/.local/share. Relative XDG values are invalid, including when an explicit store is supplied. Never default to cwd.
+
+Ordinary commands transparently connect to the per-store detached process in
+LLP 0007; the same binary contains the internal bootstrap, application API and
+CLI. There is no public foreground serve command. `daemon:status` inspects an
+existing owner and `daemon:stop` drains accepted work before stopping it; neither
+starts a daemon. Both lifecycle commands remain callable but are hidden from
+top-level help for now. The next ordinary command starts one again. Results and request
+local diagnostics are returned to the calling CLI, never printed by the daemon.
+The client resolves paths, Git scope/writer provenance and file/stdin bytes for
+each invocation. It never opens or creates the store or executes an operation
+locally. File adds send a typed input task with absolute source path, captured
+repository root alongside the byte snapshot.
+The application derives input kind, source metadata, relative source path and
+the source reference from the existing body SHA-256. Content validation, default labels and SSH synchronization all run in
+the daemon. The application owns execution, clocks, reference/cursor rules
+and typed results; the CLI owns text/JSON rendering and exit codes. `sync:serve`
+bridges its unchanged SSH stdio protocol to this application dispatcher.
+Native Windows delivery remains specified but unimplemented in LLP 0007.
 
 Routine internal debug statistics, including POS projection publication counts
 and elapsed time, are not printed by default. Existing explicit timing and trace

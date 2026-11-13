@@ -60,6 +60,16 @@ async fn check(cwd: &Path, db: &Path, env: &[(&str, &str)], expected: Option<&st
         .unwrap();
     let actual: Option<String> = rows.next().await.unwrap().unwrap().get(0).unwrap();
     assert_eq!(actual.as_deref(), expected, "cwd={}", cwd.display());
+    assert!(
+        command(env!("CARGO_BIN_EXE_linn"), cwd, env)
+            .arg("--store")
+            .arg(db)
+            .arg("daemon:stop")
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
 }
 #[tokio::test]
 async fn file_configuration_scope_covers_legacy_includes_and_worktrees() {
@@ -405,5 +415,103 @@ async fn file_input_case(format: &str) {
             .unwrap()
             .count(),
         2
+    );
+    assert!(
+        cli(dir.path())
+            .arg("daemon:stop")
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+}
+
+#[tokio::test]
+async fn source_hash_uses_snapshot_and_keeps_legacy_envelopes_on_rebuild() {
+    use linn::{
+        application::{AddOptions, Application, Caller, FileInput, InputTask, Operation, Value},
+        record::hash,
+    };
+    use std::io::Seek;
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().canonicalize().unwrap();
+    let path = root.join("store.db");
+    let legacy = r#"{ "id":"legacy", "body":"Historical original.", "kind":"doc", "source":{"type":"repo-file","ref":"0123456789012345678901234567890123456789"}, "created":"2026-11-13T00:00:00Z" }"#;
+    let replica = linn::storage::sync::Replica::open(&path).await.unwrap();
+    replica
+        .apply(
+            &linn::storage::sync::Item {
+                id: "legacy".into(),
+                envelope: Some(legacy.into()),
+                envelope_hash: Some(hash(legacy.as_bytes())),
+                body_hash: Some(hash(b"Historical original.")),
+            },
+            None,
+        )
+        .await
+        .unwrap();
+    replica.finish().await.unwrap();
+    let file = root.join("queued.md");
+    let body = b"Original queued bytes.\r\n";
+    std::fs::write(&file, body).unwrap();
+    let mut snapshot = tempfile::tempfile().unwrap();
+    snapshot.write_all(body).unwrap();
+    snapshot.rewind().unwrap();
+    std::fs::remove_file(&file).unwrap();
+    let caller = || Caller {
+        diagnostics: Default::default(),
+        scope: None,
+        writer: None,
+    };
+    let mut app = Application::new(path.clone());
+    let reply = app
+        .execute(
+            Operation::Add(AddOptions {
+                label: None,
+                input_name: Some("queued.md".into()),
+                input: InputTask::File(FileInput {
+                    path: file,
+                    repository: Some(root),
+                }),
+                parent: None,
+                stale_after: None,
+                unscoped: true,
+            }),
+            caller(),
+            snapshot,
+        )
+        .await
+        .unwrap();
+    let Value::Added(id) = reply.value else {
+        panic!("expected added record");
+    };
+    app.execute(Operation::Rebuild, caller(), tempfile::tempfile().unwrap())
+        .await
+        .unwrap();
+    let database = libsql::Builder::new_local(&path).build().await.unwrap();
+    let db = database.connect().unwrap();
+    let mut rows = db
+        .query("SELECT envelope,body_hash FROM records WHERE id=?", [id])
+        .await
+        .unwrap();
+    let row = rows.next().await.unwrap().unwrap();
+    let envelope: serde_json::Value =
+        serde_json::from_slice(&row.get::<Vec<u8>>(0).unwrap()).unwrap();
+    assert_eq!(envelope["body"], std::str::from_utf8(body).unwrap());
+    assert_eq!(envelope["source"]["ref"], row.get::<String>(1).unwrap());
+    assert_eq!(envelope["source"]["ref"], hash(body));
+    drop(rows);
+    let mut rows = db
+        .query("SELECT envelope FROM records WHERE id='legacy'", ())
+        .await
+        .unwrap();
+    assert_eq!(
+        rows.next()
+            .await
+            .unwrap()
+            .unwrap()
+            .get::<Vec<u8>>(0)
+            .unwrap(),
+        legacy.as_bytes()
     );
 }

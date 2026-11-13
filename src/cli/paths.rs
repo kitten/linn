@@ -189,6 +189,13 @@ pub fn evidence(path: &Path) -> Result<String> {
     Ok(crate::storage::record::hash(&std::fs::read(path)?))
 }
 
+pub(crate) fn file_input(path: &Path) -> Result<crate::application::FileInput> {
+    Ok(crate::application::FileInput {
+        path: std::fs::canonicalize(path)?,
+        repository: workdir(),
+    })
+}
+
 #[cfg(test)]
 mod scope_tests {
     use super::*;

@@ -1,7 +1,16 @@
 use std::process::ExitCode;
 
-#[tokio::main]
-async fn main() -> ExitCode {
+fn main() -> ExitCode {
+    if let Some(code) = linn::runtime::bootstrap() {
+        return ExitCode::from(code as u8);
+    }
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("async runtime")
+        .block_on(run())
+}
+async fn run() -> ExitCode {
     match linn::cli::run().await {
         Ok(code) => ExitCode::from(code as u8),
         Err(error) => {

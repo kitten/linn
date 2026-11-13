@@ -192,7 +192,10 @@ def main():
     parser.add_argument("--peer-binary", type=Path, help="Optional compatible peer executable for protocol compatibility testing")
     parser.add_argument("--ssh", action="store_true", help="Also run a real loopback SSH test (requires local socket permissions)")
     args = parser.parse_args()
-    with tempfile.TemporaryDirectory(prefix="linn-release-") as directory:
+    with tempfile.TemporaryDirectory(prefix="linn-release-") as directory, tempfile.TemporaryDirectory(
+        prefix="ls-", dir=os.environ.get("LINN_TEST_TMPDIR", "/tmp")
+    ) as runtime:
+        Path(runtime).chmod(0o700)
         root = Path(directory).resolve()
         for name, source in [("local-bin", args.binary), ("peer-bin", args.peer_binary or args.binary)]:
             (root / name).mkdir()
@@ -202,12 +205,19 @@ def main():
             "HOME": str(root / "home"), "PATH": os.environ.get("PATH", ""),
             "XDG_CONFIG_HOME": str(root / "config"), "XDG_DATA_HOME": str(root / "data"),
             "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
-            "LANG": "C", "TMPDIR": str(root),
+            "LANG": "C", "TMPDIR": str(root), "XDG_RUNTIME_DIR": runtime,
         }
         binary, peer = root / "local-bin/linn", root / "peer-bin/linn"
-        smoke(binary, peer, root, env)
-        if args.ssh:
-            ssh_smoke(binary, peer, root, env)
+        try:
+            smoke(binary, peer, root, env)
+            if args.ssh:
+                ssh_smoke(binary, peer, root, env)
+        finally:
+            for store in root.rglob("*.db"):
+                subprocess.run(
+                    [str(binary), "--store", str(store), "daemon:stop"],
+                    env=env, cwd=root, capture_output=True, timeout=30,
+                )
 
 
 if __name__ == "__main__":

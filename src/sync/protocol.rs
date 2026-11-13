@@ -81,6 +81,9 @@ pub fn exchange(
     request: &Request,
 ) -> Result<Response> {
     write(writer, request)?;
+    reply(reader)
+}
+pub(super) fn reply(reader: &mut impl BufRead) -> Result<Response> {
     match read(reader)?.ok_or_else(|| Error::Invalid("sync peer disconnected".into()))? {
         Response::Error { message } => Err(Error::Invalid(format!("sync peer: {message}"))),
         reply => Ok(reply),
@@ -128,7 +131,7 @@ pub async fn serve(
     }
     Ok(())
 }
-async fn handle(replica: &Replica, request: Request) -> Result<Response> {
+pub(crate) async fn handle(replica: &Replica, request: Request) -> Result<Response> {
     Ok(match request {
         Request::Hello { .. } => return Err(Error::Invalid("duplicate handshake".into())),
         Request::Inventory {

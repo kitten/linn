@@ -1,6 +1,6 @@
 use crate::error::{Error, Result};
 use std::{
-    io::{BufReader, BufWriter},
+    io::{BufReader, Read, Seek, SeekFrom},
     process::{Child, ChildStdin, ChildStdout, Command, Stdio},
 };
 #[derive(Debug, PartialEq)]
@@ -87,13 +87,25 @@ impl Origin {
     }
 }
 pub struct Session {
+    diagnostics: std::fs::File,
     child: Child,
     pub reader: BufReader<ChildStdout>,
-    pub writer: Option<BufWriter<ChildStdin>>,
+    pub writer: Option<ChildStdin>,
 }
 impl Session {
     pub fn open(origin: &Origin) -> Result<Self> {
-        let mut child = Command::new("ssh")
+        Self::open_with_environment(origin, None)
+    }
+    pub fn open_with_environment(
+        origin: &Origin,
+        environment: Option<&[(std::ffi::OsString, std::ffi::OsString)]>,
+    ) -> Result<Self> {
+        let diagnostics = tempfile::tempfile()?;
+        let mut command = Command::new("ssh");
+        if let Some(environment) = environment {
+            command.env_clear().envs(environment.iter().cloned());
+        }
+        let mut child = command
             .args([
                 "-T",
                 "-oBatchMode=yes",
@@ -106,11 +118,12 @@ impl Session {
             ])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
+            .stderr(diagnostics.try_clone()?)
             .spawn()?;
         let reader = BufReader::new(child.stdout.take().unwrap());
-        let writer = Some(BufWriter::new(child.stdin.take().unwrap()));
+        let writer = Some(child.stdin.take().unwrap());
         Ok(Self {
+            diagnostics,
             child,
             reader,
             writer,
@@ -129,5 +142,14 @@ impl Drop for Session {
     fn drop(&mut self) {
         let _ = self.child.kill();
         let _ = self.child.wait();
+        if self.diagnostics.seek(SeekFrom::Start(0)).is_ok() {
+            let mut text = String::new();
+            let _ = (&mut self.diagnostics)
+                .take(65536)
+                .read_to_string(&mut text);
+            if !text.is_empty() {
+                crate::diagnostics::emit(text.trim_end_matches('\n').into());
+            }
+        }
     }
 }

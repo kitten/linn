@@ -296,7 +296,7 @@ async fn inventories_are_keyset_paged_and_references_survive_sync() {
 }
 
 #[tokio::test]
-async fn cli_orchestrates_all_pulls_before_pushes_and_stops_on_failed_pull() {
+async fn daemon_orchestrates_all_pulls_before_pushes_and_stops_on_failed_pull() {
     use std::os::unix::fs::PermissionsExt;
     let dir = tempfile::tempdir().unwrap();
     let a = dir.path().join("a.db");
@@ -312,6 +312,7 @@ async fn cli_orchestrates_all_pulls_before_pushes_and_stops_on_failed_pull() {
     let executable = Path::new(env!("CARGO_BIN_EXE_linn"));
     let fake = dir.path().join("ssh");
     std::fs::write(&fake,r#"#!/bin/sh
+printf '%s\n' "$PPID" >> "$SYNC_TEST_PARENTS"
 for arg do
   case "$arg" in
     ssh://*) printf '%s\n' "$arg" >> "$SYNC_TEST_LOG"; case "$arg" in ssh://fail*) exit 255;; esac ;;
@@ -322,6 +323,7 @@ exec /bin/sh -c "$last"
 "#).unwrap();
     std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o700)).unwrap();
     let log = dir.path().join("ssh.log");
+    let parents = dir.path().join("ssh.parents");
     let paths = std::env::join_paths(
         [
             dir.path().to_owned(),
@@ -340,6 +342,7 @@ exec /bin/sh -c "$last"
             .args(args)
             .env("PATH", &paths)
             .env("SYNC_TEST_LOG", &log)
+            .env("SYNC_TEST_PARENTS", &parents)
             .output()
             .unwrap()
     };
@@ -362,6 +365,15 @@ exec /bin/sh -c "$last"
     assert_eq!(counts["pushed"], 2);
     let calls = std::fs::read_to_string(&log).unwrap();
     assert_eq!(calls.lines().count(), 4);
+    let state: serde_json::Value =
+        serde_json::from_slice(&cli(&["daemon:status", "--json"]).stdout).unwrap();
+    let daemon_pid = state["pid"].as_u64().unwrap().to_string();
+    let ssh_parents = std::fs::read_to_string(&parents).unwrap();
+    assert_eq!(ssh_parents.lines().count(), 4);
+    assert!(
+        ssh_parents.lines().all(|pid| pid == daemon_pid),
+        "SSH must be spawned by the daemon, not by its CLI client"
+    );
     for path in [&a, &b, &c] {
         assert_eq!(
             Replica::open(path)
@@ -429,6 +441,32 @@ exec /bin/sh -c "$last"
             .len(),
         2
     );
+
+    // Self-sync and overlapping coordinators must never occupy the store lane
+    // while their remote stdio clients request work from that same lane.
+    let self_origin = format!("ssh://peer{}", a.display());
+    assert!(
+        cli(&["sync:remote", "pair", "self", &self_origin])
+            .status
+            .success()
+    );
+    assert!(cli(&["sync"]).status.success());
+    std::thread::scope(|scope| {
+        let clients: Vec<_> = (0..2)
+            .map(|_| scope.spawn(|| cli(&["sync", "--json"])))
+            .collect();
+        for client in clients {
+            let output = client.join().unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let counts: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+            assert_eq!(counts["pulled"], 0);
+            assert_eq!(counts["pushed"], 0);
+        }
+    });
 }
 
 #[tokio::test]

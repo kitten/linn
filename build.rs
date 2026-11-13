@@ -58,8 +58,6 @@ fn main() {
         }
         fs::copy(path, destination).expect("copy local model into build output");
     }
-    println!(
-        "cargo:rustc-env=LINN_MODEL_FINGERPRINT={:x}",
-        fingerprint.finalize()
-    );
+    let model_identity = fingerprint.finalize();
+    println!("cargo:rustc-env=LINN_MODEL_FINGERPRINT={model_identity:x}");
 }

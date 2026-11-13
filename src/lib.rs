@@ -13,4 +13,9 @@ pub use language::embedding as embed;
 pub use retrieval::{lexical as search, query};
 pub use storage::{self as store, record, sections};
 
+pub mod application;
+pub mod runtime;
+
 pub mod diagnostics;
+
+mod native_path;

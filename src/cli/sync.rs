@@ -1,9 +1,4 @@
-use super::Command;
-use crate::{
-    error::{Error, Result},
-    storage::sync::{Remote, Replica},
-    sync,
-};
+use crate::error::{Error, Result};
 use clap::Subcommand;
 use std::{io, path::Path};
 #[derive(Subcommand)]
@@ -23,77 +18,76 @@ pub enum RemoteCommand {
     },
     List,
 }
-pub(super) async fn run(path: &Path, command: Command, json: bool) -> Result<i32> {
-    let replica = Replica::open(path).await?;
-    match command {
-        Command::SyncRemote { command } => match command {
-            RemoteCommand::Pair {
-                name,
-                origin,
-                scope,
-            } => {
-                if name.is_empty()
-                    || !name
-                        .bytes()
-                        .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
-                    || scope.as_ref().is_some_and(|s| s.trim().is_empty())
-                {
-                    return Err(Error::Invalid("invalid remote name or empty scope".into()));
-                }
-                sync::ssh::Origin::parse(&origin)?;
-                replica
-                    .pair(&Remote {
-                        name: name.clone(),
-                        origin,
-                        scope,
-                    })
-                    .await?;
-                if json {
-                    println!("{}", serde_json::json!({"paired":name}));
-                } else {
-                    println!("Paired: {name}");
-                }
-            }
-            RemoteCommand::Remove { name } => {
-                replica.remove(&name).await?;
-                if json {
-                    println!("{}", serde_json::json!({"removed":name}));
-                } else {
-                    println!("Removed: {name}");
-                }
-            }
-            RemoteCommand::List => {
-                let remotes = replica.remotes().await?;
-                if json {
-                    println!("{}", serde_json::json!({"remotes":remotes}));
-                } else {
-                    for r in remotes {
-                        println!(
-                            "{}\t{}{}",
-                            r.name,
-                            r.origin,
-                            r.scope.map(|s| format!("\t{s}")).unwrap_or_default()
-                        );
-                    }
-                }
-            }
+pub async fn serve(path: &Path) -> Result<i32> {
+    use crate::sync::protocol::{self, Request, Response};
+    let mut reader = io::stdin().lock();
+    let mut writer = io::stdout().lock();
+    let Some(Request::Hello { version }) = protocol::read::<Request>(&mut reader)? else {
+        protocol::write(
+            &mut writer,
+            &Response::Error {
+                message: "incompatible sync protocol".into(),
+            },
+        )?;
+        return Err(Error::Invalid("incompatible sync protocol".into()));
+    };
+    match crate::runtime::execute(
+        path,
+        crate::application::Operation::SyncHello { version },
+        crate::application::Caller {
+            diagnostics: Default::default(),
+            scope: None,
+            writer: None,
         },
-        Command::SyncServe { .. } => {
-            sync::protocol::serve(&replica, &mut io::stdin().lock(), &mut io::stdout().lock())
-                .await?
+        None,
+    )
+    .await
+    {
+        Ok(reply) => {
+            let crate::application::Value::SyncFrame(response) = reply.value else {
+                return Err(Error::Invalid("unexpected sync hello response".into()));
+            };
+            protocol::write(&mut writer, &response)?;
         }
-        Command::Sync => {
-            let counts = sync::run(&replica).await?;
-            if json {
-                println!("{}", serde_json::to_string(&counts)?);
-            } else {
-                println!(
-                    "Synced {} remotes: {} pulled, {} pushed.",
-                    counts.remotes, counts.pulled, counts.pushed
-                );
+        Err(error) => {
+            protocol::write(
+                &mut writer,
+                &Response::Error {
+                    message: error.to_string(),
+                },
+            )?;
+            return Err(error);
+        }
+    }
+    while let Some(frame) = protocol::read::<Request>(&mut reader)? {
+        let reply = crate::runtime::execute(
+            path,
+            crate::application::Operation::SyncFrame(frame),
+            crate::application::Caller {
+                diagnostics: Default::default(),
+                scope: None,
+                writer: None,
+            },
+            None,
+        )
+        .await;
+        match reply {
+            Ok(reply) => {
+                let crate::application::Value::SyncFrame(response) = reply.value else {
+                    return Err(Error::Invalid("unexpected sync response".into()));
+                };
+                protocol::write(&mut writer, &response)?;
+            }
+            Err(e) => {
+                protocol::write(
+                    &mut writer,
+                    &Response::Error {
+                        message: e.to_string(),
+                    },
+                )?;
+                return Err(e);
             }
         }
-        _ => unreachable!(),
     }
     Ok(0)
 }

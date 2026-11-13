@@ -11,7 +11,10 @@ The CLI and eval harness share this library. Code is grouped by responsibility:
 - [nlp/](nlp/README.md): embedded linguistic annotation and lookup-ready assets,
   independent of storage and ranking.
 - [sync/](sync/README.md): SSH transport, bounded exchange, and mesh coordination.
-- [cli/](cli/README.md): command execution, presentation, cursors, and store paths.
+- `application/`: typed operations/input tasks, caller context, source metadata, results and cursors.
+- [runtime/](runtime/README.md): detached bootstrap, ownership, framed IPC, a dedicated store thread and SSH coordination workers.
+- `diagnostics.rs`: task-local output controls and captured diagnostics.
+- [cli/](cli/README.md): argument parsing, caller context, byte transport and presentation.
 
 `main.rs` only runs the CLI and reports errors. `error.rs` defines shared typed
 errors. `lib.rs` exposes the domains and retains the earlier library import paths

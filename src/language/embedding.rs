@@ -143,6 +143,7 @@ pub fn unit(mut v: Vec<f32>) -> Vec<f32> {
     }
     v
 }
+// @ref LLP 0007#store-publication-and-synchronization
 pub(crate) fn shared_encoder() -> Result<std::sync::Arc<Encoder>> {
     static ENCODER: once_cell::sync::OnceCell<std::sync::Arc<Encoder>> =
         once_cell::sync::OnceCell::new();

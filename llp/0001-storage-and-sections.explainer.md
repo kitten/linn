@@ -3,7 +3,7 @@
 **Type:** Explainer\
 **Status:** Active\
 **Systems:** Store, Sections\
-**Related:** LLP 0000, LLP 0001, LLP 0002, LLP 0003, LLP 0004, LLP 0005
+**Related:** LLP 0000, LLP 0001, LLP 0002, LLP 0003, LLP 0004, LLP 0005, LLP 0007
 
 Ingestion is one fixed algorithm, not a configurable pipeline. POS annotation
 and shared heading-tree membership are unconditional. No runtime flag, environment
@@ -377,6 +377,19 @@ store's marker. The deliberately retained live resolved links after forget
 remain unchanged; the newly persisted projection uses freshly resolved links
 for subsequent opens, as before.
 
+The LLP 0007 application adapter retains a Store between local requests. It
+checks the connection's source version before reuse and reopens on an external
+commit; errors discard the handle. Search/list/export retain their indexed
+snapshot checks. Search (including pagination) and show/outline take a pinned
+source snapshot for their complete reference/body/lifecycle read, including
+pointer reads and page construction. Direct agent and list reads check exact
+schema, pending publication and source version in the snapshot too.
+Local writes retain the specified live-instance lifecycle behavior. Import and
+mutating replica requests discard the cached Store; the next ordinary request
+reopens the published state. Read-only replica requests retain the Store and
+reuse the application's Replica handle. Publication failure never grants permission to serve
+old cached bytes. Process-wide immutable model resources survive Store reopen.
+
 ## Query-independent numerical projections
 
 Prepare form, beam-proposal and sentence encodings during writes/rebuilds, or
@@ -436,6 +449,12 @@ load the per-block map.
 
 ## Native persistence
 
+Under LLP 0007, the daemon exclusively opens and closes Store and Replica handles
+for CLI requests, including creating a missing database and executing SSH sync.
+The client resolves routing and transports bytes; it never opens a database file.
+Import validation precedes daemon-side destination creation. Direct library and
+evaluation callers retain the explicit storage API.
+
 ### Write failure and publication
 
 A successful write publishes both original changes and derived indexes. Originals
@@ -478,8 +497,8 @@ than editing an already published step. All pending steps run under one write
 transaction, so any failure leaves the original schema version and data intact.
 Per-connection temporary tables and runtime PRAGMAs still initialize on each open.
 
-The migration list is the single source for the supported schema version.
-Existing connections must
+The migration list is the single source for the supported schema version, also
+advertised in LLP 0007's local application handshake. Existing connections must
 check exact `user_version` inside each product read snapshot and before persistent
 SQL in every write transaction, after acquiring its write lock. A check before
 BEGIN alone cannot fence a writer waiting behind a migration. Guard startup
@@ -487,7 +506,8 @@ model/structure publication and remote configuration as well as original-data
 writes. Reject a changed version with a typed schema error; never let a resident
 old handle downgrade or rebuild newer storage. An already-pinned old read may
 finish against its old snapshot; SQLite prevents it from upgrading to a write
-after a conflicting migration commits. Publication/model identity checks remain
+after a conflicting migration commits. Application owners close cached handles
+and retire on that error under LLP 0007. Publication/model identity checks remain
 separate; SQL schema equality alone does not prove binary compatibility.
 
 Migrations preserve original bodies, immutable envelopes, hashes, references and

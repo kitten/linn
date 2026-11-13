@@ -6,17 +6,12 @@ mod sync;
 use crate::{
     error::{Error, Result},
     retrieval::lexical::centered,
-    retrieval::query::Query,
-    storage::record::{Close, Record, hash},
-    storage::sections,
-    storage::{Call, Card, Context, Store},
+    storage::Call,
 };
-use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use clap::{Parser, Subcommand};
 use serde_json::json;
 use std::{
-    collections::HashSet,
-    io::{self, Read},
+    io::{self},
     path::PathBuf,
 };
 #[derive(Parser)]
@@ -35,6 +30,18 @@ struct Args {
 }
 #[derive(Subcommand)]
 enum Command {
+    #[command(
+        name = "daemon:status",
+        hide = true,
+        about = "Inspect this store’s background process"
+    )]
+    DaemonStatus,
+    #[command(
+        name = "daemon:stop",
+        hide = true,
+        about = "Stop this store’s background process after pending work"
+    )]
+    DaemonStop,
     #[command(about = "Export original records as a portable JSONL bundle")]
     Export(bundle::ExportArgs),
     #[command(about = "Merge a trusted Linn bundle, preserving IDs; deletions are permanent")]
@@ -114,7 +121,7 @@ Correct notes with --parent <ref> or linn add:close <ref> --reason correct.
 Use --stale-after only for known expiry."#
     )]
     Add {
-        file: String,
+        file: PathBuf,
         #[arg(long)]
         label: Option<String>,
         #[arg(long, help = "Omit repository scope from this record")]
@@ -153,222 +160,226 @@ Use --stale-after only for known expiry."#
     )]
     Rebuild,
 }
-fn now() -> String {
-    time::OffsetDateTime::now_utc()
-        .replace_nanosecond(0)
-        .expect("zero nanoseconds")
-        .format(&time::format_description::well_known::Rfc3339)
-        .unwrap()
-}
-fn cursor(q: &str, scope: &Option<String>, next: usize, now: &str) -> String {
-    format!(
-        "s1.{}",
-        URL_SAFE_NO_PAD.encode(serde_json::to_vec(&(q, scope, next, now)).unwrap())
-    )
-}
+
 pub async fn run() -> Result<i32> {
-    let timing = std::env::var_os("LINN_STARTUP_TIMINGS").is_some();
-    let mut phase = std::time::Instant::now();
-    let mut mark = |name: &str| {
-        if timing {
-            eprintln!(
-                "linn cli: {}",
-                json!({"phase":name,"ms":phase.elapsed().as_secs_f64()*1000.})
-            );
-        }
-        phase = std::time::Instant::now();
-    };
+    use crate::application::{AddOptions, Caller, Operation as Op};
     let args = Args::parse();
     let path = paths::store_path(args.store)?;
-    mark("arguments-and-path");
-    if matches!(
-        &args.command,
-        Command::SyncRemote { .. } | Command::SyncServe { .. } | Command::Sync
-    ) {
-        return sync::run(&path, args.command, args.json).await;
+    if matches!(args.command, Command::DaemonStatus | Command::DaemonStop) {
+        let state =
+            crate::runtime::control(&path, matches!(args.command, Command::DaemonStop)).await?;
+        if args.json {
+            println!("{}", serde_json::to_value(&state)?);
+        } else {
+            println!("{}", if state.running { "Running" } else { "Stopped" });
+        }
+        return Ok(0);
     }
-    if let Command::Import { file } = &args.command {
-        return bundle::import(&path, file, args.json).await;
-    }
-    let opened = if matches!(&args.command, Command::Rebuild) {
-        Store::open_for_rebuild(&path).await
-    } else {
-        Store::open(&path).await
+    let caller = Caller {
+        diagnostics: crate::diagnostics::Diagnostics::from_environment(),
+        scope: if matches!(
+            &args.command,
+            Command::Search { .. }
+                | Command::Show { .. }
+                | Command::Outline { .. }
+                | Command::Add { .. }
+                | Command::Close { .. }
+                | Command::Forget { .. }
+                | Command::Export(_)
+        ) {
+            paths::scope()
+        } else {
+            None
+        },
+        writer: if matches!(&args.command, Command::Add { .. } | Command::Close { .. }) {
+            paths::writer_email()
+        } else {
+            None
+        },
     };
-    let mut store = match opened {
-        Ok(store) => store,
-        Err(error) if matches!(&args.command, Command::Check) => {
-            eprintln!("Index damaged: {error}");
+    if matches!(args.command, Command::SyncServe { .. }) {
+        return sync::serve(&path).await;
+    }
+    let mut input = None;
+    let mut output_path = None;
+    let check = matches!(args.command, Command::Check);
+    let op = match args.command {
+        Command::Search { query } => Op::Search { query },
+        Command::More { cursor } => Op::More { cursor },
+        Command::Show { reference, all } => Op::Show { reference, all },
+        Command::Outline { reference } => Op::Outline { reference },
+        Command::Close {
+            reference,
+            reason,
+            replacement,
+        } => Op::Close {
+            reference,
+            reason,
+            replacement,
+        },
+        Command::Forget { reference } => Op::Forget { reference },
+        Command::Check => Op::Check,
+        Command::Rebuild => Op::Rebuild,
+        Command::Sync => Op::Sync {
+            environment: std::env::vars_os().collect(),
+        },
+        Command::SyncRemote { command } => match command {
+            sync::RemoteCommand::Pair {
+                name,
+                origin,
+                scope,
+            } => Op::Pair(crate::storage::sync::Remote {
+                name,
+                origin,
+                scope,
+            }),
+            sync::RemoteCommand::Remove { name } => Op::RemoveRemote { name },
+            sync::RemoteCommand::List => Op::Remotes,
+        },
+        Command::List(options) => Op::List(options.resolve()?),
+        Command::Export(options) => {
+            let (op, path) = options.resolve();
+            output_path = path;
+            Op::Export(op)
+        }
+        Command::Import { file } => {
+            let mut bytes = tempfile::tempfile()?;
+            if file == "-" {
+                io::copy(&mut io::stdin().lock(), &mut bytes)?;
+            } else {
+                io::copy(&mut std::fs::File::open(file)?, &mut bytes)?;
+            }
+            input = Some(bytes);
+            Op::Import
+        }
+        Command::Add {
+            file,
+            label,
+            unscoped,
+            parent,
+            stale_after,
+            source_path,
+        } => {
+            let mut bytes = tempfile::tempfile()?;
+            let task = if file == std::path::Path::new("-") {
+                io::copy(&mut io::stdin().lock(), &mut bytes)?;
+                crate::application::InputTask::Note { source_path }
+            } else {
+                if source_path.is_some() {
+                    return Err(Error::Invalid("--source-path is only for notes".into()));
+                }
+                io::copy(&mut std::fs::File::open(&file)?, &mut bytes)?;
+                crate::application::InputTask::File(paths::file_input(&file)?)
+            };
+            input = Some(bytes);
+            Op::Add(AddOptions {
+                label,
+                input_name: file.file_name().map(|s| s.to_string_lossy().into_owned()),
+                input: task,
+                parent,
+                stale_after,
+                unscoped,
+            })
+        }
+        _ => unreachable!(),
+    };
+    use std::io::{Seek, SeekFrom};
+    if let Some(input) = &mut input {
+        input.seek(SeekFrom::Start(0))?;
+    }
+    let reply = match crate::runtime::execute(&path, op, caller, input).await {
+        Ok(r) => r,
+        Err(e)
+            if check
+                && !matches!(&e, Error::Application(error)
+            if matches!(error.code, crate::error::ErrorCode::Schema)) =>
+        {
+            eprintln!("Index damaged: {e}");
             return Ok(3);
         }
-        Err(error) => return Err(error),
-    };
-    mark("store-open");
-    let scope = if matches!(&args.command, Command::List(_)) {
-        None
-    } else {
-        paths::scope()
-    };
-    let ctx = Context {
-        scope: scope.clone(),
-        now: now(),
-        ..Context::default()
-    };
-    mark("scope-and-context");
-    store.set_query_clock(&ctx.now);
-    let result = match args.command {
-        Command::SyncRemote { .. } | Command::SyncServe { .. } | Command::Sync => unreachable!(),
-        Command::Import { .. } => unreachable!(),
-        Command::Export(options) => {
-            bundle::export(&mut store, options, &ctx.now, scope.as_deref()).await
+        Err(e) => {
+            if let Error::Application(error) = &e {
+                for line in &error.diagnostics {
+                    eprintln!("{line}");
+                }
+            }
+            return Err(e);
         }
-        Command::List(options) => listing::run(&store, options, &ctx.now, args.json).await,
-        Command::Search { query } => search(&mut store, &query, &ctx, 0, args.json).await,
-        Command::More { cursor: token } => {
-            let bytes = URL_SAFE_NO_PAD
-                .decode(
-                    token
-                        .strip_prefix("s1.")
-                        .ok_or_else(|| Error::Invalid("invalid cursor".into()))?,
-                )
-                .map_err(|_| Error::Invalid("invalid cursor".into()))?;
-            let (q, scope, next, now): (String, Option<String>, usize, String) =
-                serde_json::from_slice(&bytes)?;
-            search(
-                &mut store,
-                &q,
-                &Context { scope, now, ..ctx },
-                next,
-                args.json,
-            )
-            .await
-        }
-        Command::Show { reference, all } => {
-            let rid = store
-                .resolve_metadata(&reference, scope.as_deref())
-                .await?
-                .0
-                .id
-                .clone();
-            store.load_record_sections(&rid).await?;
-            let lifecycle = store.lifecycle_references(&rid).await?;
-            let (record, span) = store.resolve(&reference, scope.as_deref())?;
-            let fetch = format!("{}:v1:{}:{}", record.body_hash(), span[0], span[1]);
-            if !store.validity.eligible(record, &ctx.now) {
-                let child = lifecycle.iter().map(|id| &store.records[id]).find(|r| {
-                    r.state == "accepted"
-                        && r.close.is_none()
-                        && r.parent.as_ref() == Some(&record.id)
-                });
-                let close = lifecycle.iter().map(|id| &store.records[id]).find(|r| {
-                    r.state == "accepted" && r.close.as_ref().is_some_and(|c| c.target == record.id)
-                });
-                let reason = if let Some(child) = child {
-                    format!("superseded by {}", child.id)
-                } else if let Some(close) = close {
-                    format!("closed by {}", close.id)
-                } else {
-                    "expired or not accepted".into()
-                };
-                if args.json {
+    };
+    for warning in reply.warnings {
+        eprintln!("{warning}");
+    }
+    if let Some(mut output) = reply.output {
+        bundle::write_output(&mut output, output_path)?;
+    }
+    render(reply.value, args.json)
+}
+fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
+    use crate::application::Value;
+    match value {
+        Value::Search(page) => {
+            let Some(call) = &page.call else {
+                if json_output {
                     println!(
                         "{}",
-                        json!({"fetch":fetch,"record":record.id,"label":record.label,"heading":"","text":"","truncated":false,"superseded_by":child.map(|r|&r.id),"status":"not_current"})
+                        json!({"status":"nothing_qualified","cards":[],"more":false})
                     );
                 } else {
-                    println!("Not current: {reason}.");
+                    println!("No more results for this search.");
                 }
                 return Ok(1);
-            }
-            let (shown, characters) = store.display_span(&rid, span, all).await?;
-            let truncated = !all && characters > 1500;
-            let heading = store.sections[&record.id]
-                .iter()
-                .find(|s| s.span.start <= span[0] && span[0] < s.span.end)
-                .map(|s| s.path.join(" > "))
-                .unwrap_or_default();
-            if args.json {
+            };
+            if json_output {
+                let cards:Vec<_>=call.cards.iter().enumerate().map(|(i,c)|{let r=&page.records[&c.record];json!({"n":i+1,"record":c.record,"label":r.label,"heading":c.heading,"excerpt":c.text,"fetch":format!("{}:v1:{}:{}",&r.body_hash()[..12],c.span[0],c.span[1]),"labels":c.labels})}).collect();
                 println!(
                     "{}",
-                    json!({"fetch":fetch,"record":record.id,"label":record.label,"heading":heading,"text":shown,"truncated":truncated,"superseded_by":null})
+                    json!({"cursor":page.cursor,"call":page.number,"status":if cards.is_empty(){"nothing_qualified"}else{"results"},"cards":cards,"related":pointer_json(&page,&call.related),"hints":pointer_json(&page,&call.hints),"more":page.more})
                 );
+            } else {
+                print_call(&page, call);
+                if let Some(token) = page.cursor {
+                    println!("more: linn search:more {token}");
+                } else {
+                    println!("No more results for this search.");
+                }
+            }
+            return Ok(if call.cards.is_empty() { 1 } else { 0 });
+        }
+        Value::Show(s) => {
+            if json_output {
+                let mut value = json!({"fetch":s.fetch,"record":s.record,"label":s.label,"heading":s.heading,"text":s.text,"truncated":s.truncated,"superseded_by":s.superseded_by});
+                if s.reason.is_some() {
+                    value["status"] = json!("not_current");
+                }
+                println!("{value}");
+            } else if let Some(reason) = &s.reason {
+                println!("Not current: {reason}.");
             } else {
                 println!(
                     "{}{}",
-                    record.label,
-                    if heading.is_empty() {
+                    s.label,
+                    if s.heading.is_empty() {
                         String::new()
                     } else {
-                        format!(" — {heading}")
+                        format!(" — {}", s.heading)
                     }
                 );
-                print!("{shown}");
-                if truncated {
+                print!("{}", s.text);
+                if s.truncated {
                     println!(
                         "… ({} more characters; --all to print the rest)",
-                        characters - 1500
+                        s.characters - 1500
                     );
                 }
             }
-            Ok(0)
+            return Ok(if s.reason.is_some() { 1 } else { 0 });
         }
-        Command::Outline { reference } => {
-            let rid = store
-                .resolve_loaded(&reference, scope.as_deref())
-                .await?
-                .0
-                .id
-                .clone();
-            store.load_record_sections(&rid).await?;
-            let (record, _) = store.resolve(&reference, scope.as_deref())?;
-            if !store.validity.eligible(record, &ctx.now) {
-                println!("Nothing qualified.");
-                return Ok(1);
-            }
-            let sections = &store.sections[&record.id];
-            let top = sections
-                .iter()
-                .filter(|s| s.level > 0)
-                .map(|s| s.level)
-                .min()
-                .unwrap_or(1);
-            let mut cards = Vec::new();
-            for sec in sections
-                .iter()
-                .filter(|s| s.level <= top + 1 && !s.span.is_empty())
-                .take(20)
-            {
-                let span = if sec.span.len() > 1500 {
-                    sections::hint_spans(record.body.as_bytes(), sec.span.clone())[0].clone()
-                } else {
-                    sec.span.clone()
-                };
-                let text = String::from_utf8_lossy(&record.body.as_bytes()[span.clone()]);
-                let excerpt = text
-                    .lines()
-                    .find(|s| !s.trim().is_empty() && !s.trim_start().starts_with('#'))
-                    .unwrap_or("")
-                    .split_whitespace()
-                    .collect::<Vec<_>>()
-                    .join(" ")
-                    .chars()
-                    .take(160)
-                    .collect();
-                cards.push(Card {
-                    record: record.id.clone(),
-                    heading: sec.path.join(" > "),
-                    span: [span.start, span.end],
-                    text: excerpt,
-                    fetch: Some(format!(
-                        "{}:v1:{}:{}",
-                        record.body_hash(),
-                        span.start,
-                        span.end
-                    )),
-                    ..Card::default()
-                });
-            }
-            if args.json {
+        Value::OutlineNotCurrent => {
+            println!("Nothing qualified.");
+            return Ok(1);
+        }
+        Value::Outline(cards) => {
+            if json_output {
                 println!("{}", json!({"cards":cards}));
             } else {
                 for (i, c) in cards.iter().enumerate() {
@@ -385,276 +396,115 @@ pub async fn run() -> Result<i32> {
                     );
                 }
             }
-            Ok(if cards.is_empty() { 1 } else { 0 })
+            return Ok(if cards.is_empty() { 1 } else { 0 });
         }
-        Command::Add {
-            file,
-            label,
-            unscoped,
-            parent,
-            stale_after,
-            source_path,
-        } => {
-            let mut body = String::new();
-            let (kind, path) = if file == "-" {
-                io::stdin().read_to_string(&mut body)?;
-                ("note", source_path)
+        Value::List { records, next } => {
+            let empty = records.is_empty();
+            if json_output {
+                println!("{}", json!({"records":records,"next":next}));
             } else {
-                if source_path.is_some() {
-                    return Err(Error::Invalid("--source-path is only for notes".into()));
+                for r in records {
+                    println!(
+                        "{}  {}  created: {}  expires: {}\n  {}",
+                        r.record,
+                        r.kind,
+                        if r.created.is_empty() {
+                            "unknown"
+                        } else {
+                            &r.created
+                        },
+                        r.stale_after.as_deref().unwrap_or("never"),
+                        r.label.replace(['\n', '\r', '\t'], " ")
+                    );
                 }
-                body = std::fs::read_to_string(&file)?;
-                ("doc", Some(paths::source_path(&PathBuf::from(&file))?))
-            };
-            let parent = match parent {
-                Some(p) => Some(
-                    store
-                        .resolve_loaded(&p, scope.as_deref())
-                        .await?
-                        .0
-                        .id
-                        .clone(),
-                ),
-                None => None,
-            };
-            let label = label.unwrap_or_else(|| {
-                if kind == "doc" {
-                    let sections = sections::parse_sections(&body);
-                    let level = sections
-                        .iter()
-                        .filter(|s| s.level > 0)
-                        .map(|s| s.level)
-                        .min()
-                        .unwrap_or(1);
-                    let top = sections
-                        .iter()
-                        .filter(|s| s.level == level)
-                        .collect::<Vec<_>>();
-                    if top.len() == 1 {
-                        return top[0].heading.clone();
-                    }
-                    PathBuf::from(&file)
-                        .file_name()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .into()
-                } else {
-                    body.lines().next().unwrap_or("").chars().take(80).collect()
+                if empty {
+                    println!("No records.");
                 }
-            });
-            let stamp = now();
-            let body_hash = hash(body.as_bytes());
-            let id = format!(
-                "{}-{}",
-                &body_hash[..16],
-                time::OffsetDateTime::now_utc().unix_timestamp_nanos()
-            );
-            let source_ref = if kind == "doc" { Some(body_hash) } else { None };
-            let link = regex::Regex::new(r"\]\(linn:([^)]+)\)").unwrap();
-            for captures in link.captures_iter(&body) {
-                if store
-                    .resolve_loaded(&captures[1], scope.as_deref())
-                    .await
-                    .is_err()
-                {
-                    eprintln!("Unresolved link: linn:{}", &captures[1]);
+                if let Some(next) = next {
+                    println!("Next: linn list --cursor {next}");
                 }
             }
-            let record = Record {
-                id: id.clone(),
-                body,
-                scope: if unscoped { None } else { scope },
-                state: "accepted".into(),
-                kind: kind.into(),
-                label,
-                source_path: path,
-                parent,
-                close: None,
-                stale_after,
-                writer: Some(paths::writer_email()),
-                source: json!({"type":if kind=="doc"{"repo-file"}else{"derived-from-thread"},"ref":source_ref}),
-                created: stamp,
-                stored_body: None,
-                projected_eligible: None,
-            };
-            store.add(record).await?;
-            if args.json {
+            return Ok(if empty { 1 } else { 0 });
+        }
+        Value::Added(id) => {
+            if json_output {
                 println!("{}", json!({"record":id}));
             } else {
                 println!("{id}");
             }
-            Ok(0)
         }
-        Command::Close {
-            reference,
-            reason,
-            replacement,
-        } => {
-            let target = store
-                .resolve_loaded(&reference, scope.as_deref())
-                .await?
-                .0
-                .id
-                .clone();
-            let replacement = match replacement {
-                Some(p) => Some(
-                    store
-                        .resolve_loaded(&p, scope.as_deref())
-                        .await?
-                        .0
-                        .id
-                        .clone(),
-                ),
-                None => None,
-            };
-            let id = format!(
-                "close-{}",
-                time::OffsetDateTime::now_utc().unix_timestamp_nanos()
-            );
-            let r: Record = serde_json::from_value(
-                json!({"id":id,"body":"","kind":"note","state":"accepted","writer":paths::writer_email(),"created":now(),"scope":scope,"close":Close{target,reason,replacement}}),
-            )?;
-            store.add(r).await?;
-            if args.json {
-                println!("{}", json!({"record":id}));
-            } else {
-                println!("{id}");
-            }
-            Ok(0)
-        }
-        Command::Forget { reference } => {
-            let id = store
-                .resolve_loaded(&reference, scope.as_deref())
-                .await?
-                .0
-                .id
-                .clone();
-            store.forget(&id).await?;
-            if args.json {
+        Value::Forgotten(id) => {
+            if json_output {
                 println!("{}", json!({"forgotten":id}));
             } else {
                 println!("Forgotten: {id}");
             }
-            Ok(0)
         }
-        Command::Check => match store.integrity().await {
-            Ok(()) => {
-                if args.json {
-                    println!("{}", json!({"integrity":"ok"}));
-                } else {
-                    println!("Index integrity: ok");
-                }
-                Ok(0)
+        Value::Checked => {
+            if json_output {
+                println!("{}", json!({"integrity":"ok"}));
+            } else {
+                println!("Index integrity: ok");
             }
-            Err(e) => {
-                eprintln!("Index damaged: {e}");
-                Ok(3)
-            }
-        },
-        Command::Rebuild => {
-            store.rebuild().await?;
-            if args.json {
+        }
+        Value::Rebuilt => {
+            if json_output {
                 println!("{}", json!({"rebuilt":true}));
             } else {
                 println!("Index rebuilt.");
             }
-            Ok(0)
         }
-    };
-    mark("command-and-output");
-    result
-}
-async fn search(
-    store: &mut Store,
-    q: &str,
-    ctx: &Context,
-    start: usize,
-    json_output: bool,
-) -> Result<i32> {
-    let parsed = Query::parse(q).map_err(Error::Invalid)?;
-    if parsed
-        .filters
-        .iter()
-        .any(|(k, _)| !["scope", "under", "path", "kind", "id", "writer"].contains(&k.as_str()))
-    {
-        return Err(Error::Invalid("Query error: Unknown prefix".into()));
-    }
-    let original_query = q;
-    let mut replacements = std::collections::HashMap::new();
-    for (k, v) in &parsed.filters {
-        if k == "id" {
-            let rid = store
-                .resolve_loaded(v, ctx.scope.as_deref())
-                .await?
-                .0
-                .id
-                .clone();
-            if rid.contains('"') {
-                return Err(Error::Invalid("record ID contains a quote and cannot be used as a query filter; use show instead".into()));
+        Value::Exported => {}
+        Value::Imported(c) => {
+            if json_output {
+                println!("{}", serde_json::to_string(&c)?);
+            } else {
+                println!("Imported {} items; {} unchanged.", c.changed, c.unchanged);
             }
-            replacements.insert((k.clone(), v.clone()), rid);
         }
-    }
-    let q = crate::retrieval::query::rewrite_filter_values(original_query, &replacements);
-    let parsed = Query::parse(&q).map_err(Error::Invalid)?;
-    let mut calls = store.agent(&q, ctx).await?;
-    let pointers = calls
-        .iter()
-        .flat_map(|call| call.hints.iter().chain(&call.related))
-        .map(|p| (p.record.clone(), p.span[0]))
-        .collect::<Vec<_>>();
-    store.load_pointer_blocks(&pointers).await?;
-    let mut seen = HashSet::new();
-    for call in &mut calls {
-        call.cards.retain(|c| {
-            let yes = store
-                .rows
-                .get(&c.section)
-                .is_some_and(|b| store.allowed(b, &parsed.filters));
-            yes && seen.insert((c.record.clone(), c.span))
-        });
-        call.hints.retain(|p| pointer_allowed(store, p, &parsed));
-        call.related.retain(|p| pointer_allowed(store, p, &parsed));
-    }
-    let selected =
-        (start..calls.len()).find(|i| !calls[*i].cards.is_empty() || (*i == 0 && start == 0));
-    let Some(i) = selected else {
-        if json_output {
-            println!(
-                "{}",
-                json!({"status":"nothing_qualified","cards":[],"more":false})
-            );
-        } else {
-            println!("No more results for this search.");
+        Value::Synced(c) => {
+            if json_output {
+                println!("{}", serde_json::to_string(&c)?);
+            } else {
+                println!(
+                    "Synced {} remotes: {} pulled, {} pushed.",
+                    c.remotes, c.pulled, c.pushed
+                );
+            }
         }
-        return Ok(1);
+        Value::Paired(name) => {
+            if json_output {
+                println!("{}", json!({"paired":name}));
+            } else {
+                println!("Paired: {name}");
+            }
+        }
+        Value::Removed(name) => {
+            if json_output {
+                println!("{}", json!({"removed":name}));
+            } else {
+                println!("Removed: {name}");
+            }
+        }
+        Value::Remotes(remotes) => {
+            if json_output {
+                println!("{}", json!({"remotes":remotes}));
+            } else {
+                for r in remotes {
+                    println!(
+                        "{}\t{}{}",
+                        r.name,
+                        r.origin,
+                        r.scope.map(|s| format!("\t{s}")).unwrap_or_default()
+                    );
+                }
+            }
+        }
+        Value::SyncFrame(_) => return Err(Error::Invalid("unexpected sync response".into())),
     };
-    let call = &calls[i];
-    let next = (i + 1..calls.len()).find(|j| !calls[*j].cards.is_empty());
-    let token = next.map(|n| cursor(original_query, &ctx.scope, n, &ctx.now));
-    if json_output {
-        let cards:Vec<_>=call.cards.iter().enumerate().map(|(i,c)|{let r=&store.records[&c.record];json!({"n":i+1,"record":c.record,"label":r.label,"heading":c.heading,"excerpt":c.text,"fetch":format!("{}:v1:{}:{}",&r.body_hash()[..12],c.span[0],c.span[1]),"labels":c.labels})}).collect();
-        println!(
-            "{}",
-            json!({"cursor":token,"call":i+1,"status":if cards.is_empty(){"nothing_qualified"}else{"results"},"cards":cards,"related":pointer_json(store,&call.related),"hints":pointer_json(store,&call.hints),"more":next.is_some()})
-        );
-    } else {
-        print_call(store, call);
-        if let Some(token) = token {
-            println!("more: linn search:more {token}");
-        } else {
-            println!("No more results for this search.");
-        }
-    }
-    Ok(if call.cards.is_empty() { 1 } else { 0 })
+    Ok(0)
 }
-fn pointer_allowed(store: &Store, p: &crate::storage::Pointer, q: &Query) -> bool {
-    store
-        .record_blocks(&p.record)
-        .find(|b| b.start <= p.span[0] && p.span[0] < b.end)
-        .is_some_and(|b| store.allowed(b, &q.filters))
-}
-fn print_call(store: &Store, call: &Call) {
+fn print_call(store: &crate::application::SearchPage, call: &Call) {
     if call.cards.is_empty() {
         println!("Nothing qualified.");
     }
@@ -717,6 +567,9 @@ fn print_call(store: &Store, call: &Call) {
     }
 }
 
-fn pointer_json(store: &Store, pointers: &[crate::storage::Pointer]) -> Vec<serde_json::Value> {
+fn pointer_json(
+    store: &crate::application::SearchPage,
+    pointers: &[crate::storage::Pointer],
+) -> Vec<serde_json::Value> {
     pointers.iter().enumerate().map(|(i,p)|{let r=&store.records[&p.record];json!({"n":i+1,"record":p.record,"label":p.label,"heading":p.heading,"excerpt":p.excerpt,"fetch":format!("{}:v1:{}:{}",&r.body_hash()[..12],p.span[0],p.span[1]),"matched":p.matched,"missing":p.missing})}).collect()
 }

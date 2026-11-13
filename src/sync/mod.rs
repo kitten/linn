@@ -3,19 +3,63 @@ pub mod protocol;
 pub mod ssh;
 use crate::{
     error::{Error, Result},
-    storage::sync::{PAGE, Remote, Replica},
+    storage::sync::{Entry, Item, PAGE, Remote, Replica},
 };
 use protocol::{Request, Response, exchange};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::io::{BufRead, Write};
-#[derive(Default, Serialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Counts {
     pub pulled: usize,
     pub pushed: usize,
     pub remotes: usize,
 }
+/// Local replica steps; outgoing items retain delivery ownership through their write.
+#[allow(async_fn_in_trait)]
+pub trait LocalReplica {
+    /// Dropping this lease permits later local operations, including forget.
+    type Delivery;
+
+    async fn remotes(&self) -> Result<Vec<Remote>>;
+    async fn inventory(
+        &self,
+        tombstones: bool,
+        after: Option<&str>,
+        scope: Option<&str>,
+    ) -> Result<Vec<Entry>>;
+    async fn get(&self, id: &str, scope: Option<&str>) -> Result<Option<(Item, Self::Delivery)>>;
+    async fn needs(&self, entry: &Entry) -> Result<bool>;
+    async fn apply(&self, item: Item, scope: Option<&str>) -> Result<bool>;
+    async fn finish(&self) -> Result<()>;
+}
+impl LocalReplica for Replica {
+    type Delivery = ();
+    async fn remotes(&self) -> Result<Vec<Remote>> {
+        Replica::remotes(self).await
+    }
+    async fn inventory(
+        &self,
+        tombstones: bool,
+        after: Option<&str>,
+        scope: Option<&str>,
+    ) -> Result<Vec<Entry>> {
+        Replica::inventory(self, tombstones, after, scope).await
+    }
+    async fn get(&self, id: &str, scope: Option<&str>) -> Result<Option<(Item, Self::Delivery)>> {
+        Ok(Replica::get(self, id, scope).await?.map(|item| (item, ())))
+    }
+    async fn needs(&self, entry: &Entry) -> Result<bool> {
+        Replica::needs(self, entry).await
+    }
+    async fn apply(&self, item: Item, scope: Option<&str>) -> Result<bool> {
+        Replica::apply(self, &item, scope).await
+    }
+    async fn finish(&self) -> Result<()> {
+        Replica::finish(self).await
+    }
+}
 pub async fn pull(
-    replica: &Replica,
+    replica: &impl LocalReplica,
     remote: &Remote,
     reader: &mut impl BufRead,
     writer: &mut impl Write,
@@ -72,14 +116,14 @@ pub async fn pull(
                 {
                     return Err(Error::Invalid("sync inventory changed; retry".into()));
                 }
-                count += usize::from(replica.apply(&item, remote.scope.as_deref()).await?);
+                count += usize::from(replica.apply(item, remote.scope.as_deref()).await?);
             }
         }
     }
     Ok(count)
 }
 pub async fn push(
-    replica: &Replica,
+    replica: &impl LocalReplica,
     remote: &Remote,
     reader: &mut impl BufRead,
     writer: &mut impl Write,
@@ -112,19 +156,21 @@ pub async fn push(
                 return Err(Error::Invalid("peer requested unoffered record".into()));
             }
             for id in ids {
-                let item = replica
+                let (item, delivery) = replica
                     .get(&id, remote.scope.as_deref())
                     .await?
                     .ok_or_else(|| Error::Invalid("sync inventory changed; retry".into()))?;
-                let Response::Applied { changed } = exchange(
-                    reader,
+                protocol::write(
                     writer,
                     &Request::Apply {
                         item,
                         scope: remote.scope.clone(),
                     },
-                )?
-                else {
+                )?;
+                // Release after flushing original bytes, before a peer ack that
+                // can itself require this dispatcher's local replica lane.
+                drop(delivery);
+                let Response::Applied { changed } = protocol::reply(reader)? else {
                     return Err(Error::Invalid("expected sync acknowledgement".into()));
                 };
                 count += usize::from(changed);
@@ -138,7 +184,13 @@ pub async fn push(
     }
     Ok(count)
 }
-pub async fn run(replica: &Replica) -> Result<Counts> {
+pub async fn run(replica: &impl LocalReplica) -> Result<Counts> {
+    run_with_environment(replica, None).await
+}
+pub async fn run_with_environment(
+    replica: &impl LocalReplica,
+    environment: Option<&[(std::ffi::OsString, std::ffi::OsString)]>,
+) -> Result<Counts> {
     let remotes = replica.remotes().await?;
     let mut counts = Counts {
         remotes: remotes.len(),
@@ -146,7 +198,10 @@ pub async fn run(replica: &Replica) -> Result<Counts> {
     };
     for remote in &remotes {
         let result = async {
-            let mut session = ssh::Session::open(&ssh::Origin::parse(&remote.origin)?)?;
+            let mut session = ssh::Session::open_with_environment(
+                &ssh::Origin::parse(&remote.origin)?,
+                environment,
+            )?;
             let count = pull(
                 replica,
                 remote,
@@ -177,7 +232,10 @@ pub async fn run(replica: &Replica) -> Result<Counts> {
     replica.finish().await?;
     for remote in &remotes {
         let result = async {
-            let mut session = ssh::Session::open(&ssh::Origin::parse(&remote.origin)?)?;
+            let mut session = ssh::Session::open_with_environment(
+                &ssh::Origin::parse(&remote.origin)?,
+                environment,
+            )?;
             let count = push(
                 replica,
                 remote,

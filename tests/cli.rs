@@ -131,6 +131,25 @@ fn cursor_replays_without_repeating_the_first_card() {
     assert!(next.status.success());
     let repeated = cli(&db, &["search:more", cursor, "--json"], None);
     assert_eq!(next.stdout, repeated.stdout);
+    use std::os::unix::fs::PermissionsExt;
+    let git = tmp.path().join("git");
+    let log = tmp.path().join("git-called");
+    std::fs::write(&git, "#!/bin/sh\n: > \"$GIT_CALL_LOG\"\nexit 1\n").unwrap();
+    std::fs::set_permissions(&git, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let replay = Command::new(env!("CARGO_BIN_EXE_linn"))
+        .arg("--store")
+        .arg(&db)
+        .args(["search:more", cursor, "--json"])
+        .current_dir(tmp.path())
+        .env("PATH", tmp.path())
+        .env("GIT_CALL_LOG", &log)
+        .output()
+        .unwrap();
+    assert_eq!(replay.stdout, next.stdout);
+    assert!(
+        !log.exists(),
+        "cursor replay must not invoke Git for discarded context"
+    );
     let next: Value = serde_json::from_slice(&next.stdout).unwrap();
     assert_ne!(first["cards"][0]["fetch"], next["cards"][0]["fetch"]);
 }

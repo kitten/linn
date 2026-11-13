@@ -1,7 +1,7 @@
 # Architecture map
 
-The [source map](src/README.md) locates the storage, retrieval, language, NLP, CLI, and sync
-domains. Each directory has a short guide to its modules.
+The [source map](src/README.md) locates the application, runtime, storage, retrieval, language, NLP, CLI,
+and sync domains. Each directory has a short guide to its modules.
 
 The LLP corpus is the self-contained specification:
 
@@ -12,3 +12,4 @@ The LLP corpus is the self-contained specification:
 - [0004: CLI and packaging](llp/0004-runtime-and-evaluation.guide.md)
 - [0005: Evaluation](llp/0005-evaluation.explainer.md)
 - [0006: SSH synchronization](llp/0006-sync.explainer.md)
+- [0007: Background runtime](llp/0007-background-runtime.guide.md)
