@@ -735,7 +735,7 @@ impl Store {
     }
     /// The caller holds a checked snapshot for the complete application read.
     pub(crate) async fn agent_in_snapshot(&mut self, q: &str, ctx: &Context) -> Result<Vec<Call>> {
-        self.set_query_clock(&ctx.now);
+        self.begin_query(q, ctx);
         let mut ready = self
             .db
             .query("SELECT value FROM projections WHERE key='structure'", ())

@@ -495,6 +495,26 @@ snapshot around the store operation; snapshot ownership does not reacquire the
 Store through a second application layer. External writers remain possible,
 including older binaries and SSH sessions.
 
+Retain only the active query and caller scope's query memos. A query/scope change
+clears coverage, ranking and confidence memos, plus stemming and
+document-frequency misses. Immutable FTS-hit and candidate-feature memos may span
+queries, and eligibility-filtered FTS hits may span queries at the same clock,
+under fixed soft budgets checked at query boundaries: at most 256 entries,
+64 KiB of key payload and 65,536 allocated ID slots per map. Drop an over-budget
+map as a whole, including its allocation; do not introduce an LRU framework or
+configuration knob. A single active query may exceed the budget before the next
+boundary. These checks inspect memo metadata, not corpus rows or posting elements.
+Retain positive stemming results for known corpus words and positive document frequencies for the current
+clock, bounded by the publication's vocabulary. A clock change clears eligibility
+hits and all statistics together with clock-dependent ranking state. Replaying an
+older cursor recomputes those exact values at its pinned clock. Keep immutable
+models, publication-bound encodings and positive candidate/posting data resident.
+Negative surface/navigation/section and vocabulary probes belong to the active
+query, and basename misses are not retained. Remove previous-query negative
+entries by their recorded probe keys; do not traverse corpus-wide positive maps
+at query startup. This bounds retention by active query work and publication data,
+without a cache knob or change to retrieval arithmetic.
+
 On a stale handle, discard publication-bound caches and reopen before starting
 an operation. Preserve process-wide immutable model resources. Do not retry
 partially executed writes. Pending publication blocks ordinary reads and leaves

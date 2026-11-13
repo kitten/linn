@@ -387,7 +387,10 @@ schema, pending publication and source version in the snapshot too.
 Local writes retain the specified live-instance lifecycle behavior. Import and
 mutating replica requests discard the cached Store; the next ordinary request
 reopens the published state. Read-only replica requests retain the Store and
-reuse the application's Replica handle. Publication failure never grants permission to serve
+reuse the application's Replica handle. Query-specific memos follow the active
+query/scope, with clock-dependent eligibility and statistics cleared on clock
+changes under LLP 0007; publication-bound positive data and exact model resources
+remain reusable. Publication failure never grants permission to serve
 old cached bytes. Process-wide immutable model resources survive Store reopen.
 
 ## Query-independent numerical projections

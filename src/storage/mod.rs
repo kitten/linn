@@ -199,6 +199,9 @@ impl Default for Context {
 }
 pub struct Store {
     pub(crate) query_clock: String,
+    memo_query: Option<(String, Option<String>)>,
+    porter_probes: HashSet<String>,
+    stat_misses: HashSet<String>,
     _database: Database,
     pub db: Connection,
     pub records: BTreeMap<String, Record>,
@@ -249,6 +252,20 @@ pub struct Store {
     pub(crate) structure_stamp: Vec<u8>,
     source_version: i64,
     write_failed: bool,
+}
+
+// Soft memo budgets checked between queries, independent of corpus size.
+fn memo_over_budget(entries: impl Iterator<Item = (usize, usize)>) -> bool {
+    let (mut count, mut keys, mut slots) = (0usize, 0usize, 0usize);
+    for (key_bytes, id_slots) in entries {
+        count += 1;
+        keys = keys.saturating_add(key_bytes);
+        slots = slots.saturating_add(id_slots);
+        if count > 256 || keys > 64 * 1024 || slots > 64 * 1024 {
+            return true;
+        }
+    }
+    false
 }
 
 const SCRATCH: &str = r#"
@@ -329,6 +346,9 @@ impl Store {
         timing.mark("database-open-schema-scratch");
         let mut st = Self {
             query_clock: current_time(),
+            memo_query: None,
+            porter_probes: HashSet::new(),
+            stat_misses: HashSet::new(),
             _database: database,
             db,
             records: BTreeMap::new(),
@@ -589,7 +609,7 @@ impl Store {
         }
         let words: Vec<_> = words
             .into_iter()
-            .filter(|word| !self.vocabulary_probes.contains(word))
+            .filter(|word| !self.vocabulary_probes.contains(word) && !self.vocab.contains(word))
             .collect();
         for chunk in words.chunks(128) {
             let mut rows = self.db.query(
@@ -1047,6 +1067,7 @@ impl Store {
         self.prepare_record_headers().await?;
         Ok(())
     }
+    // @ref LLP 0007#store-publication-and-synchronization
     pub(crate) async fn application_snapshot(&self) -> Result<libsql::Transaction> {
         self.ensure_usable()?;
         let (snapshot, version) = Self::source_snapshot(&self.db, false).await?;
@@ -1573,7 +1594,9 @@ impl Store {
                 records.insert(row.get(0)?);
             }
             self.load_record_headers(records.iter().cloned()).await?;
-            self.basenames.insert(name.clone(), records);
+            if !records.is_empty() {
+                self.basenames.insert(name.clone(), records);
+            }
         }
         Ok(())
     }
@@ -1800,7 +1823,9 @@ impl Store {
         }
         let missing: Vec<_> = words
             .iter()
-            .filter(|w| !self.surface_words.contains(*w))
+            .filter(|w| {
+                !self.surface_words.contains(*w) && !self.indexes.block_surface.contains_key(*w)
+            })
             .cloned()
             .collect();
         if missing.is_empty() {
@@ -2009,7 +2034,9 @@ impl Store {
             .words
             .iter()
             .chain(&q.hard_words)
-            .filter(|w| !self.navigation_words.contains(*w))
+            .filter(|w| {
+                !self.navigation_words.contains(*w) && !self.indexes.record_words.contains_key(*w)
+            })
             .cloned()
             .collect();
         if !missing.is_empty() {
@@ -2119,7 +2146,7 @@ impl Store {
             return Ok(());
         }
         for word in words {
-            if self.section_words.contains(word) {
+            if self.section_words.contains(word) || self.indexes.related.contains_key(word) {
                 continue;
             }
             let mut result = self.db.query("SELECT s.section,s.flags,m.record,m.ordinal,m.own_nonempty FROM nav_lexemes n JOIN nav_section_words s ON s.word=n.id JOIN nav_sections m ON m.id=s.section WHERE n.surface=? ORDER BY s.section",[word.as_str()]).await?;
@@ -2406,6 +2433,10 @@ impl Store {
         self.statistics_timed(&mut StartupTiming::new()).await
     }
     async fn statistics_timed(&mut self, timing: &mut StartupTiming) -> Result<()> {
+        self.memo_query = None;
+        self.porter_cache.clear();
+        self.porter_probes.clear();
+        self.stat_misses.clear();
         self.coverage.clear();
         self.stats.clear();
         self.sentence_cache = None;
@@ -2598,10 +2629,96 @@ impl Store {
     pub fn tree_eligible(&self, r: &Record) -> bool {
         self.validity.eligible(r, "") && r.body_nonblank()
     }
-
+    // @ref LLP 0007#store-publication-and-synchronization
+    pub(crate) fn begin_query(&mut self, query: &str, ctx: &Context) {
+        if memo_over_budget(
+            self.hits
+                .iter()
+                .map(|((_, text), ids)| (text.capacity(), ids.capacity())),
+        ) {
+            self.hits = HashMap::new();
+        }
+        if memo_over_budget(self.eligible_hits.iter().map(|((_, text, clock), ids)| {
+            (
+                text.capacity().saturating_add(clock.capacity()),
+                ids.capacity(),
+            )
+        })) {
+            self.eligible_hits = HashMap::new();
+        }
+        if memo_over_budget(self.candidate_terms.iter().map(|((_, _, words), ids)| {
+            (
+                words
+                    .capacity()
+                    .saturating_mul(std::mem::size_of::<String>())
+                    .saturating_add(words.iter().map(String::capacity).sum::<usize>()),
+                ids.capacity(),
+            )
+        })) {
+            self.candidate_terms = HashMap::new();
+        }
+        if self
+            .memo_query
+            .as_ref()
+            .is_none_or(|(q, scope)| q != query || scope != &ctx.scope)
+        {
+            for word in self.porter_probes.drain() {
+                if !self.df.contains_key(&word) && !self.vocab.contains(&word) {
+                    self.porter_cache.remove(&word);
+                }
+            }
+            if let Some(stats) = self.stats.get_mut(&self.query_clock) {
+                let stats = Arc::make_mut(stats);
+                for word in self.stat_misses.drain() {
+                    stats.df.remove(&word);
+                }
+            } else {
+                self.stat_misses.clear();
+            }
+            self.coverage.clear();
+            self.rankings.clear();
+            self.confidences.clear();
+            // Drop negative probes from the previous query without traversing
+            // the publication's positive posting lists or materialized rows.
+            for word in self.surface_words.drain() {
+                if self
+                    .indexes
+                    .block_surface
+                    .get(&word)
+                    .is_some_and(Vec::is_empty)
+                {
+                    self.indexes.block_surface.remove(&word);
+                }
+            }
+            for word in self.navigation_words.drain() {
+                for postings in [
+                    &mut self.indexes.record_words,
+                    &mut self.indexes.direct,
+                    &mut self.indexes.deep,
+                ] {
+                    if postings.get(&word).is_some_and(Vec::is_empty) {
+                        postings.remove(&word);
+                    }
+                }
+            }
+            for word in self.section_words.drain() {
+                for postings in [&mut self.indexes.own, &mut self.indexes.related] {
+                    if postings.get(&word).is_some_and(Vec::is_empty) {
+                        postings.remove(&word);
+                    }
+                }
+            }
+            self.vocabulary_probes.clear();
+            self.memo_query = Some((query.into(), ctx.scope.clone()));
+        }
+        self.set_query_clock(&ctx.now);
+    }
     pub(crate) fn set_query_clock(&mut self, now: &str) {
         if self.query_clock != now {
             self.query_clock = now.to_owned();
+            self.eligible_hits.clear();
+            self.stats.clear();
+            self.stat_misses.clear();
             self.coverage.clear();
             self.rankings.clear();
             self.confidences.clear();
@@ -2867,6 +2984,7 @@ impl Store {
         }
         for word in words {
             let stem = crate::nlp::porter::word_lowercased(&word)?;
+            self.porter_probes.insert(word.clone());
             self.porter_cache.insert(word, stem);
         }
         Ok(())
@@ -2877,6 +2995,7 @@ impl Store {
             return Ok(s.clone());
         }
         let stem = crate::nlp::porter::word_lowercased(&w)?;
+        self.porter_probes.insert(w.clone());
         self.porter_cache.insert(w, stem.clone());
         Ok(stem)
     }
@@ -3040,6 +3159,9 @@ impl Store {
             };
             let mut rows = self.db.query(sql, params![term, now]).await?;
             let df = rows.next().await?.unwrap().get::<i64>(0)? as f64;
+            if df == 0. {
+                self.stat_misses.insert(word.clone());
+            }
             Arc::make_mut(self.stats.get_mut(now).unwrap())
                 .df
                 .insert(word, df);
@@ -4628,6 +4750,80 @@ Cobalt quasar closed secret."}),
 #[cfg(test)]
 mod sync_snapshot_tests {
     use super::*;
+
+    #[tokio::test]
+    async fn query_memos_follow_query_scope_and_clock_without_changing_pages() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("memos.db");
+        let record: Record = serde_json::from_value(serde_json::json!({
+            "id":"r", "state":"accepted", "body":"Original publication routing evidence."
+        }))
+        .unwrap();
+        drop(Store::build(&path, vec![record]).await.unwrap());
+        let mut store = Store::open(&path).await.unwrap();
+        let mut ctx = Context {
+            now: "2026-11-13T00:00:00Z".into(),
+            ..Default::default()
+        };
+        let expected =
+            serde_json::to_value(store.agent("publication routing", &ctx).await.unwrap()).unwrap();
+        for i in 0..40 {
+            ctx.now = format!("2026-11-13T00:00:{i:02}Z");
+            assert_eq!(
+                serde_json::to_value(store.agent("publication routing", &ctx).await.unwrap())
+                    .unwrap(),
+                expected
+            );
+            assert_eq!(store.stats.len(), 1);
+            assert!(store.eligible_hits.keys().all(|key| key.2 == ctx.now));
+        }
+        for i in 0..40 {
+            let query = format!("unmatchedword{i}");
+            store.agent(&query, &ctx).await.unwrap();
+            if i != 0 {
+                let previous = format!("unmatchedword{}", i - 1);
+                assert!(!store.porter_cache.contains_key(&previous));
+                assert!(!store.surface_words.contains(&previous));
+                assert!(!store.indexes.block_surface.contains_key(&previous));
+                assert!(!store.vocabulary_probes.contains(&previous));
+            }
+        }
+        ctx.now = "2026-11-13T00:00:00Z".into();
+        assert_eq!(
+            serde_json::to_value(store.agent("publication routing", &ctx).await.unwrap()).unwrap(),
+            expected
+        );
+        ctx.scope = Some("other/repo".into());
+        let scoped = store.agent("publication routing", &ctx).await.unwrap();
+        let mut fresh = Store::open(&path).await.unwrap();
+        assert_eq!(
+            serde_json::to_value(scoped).unwrap(),
+            serde_json::to_value(fresh.agent("publication routing", &ctx).await.unwrap()).unwrap()
+        );
+        let mut rows = store
+            .db
+            .query("SELECT id FROM nav_blocks LIMIT 1", ())
+            .await
+            .unwrap();
+        let id = rows.next().await.unwrap().unwrap().get::<i64>(0).unwrap() as usize;
+        drop(rows);
+        for i in 0..300 {
+            let query = format!("distinctmiss{i}");
+            store.begin_query(&query, &ctx);
+            store.fts(false, &query).await.unwrap();
+            store
+                .eligible_fts_hits(false, &query, &ctx.now)
+                .await
+                .unwrap();
+            store
+                .load_candidate_terms([query], false, &[id])
+                .await
+                .unwrap();
+            assert!(store.hits.len() <= 257);
+            assert!(store.eligible_hits.len() <= 257);
+            assert!(store.candidate_terms.len() <= 257);
+        }
+    }
 
     #[tokio::test]
     async fn numerical_timings_use_request_diagnostics() {
