@@ -11520,3 +11520,58 @@ Clippy, formatting, LLP references, Nix build and packaged/previous-peer smoke
 checks passed. Regression tests cover clock/query/scope changes, bounded memos,
 read-only replica reuse and write invalidation. Native Linux/Windows runs and
 curated/scale retrieval outcomes remain unverified here.
+
+## Scale CLI latency before and after daemonization (2026-11-13)
+
+Performance-only comparison of pre-daemon `4dc9516dc9804efb342e00af43de6ff309df420c`
+against final `ba0ac4df46d64ea7bb5b8ac8c1f55261a7eec461`, using native macOS
+on Apple M3 Ultra. Both release packages were built with the pinned Nix flake,
+compiler, profile and embedded assets. The existing 29-case stratified
+`scale-final-cli.json` sample was reused; all case IDs pass LLP 0005's dev split.
+Only original query wordings were used. No holdout scoring or retrieval tuning.
+
+The scale-q4 corpus contains 16,906 records and 189,767 blocks. Records JSONL
+SHA-256 is `be42984d615165066a2d3cfc16d863aa010b0a9ec823cde395b7e1c813231a5f`.
+A read-only SQLite backup of the existing sentence-dictionary scale store was
+prepared with the baseline, then APFS-cloned into independent before/after
+stores. Every stored body matches the original corpus bytes. Preparation took
+58.168 seconds and is excluded from query timings; both timed stores start with
+schema 5 and the same derived state. Snapshot size is 4,488,953,856 bytes.
+
+Each timer includes a fresh CLI subprocess through exit, caller Git context,
+store access or IPC, retrieval and default text rendering. Both use the same
+repository cwd/caller scope and live CLI eligibility clock, rather than the
+case-specific scope and frozen evaluation clock. Pairs alternate execution
+order; three resident rounds shuffle the queries with seed 34709. No concurrent
+build/test/probe load, no forced OS-cache flush and no outlier removal. Filesystem
+caches have been exercised by backup/preparation and earlier calls; this is not
+a cold-disk benchmark. New-daemon samples stop only the isolated test owner
+before each query. The before binary opens its store/models anew on every call.
+
+| Condition | Pairs | Before median / p95, ms | After median / p95, ms |
+|---|---:|---:|---:|
+| First query starts daemon | 29 | 213.079 / 531.701 | 211.570 / 503.687 |
+| First query pass after metadata-only daemon startup | 29 | 197.614 / 532.586 | 145.785 / 475.765 |
+| Resident repeated query | 87 | 182.530 / 464.426 | 133.968 / 347.660 |
+
+Resident median falls 26.6% (48.562 ms; 1.36x ratio of aggregate medians), and
+p95 falls 25.1%. Every query's three-repeat median improves. These p95 values
+summarize this fixed development sample, not a production tail distribution;
+they use the existing nearest-index, ties-to-even rule. First-query medians are
+nearly unchanged (0.7% lower); first-query maxima are 4,010.501/4,079.876 ms,
+including the first sampled query in both versions. Resident maxima are
+758.345/411.211 ms. A separate metadata-only startup sample took 14.252 ms,
+with diagnostic store-open time 0.770 ms; it is not a query-latency breakdown.
+
+All 145 paired text pages and exit codes matched. All 29 additional full JSON
+pages matched, including ordered cards, spans, text, hints and related pointers;
+only ordinary cursor clocks were normalized. Original body/envelope fingerprints
+remain identical across both stores and the snapshot. This establishes parity
+for the sampled product queries, not a full scale retrieval-score confirmation.
+
+Raw samples, per-query medians, diagnostics, identities and parity results:
+`/tmp/linn-scale-x_izk01i/results.json`; benchmark driver:
+`/tmp/linn-scale-bench.py` (adapts `/tmp/linn-query-latency.py`). Corpus, stores,
+raw output and binaries remain uncommitted. Binary SHA-256: before
+`f3d0f8e6f7e0c1b9f88a22562c9d7ec60b569caee31e7063da0cb65e47828a7a`, after
+`0f9b8d22b4b8ced89a2406093eda236dda71c9e6296407abe41468a3e2c754b4`.
