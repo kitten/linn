@@ -443,16 +443,13 @@ pub async fn run() -> Result<i32> {
                 }
             });
             let stamp = now();
+            let body_hash = hash(body.as_bytes());
             let id = format!(
                 "{}-{}",
-                &hash(body.as_bytes())[..16],
+                &body_hash[..16],
                 time::OffsetDateTime::now_utc().unix_timestamp_nanos()
             );
-            let source_ref = if kind == "doc" {
-                Some(paths::evidence(&PathBuf::from(&file))?)
-            } else {
-                None
-            };
+            let source_ref = if kind == "doc" { Some(body_hash) } else { None };
             let link = regex::Regex::new(r"\]\(linn:([^)]+)\)").unwrap();
             for captures in link.captures_iter(&body) {
                 if store

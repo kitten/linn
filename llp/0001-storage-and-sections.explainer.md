@@ -548,11 +548,16 @@ timing probes.
 
 ## Source evidence
 
-File ingest reads the original UTF-8 content and records its Git blob identity
-using `git hash-object`; it does not modify the index or commit the file. Outside
-the current Git repository, or if Git hashing fails, it falls back to SHA-256
-of the original file bytes. This source identity is separate from the SHA-256 body hash and envelope
-hash. Source metadata is stored inside the immutable envelope.
+New file imports set `source.ref` to the existing SHA-256 body hash of the exact
+uploaded original UTF-8 bytes, inside or outside a Git repository. Reuse that
+hash; do not hash again for source metadata. Do not apply checkout filters,
+normalize line endings, compute a Git blob identity or invoke Git. The envelope
+hash remains separate. Source references are provenance metadata, not retrieval
+or synchronization identity.
+
+Existing immutable envelopes retain their source references verbatim, including
+historical Git blob IDs and raw-byte hashes. Do not migrate or rewrite them on
+open, rebuild, import or sync. Notes retain their existing null source reference.
 
 ## POS publication
 

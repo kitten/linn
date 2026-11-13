@@ -3,7 +3,6 @@ use crate::error::{Error, Result};
 use std::{
     env,
     path::{Path, PathBuf},
-    process::Command,
 };
 fn xdg(key: &str, fallback: &str) -> Result<PathBuf> {
     if let Some(path) = env::var_os(key).filter(|v| !v.is_empty()) {
@@ -37,84 +36,132 @@ pub fn store_path(explicit: Option<PathBuf>) -> Result<PathBuf> {
     }
     Ok(data.join("linn/store.db"))
 }
-fn git(args: &[&str]) -> Option<String> {
-    let output = Command::new("git").args(args).output().ok()?;
-    output
-        .status
-        .success()
-        .then(|| String::from_utf8_lossy(&output.stdout).trim().to_owned())
-}
 pub fn writer_email() -> Option<String> {
-    writer_email_with(git)
+    let config = match repository() {
+        Ok(repo) => repo.config().ok()?,
+        Err(error) if error.code() == git2::ErrorCode::NotFound => default_config()?,
+        Err(_) => return None,
+    };
+    use git2::ConfigLevel::*;
+    let global = env::var_os("GIT_CONFIG_GLOBAL");
+    for level in [Worktree, Local, Global, XDG, System, ProgramData] {
+        // libgit2 still loads XDG alongside an explicit global override.
+        if (level == XDG && global.is_some())
+            || (level == Global && global.as_ref().is_some_and(|path| path.is_empty()))
+        {
+            continue;
+        }
+        let Ok(config) = config.open_level(level) else {
+            continue;
+        };
+        match config.get_entry("user.email") {
+            Ok(entry) => return email(entry.has_value().then(|| entry.value_bytes())),
+            Err(error) if error.code() == git2::ErrorCode::NotFound => {}
+            Err(_) => return None,
+        }
+    }
+    None
 }
-
-fn writer_email_with(mut git: impl FnMut(&[&str]) -> Option<String>) -> Option<String> {
-    git(&["config", "--get", "user.email"])
-        .map(|value| value.trim().to_owned())
+fn email(value: Option<&[u8]>) -> Option<String> {
+    value
+        .map(|value| String::from_utf8_lossy(value).trim().to_owned())
         .filter(|value| !value.is_empty())
 }
-
-pub fn scope() -> Option<String> {
-    scope_with(git)
-}
-fn scope_with(mut git: impl FnMut(&[&str]) -> Option<String>) -> Option<String> {
-    let root = git(&["rev-parse", "--show-toplevel"])?;
-    if let Some(verbose) = git(&["remote", "-v"])
-        && let Some(url) = verbose_remote(&verbose)
+fn default_config() -> Option<git2::Config> {
+    use git2::{Config, ConfigLevel};
+    let mut config = Config::new().ok()?;
+    let system = if env::var("GIT_CONFIG_NOSYSTEM")
+        .ok()
+        .and_then(|value| Config::parse_bool(value).ok())
+        .unwrap_or(false)
     {
-        return Some(
-            url.and_then(remote_scope)
-                .unwrap_or_else(|| format!("local:{root}")),
-        );
-    }
-    // Unrecognized output retains Git's canonical single-remote URL lookup.
-    let remotes = git(&["remote"])?;
-    let remotes: Vec<_> = remotes.lines().collect();
-    let name = if remotes.contains(&"upstream") {
-        Some("upstream")
-    } else if remotes.contains(&"origin") {
-        Some("origin")
-    } else if remotes.len() == 1 {
-        Some(remotes[0])
+        None
+    } else {
+        env::var_os("GIT_CONFIG_SYSTEM")
+            .map(PathBuf::from)
+            .or_else(|| Config::find_system().ok())
+    };
+    let global = env::var_os("GIT_CONFIG_GLOBAL");
+    let xdg = if global.is_none() {
+        Config::find_xdg().ok()
     } else {
         None
     };
-    name.and_then(|n| git(&["remote", "get-url", n]))
-        .and_then(|url| remote_scope(&url))
-        .or_else(|| Some(format!("local:{root}")))
-}
-fn verbose_remote(output: &str) -> Option<Option<&str>> {
-    let mut remotes = std::collections::BTreeMap::new();
-    for line in output.lines() {
-        let (name, description) = line.split_once('\t')?;
-        if name.is_empty() {
-            return None;
-        }
-        let entry = remotes.entry(name).or_insert(None);
-        if let Some((url, suffix)) = description.rsplit_once(" (fetch)") {
-            // Git may append a partial-clone filter after the fetch marker.
-            if !suffix.is_empty() && !(suffix.starts_with(" [") && suffix.ends_with(']')) {
-                return None;
+    let global = global
+        .map(PathBuf::from)
+        .or_else(|| Config::find_global().ok());
+    for (path, level) in [
+        (system, ConfigLevel::System),
+        (xdg, ConfigLevel::XDG),
+        (global, ConfigLevel::Global),
+    ] {
+        if let Some(path) = path.filter(|path| !path.as_os_str().is_empty()) {
+            match config.add_file(&path, level, false) {
+                Ok(()) => {}
+                Err(error) if error.code() == git2::ErrorCode::NotFound => {}
+                Err(_) => return None,
             }
-            entry.get_or_insert(url.trim());
-        } else if !description.ends_with(" (push)") {
-            return None;
         }
     }
-    let selected = remotes
-        .get("upstream")
-        .or_else(|| remotes.get("origin"))
-        .or_else(|| {
-            (remotes.len() == 1)
-                .then(|| remotes.values().next())
-                .flatten()
-        });
-    // Missing fetch URLs require the ordinary get-url fallback.
-    match selected {
-        Some(Some(url)) => Some(Some(url)),
-        Some(None) => None,
-        None => Some(None),
+    Some(config)
+}
+
+pub fn scope() -> Option<String> {
+    scope_in(&repository().ok()?)
+}
+fn repository() -> std::result::Result<git2::Repository, git2::Error> {
+    git2::Repository::open_ext(
+        ".",
+        git2::RepositoryOpenFlags::FROM_ENV,
+        None::<&std::ffi::OsStr>,
+    )
+}
+fn workdir() -> Option<PathBuf> {
+    repository().ok()?.workdir()?.canonicalize().ok()
+}
+fn scope_in(repo: &git2::Repository) -> Option<String> {
+    let root = repo.workdir()?;
+    let config = repo.config().ok()?;
+    let mut entries = config.entries(None).ok()?;
+    let mut names = std::collections::BTreeSet::new();
+    while let Some(entry) = entries.next() {
+        let entry = entry.ok()?;
+        let key = String::from_utf8_lossy(entry.name_bytes());
+        if let Some((name, _)) = key
+            .strip_prefix("remote.")
+            .and_then(|key| key.rsplit_once('.'))
+        {
+            names.insert(name.to_owned());
+        }
     }
+    let selected = names
+        .iter()
+        .find(|name| name.as_str() == "upstream")
+        .or_else(|| names.iter().find(|name| name.as_str() == "origin"))
+        .or_else(|| (names.len() == 1).then(|| names.first()).flatten());
+    selected
+        .and_then(|name| fetch_remote(repo, &config, name))
+        .and_then(|remote| remote_scope(String::from_utf8_lossy(remote.url_bytes()).trim()))
+        .or_else(|| Some(format!("local:{}", root.canonicalize().ok()?.display())))
+}
+// libgit2's named-remote API selects the last URL; Linn uses Git's first fetch URL.
+fn fetch_remote<'a>(
+    repo: &'a git2::Repository,
+    config: &git2::Config,
+    name: &str,
+) -> Option<git2::Remote<'a>> {
+    let mut values = config.multivar(&format!("remote.{name}.url"), None).ok()?;
+    let mut first = None;
+    while let Some(entry) = values.next() {
+        let entry = entry.ok()?;
+        if entry.value_bytes().is_empty() {
+            first = None;
+        } else if first.is_none() {
+            first = Some(entry.value_bytes().to_vec());
+        }
+    }
+    repo.remote_anonymous(&String::from_utf8_lossy(&first?))
+        .ok()
 }
 pub fn remote_scope(url: &str) -> Option<String> {
     let path = if let Some((_, rest)) = url.split_once("://") {
@@ -130,7 +177,7 @@ pub fn remote_scope(url: &str) -> Option<String> {
 }
 pub fn source_path(path: &Path) -> Result<String> {
     let absolute = std::fs::canonicalize(path)?;
-    let root = git(&["rev-parse", "--show-toplevel"]).map(PathBuf::from);
+    let root = workdir();
     Ok(root
         .and_then(|root| absolute.strip_prefix(root).ok().map(PathBuf::from))
         .unwrap_or(absolute)
@@ -138,26 +185,14 @@ pub fn source_path(path: &Path) -> Result<String> {
         .into())
 }
 
-/// Git computes the evidence blob with the checkout's attribute filters.
 pub fn evidence(path: &Path) -> Result<String> {
-    let absolute = std::fs::canonicalize(path)?;
-    if git(&["rev-parse", "--show-toplevel"]).is_none_or(|root| !absolute.starts_with(root)) {
-        return Ok(crate::storage::record::hash(&std::fs::read(absolute)?));
-    }
-    let output = Command::new("git")
-        .args(["hash-object", "--"])
-        .arg(&absolute)
-        .output()?;
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).trim().into())
-    } else {
-        Ok(crate::storage::record::hash(&std::fs::read(absolute)?))
-    }
+    Ok(crate::storage::record::hash(&std::fs::read(path)?))
 }
 
 #[cfg(test)]
 mod scope_tests {
     use super::*;
+    use std::process::Command;
 
     fn run(dir: &Path, args: &[&str]) -> Option<String> {
         let output = Command::new("git")
@@ -194,21 +229,20 @@ mod scope_tests {
                 .unwrap_or_else(|| format!("local:{root}")),
         )
     }
-    fn check(dir: &Path, calls: usize) {
-        let mut actual_calls = 0;
-        let actual = scope_with(|args| {
-            actual_calls += 1;
-            run(dir, args)
+    fn check(dir: &Path) {
+        let actual = git2::Repository::discover(dir).ok().and_then(|repo| {
+            let config = git2::Config::open(&repo.path().join("config")).ok()?;
+            repo.set_config(&config).ok()?;
+            scope_in(&repo)
         });
         assert_eq!(actual, original(dir));
-        assert_eq!(actual_calls, calls);
     }
     #[test]
-    fn verbose_scope_preserves_git_url_selection_and_rewrites() {
+    fn file_scope_preserves_git_url_selection_and_rewrites() {
         let dir = tempfile::tempdir().unwrap();
-        check(dir.path(), 1);
+        check(dir.path());
         assert!(run(dir.path(), &["init", "-q"]).is_some());
-        check(dir.path(), 2);
+        check(dir.path());
         for (key, value) in [
             ("remote.other.url", "https://example.invalid/team/other.git"),
             (
@@ -228,7 +262,7 @@ mod scope_tests {
             ("remote.upstream.partialclonefilter", "blob:none"),
         ] {
             assert!(run(dir.path(), &["config", key, value]).is_some());
-            check(dir.path(), 2);
+            check(dir.path());
         }
         assert!(
             run(
@@ -242,7 +276,7 @@ mod scope_tests {
             )
             .is_some()
         );
-        check(dir.path(), 2);
+        check(dir.path());
         assert!(
             run(
                 dir.path(),
@@ -261,7 +295,7 @@ mod scope_tests {
             )
             .is_some()
         );
-        check(dir.path(), 4);
+        check(dir.path());
         assert!(
             run(
                 dir.path(),
@@ -273,10 +307,10 @@ mod scope_tests {
             )
             .is_some()
         );
-        check(dir.path(), 4);
+        check(dir.path());
         let bare = tempfile::tempdir().unwrap();
         assert!(run(bare.path(), &["init", "--bare", "-q"]).is_some());
-        check(bare.path(), 1);
+        check(bare.path());
     }
 }
 
@@ -292,13 +326,7 @@ mod writer_tests {
             (Some("  \n"), None),
             (None, None),
         ] {
-            assert_eq!(
-                writer_email_with(|args| {
-                    assert_eq!(args, ["config", "--get", "user.email"]);
-                    value.map(str::to_owned)
-                }),
-                expected.map(str::to_owned)
-            );
+            assert_eq!(email(value.map(str::as_bytes)), expected.map(str::to_owned));
         }
     }
 }

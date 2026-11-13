@@ -60,11 +60,24 @@ Commands are in three groups. An agent that reads memory needs only the first.
      `local:<path of the repository>`, so its records stay with that repository on this machine.
 
   Scopes compare case-insensitively.
-  Read remote names and resolved fetch URLs together with `git remote -v` after
-  establishing the working-tree root. Preserve Git's URL rewrites, first fetch
-  URL, remote precedence and local fallback; push URLs never supply scope.
-  Unrecognized verbose output falls back to separate remote enumeration and
-  `git remote get-url`. No persistent repository cache is used.
+  Read scope with git2/libgit2 repository discovery and effective file configuration,
+  including worktree indirection, conditional includes, system/user/worktree files,
+  URL rewrites and legacy dotted config. Keep the first effective fetch URL;
+  push URLs never supply scope. Compile libgit2 into the native binary with network
+  features disabled. Enable the pinned crate's SHA-256 feature so native discovery
+  handles both SHA-1 and SHA-256 repositories. There is one resolver and no Git-command fallback or persistent
+  repository cache. Command-scoped configuration injected through GIT_CONFIG_COUNT
+  or GIT_CONFIG_PARAMETERS does not supply caller scope; this limitation is accepted.
+  Repository-location and config-file environment overrides retain libgit2's support.
+  Source-path repository membership uses that same native discovery,
+  not a `rev-parse` subprocess. Writer attribution also uses git2's file config,
+  including worktree/includes and global/system precedence outside a repository.
+  Respect explicit config-file paths; suppress the XDG layer when a global-file
+  override is supplied. Command-injected configuration does not supply writer
+  attribution either. Do not add a Git fallback for it. File source references
+  reuse the original body SHA-256 under LLP 0001, independently of Git attributes
+  and repository object format. No product operation invokes the Git CLI.
+  Cursor replay uses its encoded scope/clock and does not rediscover caller scope.
 
   **What a search sees.** The current records of every repository: knowledge is shared (operator,
   2026-11-07). Search has no `--scope` option. A `scope:` term is parsed and, in this store, does not
