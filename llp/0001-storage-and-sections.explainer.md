@@ -544,6 +544,11 @@ search never writes them into the persistent store.
 
 ## Connection policy
 
+New stores use 16 KiB pages to pack exact 2,048-byte vectors densely. Opening an
+existing store preserves its current physical page size; it does not compact,
+rebuild or rewrite the file merely to change layout. Original bytes, vector bits,
+row identities, logical schemas and retrieval arithmetic remain unchanged.
+
 Connection teardown must close each native handle only once. The local
 libSQL wrapper is pinned with the narrowly scoped fix in vendor/libsql/PATCH.md:
 clear the handle after closing it so nested destructors cannot close freed memory.

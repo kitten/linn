@@ -305,7 +305,7 @@ impl Store {
         }
         let database = Builder::new_local(path).build().await?;
         let db = database.connect()?;
-        db.execute_batch("PRAGMA secure_delete=ON; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA temp_store=MEMORY; PRAGMA cache_size=-65536; PRAGMA mmap_size=268435456;").await?;
+        db.execute_batch("PRAGMA page_size=16384; PRAGMA secure_delete=ON; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA temp_store=MEMORY; PRAGMA cache_size=-65536; PRAGMA mmap_size=268435456;").await?;
         migrations::apply(&db).await?;
         let model = db.transaction().await?;
         migrations::check(&model).await?;
@@ -3390,6 +3390,28 @@ fn normalize_path(path: &Path) -> String {
 mod lookup_tests {
     use super::*;
     #[tokio::test]
+    async fn opening_an_existing_store_preserves_its_page_size() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("existing.db");
+        let database = Builder::new_local(&path).build().await.unwrap();
+        let db = database.connect().unwrap();
+        db.execute_batch(
+            "PRAGMA page_size=4096; CREATE TABLE bootstrap(value); DROP TABLE bootstrap;",
+        )
+        .await
+        .unwrap();
+        drop(db);
+        drop(database);
+        for _ in 0..2 {
+            let store = Store::open(&path).await.unwrap();
+            let mut rows = store.db.query("PRAGMA page_size", ()).await.unwrap();
+            assert_eq!(
+                rows.next().await.unwrap().unwrap().get::<i64>(0).unwrap(),
+                4096
+            );
+        }
+    }
+    #[tokio::test]
     async fn write_cache_is_bounded_and_restored_after_success_and_failure() {
         async fn cache(store: &Store) -> i64 {
             store
@@ -3605,6 +3627,7 @@ mod lookup_tests {
             ("foreign_keys", 1),
             ("busy_timeout", 5000),
             ("temp_store", 2),
+            ("page_size", 16384),
             ("cache_size", -65536),
             ("mmap_size", 268435456),
         ] {

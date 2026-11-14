@@ -11711,3 +11711,164 @@ Clippy, LLP references, diff checks, Nix build and packaged release smoke with
 the previous compatible peer passed. No experimental cache/library/statistics
 code remains in the final implementation. Only native macOS scale CLI behavior
 was measured; full retrieval scoring and other platforms were not rerun.
+
+## 2026-11-13: denser SQLite pages for new stores
+
+Performance-only physical-layout study after `74cae10`. The production change
+requests `page_size=16384` before initial persistent DDL. Existing files retain
+their current page size. No compaction command, automatic VACUUM, logical schema
+migration, RPC change, new table, codec or index removal is adopted. Retrieval,
+original envelopes/bodies, exact float32 arrays and all numerical kernels remain
+unchanged. SQL schema 5 and application compatibility 1 remain appropriate.
+
+### Space attribution and isolated physical layouts
+
+Read-only dbstat profiling of the prepared 16,906-record/189,767-block scale-q4
+snapshot found 4,488,953,856 file bytes, 4,096-byte pages and 326,082 free pages
+(1,335,631,872 bytes). Those free pages are reusable high-water allocation, not
+additional live records or proof of continuing logical growth. The vector table
+uses 779,231,232 bytes for 391,301,689 bytes of row payload, leaving 383,402,464
+bytes unused; section means leave another 153,610,987 bytes unused. Exact
+2,048-byte vectors plus row overhead cannot fit two rows on a 4 KiB table page.
+
+To isolate geometry, independent APFS clones were repacked with the pinned native
+libSQL engine at 4, 8 and 16 KiB. Native repacking took 25.975, 23.552 and 23.185
+seconds respectively, before query timings. This is diagnostic preparation only;
+it is not a delivered maintenance operation or a reason to compact on startup.
+The source snapshot and shared evaluation stores were never modified.
+
+| Physical layout, same logical contents | File bytes | Decimal GB |
+|---|---:|---:|
+| Historical 4 KiB snapshot, including free pages | 4,488,953,856 | 4.489 |
+| Repacked 4 KiB | 3,118,706,688 | 3.119 |
+| Repacked 8 KiB | 2,719,309,824 | 2.719 |
+| Repacked 16 KiB | 2,605,088,768 | 2.605 |
+
+The comparable 16 KiB layout saves 513,617,920 bytes (16.5%) versus repacked
+4 KiB. The 42.0% reduction from the historical file also reclaims old free pages;
+that is not the new-store page-size saving, and existing files are not shrunk by
+this change. Block vectors shrink to 444,465,152 bytes and section means to
+177,553,408 bytes: together they explain 468,467,712 bytes of the comparable
+saving. Larger pages pack those rows more densely without changing vector bits.
+Fallback chunks already pack efficiently and change little.
+
+All values and row counts in all 37 persistent real tables match across all four
+files, checked by ordered type-tagged SHA-256 digests. This includes original
+bytes/hashes, lifecycle/publication state, FTS shadow data, block vectors, mean
+vectors and fallback chunks. Virtual tables are checked through their persisted
+shadow tables and query outputs. No embeddings were quantized or re-encoded for
+this comparison.
+
+### Scale query latency and parity
+
+Native macOS/Apple M3 Ultra, same pinned Nix release executable and assets on all
+four independent files, with the adopted 64 MiB pager and 256 MiB mapping limits.
+Used the existing 29 stratified dev query wordings, repository cwd/caller scope
+and live CLI clock. Each timer includes a fresh CLI subprocess through exit,
+Git context, IPC, execution and default rendering. All four variants run in
+shuffled order per query; seed 34709. No concurrent build/test/probe load, forced
+filesystem-cache flush or outlier removal. Percentiles use nearest-index
+ ties-to-even. Fresh owner means initialized daemon resources, not cold disk.
+
+| Layout | Resident samples | Median / p95, ms | Fresh-owner median / p95, ms (29 each) |
+|---|---:|---:|---:|
+| Historical 4 KiB | 87 | 121.102 / 313.558 | 166.846 / 413.581 |
+| Repacked 4 KiB | 87 | 119.565 / 323.895 | 167.676 / 413.937 |
+| Repacked 8 KiB | 87 | 120.636 / 325.900 | 169.291 / 409.280 |
+| Repacked 16 KiB | 87 | 117.623 / 320.429 | 167.356 / 400.484 |
+
+The screening p95s and a few per-query medians were mixed, so a longer paired
+confirmation compared the historical 4 KiB file with 16 KiB using the same
+queries, ten shuffled resident rounds and randomized pair order. No settings
+were retuned between screening and confirmation.
+
+| Confirmation | Samples each | Median / p95, ms | Mean / maximum, ms |
+|---|---:|---:|---:|
+| 4 KiB | 290 | 120.173 / 312.810 | 143.624 / 359.931 |
+| 16 KiB | 290 | 117.227 / 307.260 | 140.585 / 358.441 |
+
+Median/p95 fall 2.5%/1.8%. Twenty-eight of 29 per-query medians improve; the
+remaining query changes from 18.431 to 18.792 ms (+0.361 ms). This is modest
+sampled performance improvement, not a universal per-query or tail guarantee.
+Final screening RSS is 1,185.7 MiB for historical 4 KiB and 1,129.4 MiB for
+16 KiB; mapped/native allocations are included, not only Rust heap.
+
+All 435 candidate/baseline text-page comparisons from the four-way fresh-owner,
+first-traversal and resident screening match, with 87 additional full JSON page
+comparisons. The longer confirmation adds 319 matching text comparisons and
+29 matching JSON pages. Only ordinary cursor clocks are normalized; ordered
+cards, spans, text, hints, related pointers and exit codes match. These are
+sampled product pages, not a full retrieval-score/neutral/holdout rerun.
+
+### Fresh builds, write growth and small stores
+
+Three fresh builds per layout used all 1,376 original q4 records, alternating
+order and separate files. The 4 KiB files were initialized at 4 KiB before
+Store::build; 16 KiB files used the new default. Native integrity checks passed.
+
+| Fresh q4 builds | Median file bytes | Median build time, ms |
+|---|---:|---:|
+| 4 KiB | 196,186,112 | 12,571.776 |
+| 16 KiB | 176,128,000 | 12,470.910 |
+
+Fresh q4 files are 10.2% smaller; build time is roughly unchanged in this small
+three-sample comparison. File sizes vary by a few pages across independent
+builds; the table reports medians rather than selecting a favorable run.
+
+A separate growth trial started from identical q4 state repacked at each page
+size, then added the same three original corpus bodies (311, 1,884 and 9,300
+bytes) under fixed test IDs and forgot the first added record. The native Store
+remained open across the sequence; each add exercises the existing complete
+rebuild/publication path. No unrelated benchmark/build load overlapped.
+
+| Page size | Initial / final file bytes | Three-add median, ms | Forget, ms |
+|---|---:|---:|---:|
+| 4 KiB | 194,789,376 / 196,718,592 | 16,352.600 | 2,132.906 |
+| 8 KiB | 178,544,640 / 180,822,016 | 16,067.538 | 2,013.725 |
+| 16 KiB | 174,440,448 / 176,488,448 | 15,675.180 | 1,883.253 |
+
+The smaller 16 KiB layout persists through these writes; add/forget do not slow
+in this trial. Per-step allocation is rounded and workload-dependent: the net
+increases are 1,929,216 and 2,048,000 bytes at 4/16 KiB, so this does not claim
+that every individual append allocates fewer bytes. No full scale ingest-time
+or long-duration growth guarantee is claimed from q4 writes.
+
+Independent fresh builds of the frozen 24-record small fixture use 20,516,864
+bytes at 4 KiB and 20,086,784 at 16 KiB (2.1% smaller). Empty stores instead use
+290,816 and 1,097,728 bytes: the larger minimum allocation costs 806,912 bytes
+before enough data accumulates. This is the explicit small-store space tradeoff.
+Original body/envelope bytes and every block, mean and fallback vector payload
+match across the fresh q4 builds, all three write histories and the small fixture.
+
+Decision: use fixed 16 KiB pages for newly created stores. Keep existing page
+sizes, native durability, secure deletion, journal mode, cache byte budgets and
+all indexes. No automatic maintenance is added. The production diff is one
+connection setting, its existing settings assertion and a regression test that
+opening a legacy 4 KiB file twice preserves its layout.
+
+Raw artifacts under `/tmp/linn-layout-z76qchdp/`: `profile.json`, `results.json`,
+`confirmation.json`, `writes.json`, `fresh-rounds.json`, `small.json` and
+`write-fidelity.json`. Drivers are `/tmp/linn-layout-prepare.py`,
+`/tmp/linn-layout-bench.py`, `/tmp/linn-layout-confirm.py`,
+`/tmp/linn-layout-writes.py`, `/tmp/linn-layout-fresh-repeat.py` and
+`/tmp/linn-layout-small.py`. The temporary native diagnostic is archived at
+`/tmp/linn-store-layout-probe-final.rs`; it is not part of the product or repo.
+Corpora, databases and raw output remain uncommitted. The physical analysis uses
+SQLite's dbstat accounting and page geometry; native repacking/query/build/write
+operations all use the pinned libSQL engine rather than Python's SQLite engine.
+
+Final validation: all 158 workspace tests pass, with two existing fixture-dependent
+ignores. Formatting, strict all-target/all-feature workspace Clippy, LLP references,
+whitespace checks and Nix build pass. Packaged release smoke with the previous
+compatible binary passes search/show, exact backup restore, retry, schema upgrade,
+truncation and interrupted publication. An additional final-package check matches
+all 29 full JSON search pages and verifies physical page sizes: old baseline
+4 KiB, comparison store 16 KiB, newly created store 16 KiB. All 1,376 pre-existing
+q4 records retain their exact original bytes through the tested write histories.
+
+Final package `/nix/store/z0msnad4lx60mqkywfyrbrp9wb73vfv0-linn-0.1.1/bin/linn`,
+SHA-256 `c570bbd6c941e7bc1c54684dea88bcba6d2090d9a65f627d56cdec25ab46b6eb`;
+baseline SHA-256 `06985a4cc77a1790b93490bc7fdc031874867553655ae30a78aa0197f540463e`.
+The final-package comparison is recorded in `package-check.json` in the same raw
+artifact directory. Native timings are macOS only; other-platform performance
+and full scale ingest were not measured. No partial compaction prototype remains.
