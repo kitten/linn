@@ -91,7 +91,22 @@ never commit them. Native membership and CLI tests use `mesh_control` and
 against a real domain, since its runner must own and stop the service.
 
 `GET /health` returns the relay protocol marker; `/ping` is the Iroh latency
-probe. Logs/observability are disabled and packet/authentication bodies must not
+probe; both are answered by the Worker without waking the coordinator.
+The Worker rejects invalid routes, methods, relay protocols and declared oversized
+bodies before forwarding. Per-IP rate-limit bindings allow 1,200 valid HTTP
+requests and 120 relay connection attempts per minute, independently. Limits
+are per Cloudflare location; HTTP 429 includes a 60-second Retry-After.
+Reserve binding namespaces 7349101/7349102 for this deployment's HTTP/connection
+limits. The local runtime uses the same bindings. Do not trust client forwarding
+headers as the IP identity.
+
+At most 16 of the 128 relay sockets can await authentication, for ten seconds.
+Authenticated sockets allow 8,192 messages/s (16,384 burst), with a separate
+32/s ping/pong budget (64 burst), in addition to the byte/queue limits in the LLP.
+Exceeding a message budget disconnects that socket. These guards bound transient
+work; they do not cap durable membership history or guarantee a billing ceiling.
+
+Logs/observability are disabled and packet/authentication bodies must not
 be logged. Relay payloads are end-to-end encrypted between native endpoints.
 
 ## Limits and lifecycle

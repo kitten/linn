@@ -67,6 +67,22 @@ test("real Worker authentication, routing, rejection and duplicate-key isolation
   const unauthorized = await connect(keys[2]!);
   await assert.rejects(unauthorized.result);
 
+  // Pending unauthenticated connections cannot consume all established capacity.
+  const pending: WebSocket[] = [];
+  for (let i = 0; i < 16; i++) {
+    const response = await runtime.dispatchFetch("https://local/relay", {
+      headers: { upgrade: "websocket", "sec-websocket-protocol": "iroh-relay-v2" },
+    });
+    assert.equal(response.status, 101);
+    const socket = response.webSocket!;
+    socket.accept();
+    await next(socket);
+    pending.push(socket);
+  }
+  assert.equal((await runtime.dispatchFetch("https://local/relay", {
+    headers: { upgrade: "websocket", "sec-websocket-protocol": "iroh-relay-v2" },
+  })).status, 503);
+
   const packet = new Uint8Array(37);
   packet.set(keys[1]!.publicKey);
   packet.set([0, 1, 2, 3, 4], 32);
@@ -76,18 +92,28 @@ test("real Worker authentication, routing, rejection and duplicate-key isolation
   assert.equal(forwarded.kind, 6);
   assert.equal(hex(forwarded.payload.subarray(0, 32)), keys[0]!.id);
   assert.deepEqual(forwarded.payload.subarray(32), packet.subarray(32));
-  a.socket.close();
+  for (const socket of pending) socket.close();
+  // A control-message flood is disconnected, while the other member stays usable.
+  const flooded = closed(a.socket);
+  for (let i = 0; i < 256; i++) a.socket.send(frame(9, new Uint8Array(8)));
+  assert.equal(await flooded, 1008);
+  const pong = next(b.socket, 10);
+  b.socket.send(frame(9, new Uint8Array(8)));
+  assert.equal(decode(await pong).kind, 10);
   b.socket.close();
 });
 
-function next(socket: { addEventListener: Function; removeEventListener: Function }): Promise<ArrayBuffer> {
+function next(socket: { addEventListener: Function; removeEventListener: Function }, kind?: number): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     const cleanup = () => {
       clearTimeout(timer);
       socket.removeEventListener("message", message);
       socket.removeEventListener("close", closed);
     };
-    const message = (event: { data: ArrayBuffer }) => { cleanup(); resolve(event.data); };
+    const message = (event: { data: ArrayBuffer }) => {
+      if (kind !== undefined && decode(event.data).kind !== kind) return;
+      cleanup(); resolve(event.data);
+    };
     const closed = () => { cleanup(); reject(new Error("socket closed")); };
     const timer = setTimeout(() => { cleanup(); reject(new Error("message timeout")); }, 3000);
     socket.addEventListener("message", message);
@@ -121,3 +147,31 @@ async function enroll(keys: CryptoKeyPair[]): Promise<void> {
     await commit({ kind: "redeem", actor: await publicKey(joining), invitation }, [joining, delegated]);
   }
 }
+
+function closed(socket: { addEventListener: Function; removeEventListener: Function }, timeout = 3000): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => { socket.removeEventListener("close", listener); reject(new Error("close timeout")); }, timeout);
+    const listener = (event: { code: number }) => { clearTimeout(timer); socket.removeEventListener("close", listener); resolve(event.code); };
+    socket.addEventListener("close", listener);
+  });
+}
+
+test("pending handshake expires without another request", async () => {
+  const isolated = await createRuntime(bootstrap);
+  try {
+    const address = new URL("/relay", await isolated.ready);
+    address.protocol = "ws:";
+    const socket = new WebSocket(address, "iroh-relay-v2");
+    socket.binaryType = "arraybuffer";
+    await next(socket);
+    // Workerd can keep TCP teardown pending after delivering the Close frame.
+    // Node exposes CLOSING before its final close event; no further request is sent.
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => { clearInterval(poll); reject(new Error("handshake expiry timeout")); }, 15000);
+      const poll = setInterval(() => {
+        if (socket.readyState !== WebSocket.OPEN) { clearInterval(poll); clearTimeout(timer); resolve(); }
+      }, 25);
+    });
+    assert.ok(socket.readyState === WebSocket.CLOSING || socket.readyState === WebSocket.CLOSED);
+  } finally { await isolated.dispose(); }
+});

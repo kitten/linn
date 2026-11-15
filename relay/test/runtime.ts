@@ -12,6 +12,8 @@ export async function createRuntime(bootstrap: string): Promise<Miniflare> {
         },
         exports: { RelayCoordinator: { type: "durable-object", storage: "sqlite" } },
         env: {
+          HTTP_LIMIT: { type: "rate-limit", namespace: "7349101", simple: { limit: 1200, period: 60 } },
+          CONNECT_LIMIT: { type: "rate-limit", namespace: "7349102", simple: { limit: 120, period: 60 } },
           COORDINATOR: { type: "durable-object", worker: "relay", exportName: "RelayCoordinator" },
           BOOTSTRAP_TOKEN: { type: "json", value: bootstrap },
         },

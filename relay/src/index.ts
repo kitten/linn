@@ -1,12 +1,14 @@
 import { DurableObject } from "cloudflare:workers";
 import { authenticate, clientMessage, forward, frame, hex, unhex } from "./protocol.ts";
+import { ingress, type IngressEnv } from "./ingress.ts";
+import { admitMessage, type MessageBudget } from "./limits.ts";
 import { ControlPlane } from "./control.ts";
 
-interface Env {
+interface Env extends IngressEnv {
   COORDINATOR: DurableObjectNamespace<RelayCoordinator>;
   BOOTSTRAP_TOKEN?: string;
 }
-interface Attachment {
+interface Attachment extends MessageBudget {
   version: 1;
   challenge: number[];
   deadline: number;
@@ -22,13 +24,16 @@ interface Attachment {
 }
 
 const MAX_SOCKETS = 128;
+const MAX_PENDING = 16;
 const MAX_BUFFER = 256 * 1024;
 const BYTES_PER_SECOND = 4 * 1024 * 1024;
-const HANDSHAKE_MS = 30_000;
+const HANDSHAKE_MS = 10_000;
 const PING_MS = 15_000;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const response = await ingress(request, env);
+    if (response) return response;
     return env.COORDINATOR.get(env.COORDINATOR.idFromName("private-mesh-v1")).fetch(request);
   },
 } satisfies ExportedHandler<Env>;
@@ -44,18 +49,16 @@ export class RelayCoordinator extends DurableObject<Env> {
       if (path === "/v1/events" && result.ok) this.ctx.waitUntil(this.refreshEnrollment());
       return result;
     }
-    if (request.method === "GET" && (path === "/health" || path === "/ping")) {
-      return new Response(path === "/health" ? "linn-relay: v1\n" : "", {
-        headers: { "cache-control": "no-store" },
-      });
+    // Only the validated Worker entry point forwards requests to this object.
+    if (path !== "/relay") return new Response("not found", { status: 404 });
+    for (const socket of this.ctx.getWebSockets()) {
+      const state = socket.deserializeAttachment() as Attachment | null;
+      if (state && !state.endpoint && Date.now() >= state.deadline) this.close(socket, 1008, "authentication timed out");
     }
-    if (path !== "/relay" || request.method !== "GET") return new Response("not found", { status: 404 });
-    if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") {
-      return new Response("WebSocket required", { status: 426 });
-    }
-    const versions = (request.headers.get("sec-websocket-protocol") ?? "").split(",").map((x) => x.trim());
-    if (!versions.includes("iroh-relay-v2")) return new Response("iroh-relay-v2 required", { status: 400 });
-    if (this.ctx.getWebSockets().length >= MAX_SOCKETS) return new Response("busy", { status: 503 });
+    // Closing sockets still consume capacity until the runtime removes them.
+    const sockets = this.ctx.getWebSockets();
+    const pending = sockets.filter((socket) => !(socket.deserializeAttachment() as Attachment | null)?.endpoint).length;
+    if (sockets.length >= MAX_SOCKETS || pending >= MAX_PENDING) return new Response("busy", { status: 503 });
     const pair = new WebSocketPair();
     const challenge = crypto.getRandomValues(new Uint8Array(16));
     const attachment: Attachment = {
@@ -99,6 +102,7 @@ export class RelayCoordinator extends DurableObject<Env> {
       }
       const now = Date.now();
       const message = clientMessage(input);
+      if (!admitMessage(state, now, message.type !== "datagram")) throw new Error("message rate exceeded");
       state.budget = Math.min(BYTES_PER_SECOND, state.budget + (now - state.budgetAt) * BYTES_PER_SECOND / 1000);
       state.budgetAt = now;
       if (message.type === "datagram") {
@@ -205,8 +209,17 @@ export class RelayCoordinator extends DurableObject<Env> {
     }
   }
   private async armAlarm(): Promise<void> {
-    if (this.ctx.getWebSockets().length && await this.ctx.storage.getAlarm() === null) {
-      await this.ctx.storage.setAlarm(Date.now() + PING_MS);
+    let next = Date.now() + PING_MS;
+    let active = false;
+    for (const socket of this.ctx.getWebSockets()) {
+      const state = socket.deserializeAttachment() as Attachment | null;
+      if (!state) continue;
+      active = true;
+      if (!state.endpoint) next = Math.min(next, state.deadline);
+    }
+    if (active) {
+      const current = await this.ctx.storage.getAlarm();
+      if (current === null || current > next) await this.ctx.storage.setAlarm(next);
     }
   }
 }

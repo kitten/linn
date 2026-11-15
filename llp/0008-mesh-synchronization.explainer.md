@@ -734,11 +734,29 @@ copy or backup of native record stores.
 
 Control HTTP work admits at most four concurrent requests. Bodies have a
 10-second total read deadline and a 16 KiB bound; cancellation cleanup does not wait for an unresponsive reader.
-Capacity and deadline failures leave retries safe. These bounds do not provide
-rate-based billing protection or a lifetime storage quota.
+Capacity and deadline failures leave retries safe. Before calling the coordinator,
+the Worker answers health/latency probes, rejects unknown paths, wrong methods,
+invalid relay upgrades and declared bodies over 16 KiB. Streaming bodies remain
+bounded by the coordinator regardless of Content-Length. Worker rate-limit
+bindings allow 1,200 valid HTTP requests and, independently, 120 valid relay
+connection attempts per IP per minute. Use Cloudflare's supplied connecting IP,
+not caller-supplied forwarding headers; local requests without that header share
+one key. Excess returns HTTP 429 with Retry-After; limiter failures return 503.
+Counters are approximate and local to each Cloudflare location, not global
+quotas. Binding namespaces 7349101 and 7349102 are reserved for these limits.
+The application keeps no persistent IP counters and adds no lifetime history quota.
 
-The relay accepts at most 128 WebSockets. Unauthenticated sockets have a
-30-second challenge deadline and only one in-flight authentication per socket. Each sender has a 4 MiB/s datagram budget, and
+The relay accepts at most 128 WebSockets, of which at most 16 may await
+authentication or complete closure. Closing sockets count toward capacity until
+the runtime removes them, preventing connection churn from bypassing the bounds.
+Pending sockets have a ten-second challenge deadline and only
+one in-flight authentication per socket. Admission closes expired pending sockets;
+alarms run by the earliest pending deadline without postponing existing alarms.
+Each authenticated socket has a token budget of 8,192 incoming messages per
+second with a 16,384-message burst. Ping/pong messages additionally share a
+32-per-second budget with a 64-message burst. Exceeding a message budget closes
+the socket; these budgets survive hibernation and initialize on older
+attachments. Each sender has a 4 MiB/s datagram budget, and
 each receiver has a 256 KiB unconfirmed send window. Ordered protocol Pong
 checkpoints release that window; excess datagrams are dropped for QUIC
 recovery. Protocol pings run at 15-second intervals, with a 30-second

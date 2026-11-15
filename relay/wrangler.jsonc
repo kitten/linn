@@ -4,6 +4,10 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-11-01",
   "workers_dev": false,
+  "ratelimits": [
+    { "name": "HTTP_LIMIT", "namespace_id": "7349101", "simple": { "limit": 1200, "period": 60 } },
+    { "name": "CONNECT_LIMIT", "namespace_id": "7349102", "simple": { "limit": 120, "period": 60 } }
+  ],
   "durable_objects": {
     "bindings": [{ "name": "COORDINATOR", "class_name": "RelayCoordinator" }]
   },
