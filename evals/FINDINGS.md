@@ -578,7 +578,7 @@ are not Linn results.
 
 - Counting before fetching is a cheap narrowing step.
 
-- **a document query tool** ([README](https://github.com/yshavit/a document query tool)) is "like jq but for Markdown." Its selectors mirror Markdown: `# title text` for sections, `- item` for list items, `[text](url)` for links, fenced code, tables, and front matter. Pipes chain them, so `# usage | -` selects list items inside sections whose heading contains "usage." It emits JSON.
+- **a document query tool** ([README](https://github.com/yshavit/a document query tool)) is "like jq but for Markdown." Its selectors mirror Markdown: `# title text` for sections, `- item` for list items, `text (historical artifact)` for links, fenced code, tables, and front matter. Pipes chain them, so `# usage | -` selects list items inside sections whose heading contains "usage." It emits JSON.
 
 - That is the heading tree as a query, over unchanged bytes.
 
@@ -5528,14 +5528,14 @@ No full candidate dev score, h2, scale or hybrid run. The store-building command
 selected no cases and printed zero denominators; those lines are not an eval.
 The prototype and temporary root dependencies were removed. Accepted product
 reproduces any411/439 first351/439 xs31/42 and25/42 empty35/51 section55/73,
-with all1470 ordered pages byte-identical. LLP reference check passes. The
+with all 1,470 ordered pages byte-identical. LLP reference check passes. The
 earlier model card and Candle references remain the provenance for this same
 implementation. No quality conclusion or new scored-configuration count.
 
 
 ### Repeated morphological query obligations — population screen only
 
-A native screen of all1470 dev wordings groups non-hard content terms by the
+A native screen of all 1,470 dev wordings groups non-hard content terms by the
 existing Porter function. Six wordings have more than one term per stem:
 s1b-c-0036/0 AGENTS/agent; s3a-c-0054/0 Update/updates; s3b-c-0058/2
 package/packages; s4-c-0052/1 generated/generator; s5-c-0141/2 window/Windows;
@@ -5573,7 +5573,7 @@ Prototype removed. Accepted-page restoration is checked separately.
 
 Changed ordered pages: 62/1470. Wording ledger: s1-c-0012/2, s1b-c-0004/0, s1b-c-0005/0, s1b-c-0005/1, s1b-c-0007/0, s1b-c-0015/0, s1b-c-0018/1, s1b-c-0025/0, s1b-c-0031/0, s1b-c-0034/2, s1b-c-0041/0, s1b-c-0044/0, s1b-c-0045/2, s1b-c-0059/0, s1b-c-0060/0, s1b-c-0065/1, s2a-c-0008/0, s2b-c-0027/2, s2b-c-0028/0, s2b-c-0031/1, s2b-c-0032/2, s2b-c-0038/1, s2b-c-0041/0, s2b-c-0060/0, s3a-c-0009/0, s3a-c-0022/1, s3a-c-0027/1, s3b-c-0033/1, s3b-c-0034/0, s3b-c-0035/2, s3b-c-0048/0, s3b-c-0065/2, s4-c-0015/0, s4-c-0025/1, s4-c-0067/2, s4-c-0080/1, s4-c-0084/0, s4-c-0088/0, s4-c-0089/2, s5-c-0005/0, s5-c-0040/1, s5-c-0076/0, s5-c-0081/0, s5-c-0090/0, s5-c-0090/2, s5-c-0095/0, s5-c-0102/0, s5-c-0124/0, s5-c-0139/0, s5-c-0151/0, s6-c-0022/0, s6-c-0035/0, s6-c-0044/1, s6-c-0053/2, s6-c-0055/2, s6-c-0073/0, s6-c-0074/2, s6-c-0091/2, s6-c-0112/2, s6-c-0117/2, s6-c-0118/2, s6-c-0128/2.
 
-Restoration reproduced all six accepted dev counts and all1470 ordered pages
+Restoration reproduced all six accepted dev counts and all 1,470 ordered pages
 byte-for-byte; LLP reference check passes.
 
 
@@ -5607,7 +5607,7 @@ resident median6.030ms/p9515.981ms is diagnostic, not a matched speed claim.
 Changed ordered pages versus accepted: 66/1470; versus word-balanced-only: 20/1470.
 Wording ledger versus accepted: s1-c-0012/2, s1b-c-0004/0, s1b-c-0005/0, s1b-c-0005/1, s1b-c-0007/0, s1b-c-0015/0, s1b-c-0018/1, s1b-c-0025/0, s1b-c-0031/0, s1b-c-0034/2, s1b-c-0044/0, s1b-c-0059/0, s1b-c-0060/0, s1b-c-0065/1, s2a-c-0008/0, s2b-c-0027/2, s2b-c-0028/0, s2b-c-0031/1, s2b-c-0032/2, s2b-c-0038/1, s2b-c-0041/0, s2b-c-0060/0, s3a-c-0009/0, s3a-c-0022/1, s3b-c-0020/0, s3b-c-0033/1, s3b-c-0034/0, s3b-c-0035/2, s3b-c-0048/0, s3b-c-0065/2, s4-c-0015/0, s4-c-0025/1, s4-c-0044/2, s4-c-0067/2, s4-c-0080/1, s4-c-0084/0, s4-c-0088/0, s4-c-0089/2, s4-c-0091/0, s4-c-0115/1, s5-c-0005/0, s5-c-0040/1, s5-c-0076/0, s5-c-0081/0, s5-c-0090/0, s5-c-0090/2, s5-c-0095/0, s5-c-0098/0, s5-c-0124/0, s5-c-0132/0, s5-c-0139/0, s5-c-0151/0, s6-c-0022/0, s6-c-0030/1, s6-c-0035/0, s6-c-0044/1, s6-c-0053/2, s6-c-0055/2, s6-c-0073/0, s6-c-0074/2, s6-c-0091/1, s6-c-0091/2, s6-c-0112/2, s6-c-0117/2, s6-c-0118/2, s6-c-0128/2.
 
-Accepted restoration reproduces all six dev counts and all1470 ordered pages
+Accepted restoration reproduces all six dev counts and all 1,470 ordered pages
 byte-for-byte; LLP reference check passes.
 
 
@@ -5622,7 +5622,7 @@ No larger character window, extra model, lexical/POS/section-cut/gate/card or
 scorer change. Fresh model-identified store; no cap sweep.
 
 Forty-four of6096 stored block vectors differ (read-only byte comparison).
-Nevertheless all1470 first-page exports are byte-identical, with dev any411/439
+Nevertheless all 1,470 first-page exports are byte-identical, with dev any411/439
 first351/439 xs31/42 and25/42 empty35/51 section55/73. No qualifying rise;
 no h2, adoption or hybrid claim. This tested token cap is not hiding a scored
 dev recovery. It does not establish that arbitrary longer character windows or
@@ -5636,7 +5636,7 @@ allocation-only cleanup. Source versions retained. Store18,472.814ms; resident
 median5.990ms/p9515.818ms is diagnostic, not a matched latency claim.
 Prototype removed; no case-level gold/cross-scope changes or moved pages.
 
-Accepted restoration reproduces all six dev counts and all1470 first-page
+Accepted restoration reproduces all six dev counts and all 1,470 first-page
 exports byte-for-byte; LLP reference check passes.
 
 
@@ -5664,7 +5664,7 @@ matched speed claim. Prototype removed.
 
 Changed ordered pages: 102/1470. Wording ledger: s1b-c-0004/0, s1b-c-0005/0, s1b-c-0005/1, s1b-c-0007/0, s1b-c-0008/0, s1b-c-0015/0, s1b-c-0015/2, s1b-c-0018/0, s1b-c-0018/1, s1b-c-0018/2, s1b-c-0025/0, s1b-c-0027/1, s1b-c-0031/0, s1b-c-0041/1, s1b-c-0041/2, s1b-c-0044/0, s1b-c-0045/2, s1b-c-0047/1, s1b-c-0048/0, s1b-c-0049/0, s1b-c-0054/2, s1b-c-0059/0, s1b-c-0059/2, s1b-c-0060/0, s1b-c-0060/1, s1b-c-0062/2, s2a-c-0008/0, s2b-c-0020/0, s2b-c-0026/0, s2b-c-0027/0, s2b-c-0028/0, s2b-c-0028/2, s2b-c-0032/2, s2b-c-0060/0, s3a-c-0009/0, s3a-c-0009/2, s3a-c-0022/1, s3a-c-0028/0, s3b-c-0010/0, s3b-c-0015/0, s3b-c-0020/0, s3b-c-0021/0, s3b-c-0025/0, s3b-c-0028/0, s3b-c-0033/1, s3b-c-0034/0, s3b-c-0035/0, s3b-c-0035/2, s3b-c-0046/0, s3b-c-0048/0, s3b-c-0050/0, s3b-c-0052/0, s3b-c-0064/1, s3b-c-0065/2, s4-c-0013/1, s4-c-0015/0, s4-c-0020/0, s4-c-0044/2, s4-c-0084/0, s4-c-0088/0, s4-c-0089/0, s4-c-0091/0, s4-c-0092/2, s4-c-0115/0, s4-c-0115/1, s4-c-0123/1, s5-c-0001/0, s5-c-0003/0, s5-c-0027/0, s5-c-0043/0, s5-c-0051/0, s5-c-0067/0, s5-c-0076/0, s5-c-0076/1, s5-c-0085/0, s5-c-0087/1, s5-c-0090/0, s5-c-0090/2, s5-c-0091/0, s5-c-0095/0, s5-c-0097/0, s5-c-0098/0, s5-c-0102/0, s5-c-0102/1, s5-c-0132/0, s5-c-0139/0, s5-c-0151/0, s6-c-0022/0, s6-c-0030/1, s6-c-0035/0, s6-c-0037/1, s6-c-0039/0, s6-c-0044/1, s6-c-0053/2, s6-c-0055/0, s6-c-0055/2, s6-c-0068/1, s6-c-0073/0, s6-c-0083/2, s6-c-0091/2, s6-c-0094/0, s6-c-0128/2.
 
-Accepted restoration reproduces all six dev counts and all1470 ordered pages
+Accepted restoration reproduces all six dev counts and all 1,470 ordered pages
 byte-for-byte; LLP reference check passes.
 
 ### Further encoder source inspection — native feasibility pending
@@ -10013,7 +10013,7 @@ Ignored `evals/output/encoder-study/` contains pinned metadata, weights,
 executables, complete pages, timings, paired changes, raw candidates, cost
 samples and the experimental patch. Native examples `encoder_cost`,
 `encoder_candidates`, `page_changes` and `cli_cost` perform diagnostics. Ordinary
-`linn-eval` performs retrieval scoring. Accepted replay matches all1470 pages.
+`linn-eval` performs retrieval scoring. Accepted replay matches all 1,470 pages.
 
 The [all-MiniLM-L6-v2 model card](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
 was reviewed for contextual token encoding followed by pooling. No contextual
@@ -11872,3 +11872,7051 @@ baseline SHA-256 `06985a4cc77a1790b93490bc7fdc031874867553655ae30a78aa0197f54046
 The final-package comparison is recorded in `package-check.json` in the same raw
 artifact directory. Native timings are macOS only; other-platform performance
 and full scale ingest were not measured. No partial compaction prototype remains.
+## 2026-11-14 — Bounded scope and prose overlap — not adopted
+
+Exploratory q4-dev only, base f2250acf. Baseline: gold 412/439 any, 354/439
+first, XS 31/42 and 25/42, no-gold 35/51, section 55/73. Two isolated source
+configurations; no model, corpus or scorer change, no combined configuration:
+
+- S1 far-record penalty min(7, 0.1 * score): gold 398/439 and 337/439,
+  XS 32/42 and 26/42, no-gold 36/51, section 52/73. Actual original Hit@1
+  falls 199/439 to 191/439, without gains. Reject.
+- B1 previous same-section prose paragraph overlap, capped at 350 bytes on
+  1,400-byte greedy blocks, excluding structural/code lines: gold 410/439 and
+  352/439, XS 31/42 and 25/42, no-gold 35/51, section 55/73. Actual Hit@1
+  falls to 197/439. s2b-c-0006 and s4-c-0002 lose gold, without gains. Reject.
+
+True silence stays 0/10. Neither qualifies for h2. No h2, scale, neutral or
+competitor run. Product algorithms restored; patches retained for review.
+These settings are closed, not permission for coefficient/window retuning or
+a failed-idea combination. [Full ledger](#consolidated-search-2026-11-14-md)
+records screens, setup correction, paired changes, caveats and reproduction.
+
+## 2026-11-14 — Primary evidence and rejection suite — not adopted
+
+[Full protocol, implementations and results](#consolidated-search-suite-2026-11-14-md).
+All 17 predeclared fixed selectors, three out-of-fold rejection classifier cutoffs
+and six additional post-cut controls ran on q4-dev. The fixed source union
+contains native matcher, independent vector/POS and baseline later-call rows;
+features and alternative selectors never consume gold labels. Native complete
+output matches all 1,470 pre-suite baseline responses; feature collection preserves
+complete native output before/after each query. No product search mode was added.
+
+Joint primary competition with the accepted encoder qualifies on dev: gold 419/439
+and 377/439, XS 31/42 and 27/42, no-gold 36/51, section 56/73; actual Hit@1 rises
+199 to 214. Pure lexical/POS/vector ablations and candidate/routing/obligation
+controls retain their full ledgers. Rejection does not show safe silence gains;
+stronger cutoffs sacrifice substantial recall, while fitted gates lose XS.
+An implementation/protocol distinction between pre-cut admission and no-refill
+post-cut filtering was recorded and measured with additional controls, without
+changing the frozen primary score.
+
+Only joint was frozen and re-collected, matching all 1,470 measured dev complete
+responses, then confirmed once on reused h2. Gold342/354 and 317/354, XS 54/62
+and 52/62, no-gold 53/106, section 225/271. Matched native baseline is 341/298,
+55/48,54,237. XS-any, no-gold and section fall; actual original Hit@1 falls 230
+to 225. **Rejected**, no h2 repair, runner-up confirmation or product adoption.
+The same frozen policy's synthetic diagnostic reaches Hit@1 46/49 and Hit@5
+49/49 (native 31/49,35/49), without new tuning; this cannot override rejection.
+No fresh blind or calibration claim. The recorded settings are closed.
+
+### Research disposition amendment
+
+After the joint confirmation, the operator explicitly requested investigation
+of divergent gains/losses rather than abandonment on one failed measurement.
+The joint implementation is **not adopted, retained for divergence investigation**.
+Its initial ordinary-rule failure and measured values above remain evidence;
+they do not establish that primary semantic competition should be discarded.
+Frozen paired audits now separate top-1 swaps, supporting-span scheduling and
+scope/no-gold changes, without tuning coefficients or reselecting on h2.
+See the suite ledger for causal evidence and limitations. This narrow amendment
+does not silently reopen historical closed configurations.
+
+## 2026-11-14 — Bounded primary/span iteration — retained, not adopted
+
+[Predeclared mechanisms and complete results](#consolidated-search-iteration-2026-11-14-md).
+The operator authorized further iteration. Subsequent h2 results are explicitly
+exploratory reused-data measurements, not another independent confirmation.
+Two score scales, three span schedules, two literal/phrase routing controls,
+a native-only support control and three locality-free gate cutoffs were tested
+(12 policy outcomes including the old equal-records control). No constant sweep
+or case-specific retrieval exception was used.
+
+Dev-selected balanced-maxima scoring plus supplementary spans measures gold
+418/439 any, 381/439 first, XS 31/42 and 27/42, no-gold 36/51, section 57/73,
+actual Hit@1 218/439. Reused h2: 344/354, 318/354, XS 54/62 and 52/62,
+no-gold 53/106, section 245/271, actual Hit@1 229/354. Full scale-q4:
+383/439,323/439, XS 29/42 and 21/42, no-gold 31/51, section 50/73,
+actual Hit@1 186/439 (native 180). Synthetic stays 46/49 Hit@1,49/49 Hit@5.
+There is no universal ranking/silence improvement; the candidate is retained
+for investigation rather than discarded on those divergences. No defaults change.
+
+Native-only supplementary spans preserve all first calls, old cards and returned
+record sets. All original retrieval/XS/no-gold/top-1 metrics are unchanged;
+section improves 55→56/73 dev and 237→246/271 h2, stays 51/73 scale.
+Full-call invariants pass on 1,470 dev, 1,380 h2, 49 synthetic and 1,470 scale wordings.
+This is the safest isolated measured change, but section-only gains do not meet
+the current adoption requirement and extra reading has a cost. Full scale native
+responses match all 1,470 prior comparison calls exactly. Gate/routing alternatives
+do not establish safe transferable abstention. Keep raw results and settings;
+no push, new model, RRF, reranker or product-gate activation.
+
+## Fixed-card-budget correction, 2026-11-14
+
+Supplementary cards/sections are outside the operator's scope and no longer recommended. Five fixed-budget alternatives were measured; none passes all bars. Half-vector balanced scoring improves Hit@1 on all four inspected sets but loses cross-scope metrics. The dev-selected full balanced variant fails transfer. See [SEARCH-FIXED-BUDGET-2026-11-14.md](#consolidated-search-fixed-budget-2026-11-14-md) for exact native grader results, selection and retained research avenues. No product changes adopted.
+
+## Separate record/passage and scope ablation, 2026-11-14
+
+Eight fixed-card-budget configurations tested; none passes dev, so no candidate selected. Independent passage selection reduces h2 section deficit from227 to234 against native237, but record-level cross-scope deficits remain. Removing the research scope penalty improves cross-scope recall while severely hurting overall recall and top1. See [SEARCH-RECORD-PASSAGE-2026-11-14.md](#consolidated-search-record-passage-2026-11-14-md). All transfer runs are exploratory; no defaults changed.
+
+## Competitor-informed evidence rules, 2026-11-14
+
+Read closed tier/field/superset/partial-replacement findings and reviewed Meilisearch/Vespa primary docs alongside pinned qmd/Engrim evidence. Three broad-pool policies measured at exact native card budget. Protected native strong slots pass dev (418/370 gold,31/26 XS,36 no-gold,56 sections), but reused h2 loses XS-any and section; scale gains one gold-any/first but loses one section and one top1. Broad tier sort also fails. No adoption; no h2 repair. See [SEARCH-EVIDENCE-RULES-2026-11-14.md](#consolidated-search-evidence-rules-2026-11-14-md) for distinctions from closed experiments, references, paired cases and limitations.
+
+## Astra recommendation follow-up, 2026-11-14
+
+All four recommendations investigated. Per-wording gold/XS/source-span diagnostics now distinguish missing provenance and parse-failure feature omissions. Native slot multiplicity preserves the protected candidate's six aggregate scores, but does not cure transfer failures. Exhaustive POS audit on1470 dev wordings: maximum149 indexed matches, none reaches160, full/old top40 identical, complete native parity holds. Query-max counterfactuals change ordering on413 wordings, justifying one frozen monotone saturation study; it passes dev but loses XS/no-gold on transfer. No default adopted. See [ASTRA-FOLLOWUP-2026-11-14.md](#consolidated-astra-followup-2026-11-14-md).
+
+## Fixed-budget boundary and attainability audits, 2026-11-14
+
+Read-only matched-growth attribution reproduces final protected scale pages. Under its fixed-scale, order-dependent decomposition, entrants are the last removal stage for27 of50 lost native target-wording witnesses; maxima for0. Label-access oracle preserves all native case successes and improves retrieval under both free and protected slots: capacity alone does not block dev gains. These are diagnostic assignments, never an eligible algorithm. Prepared60 masked dev displacement pairs; independent judgments pending assessor assignment. See [ASTRA-BOUNDARY-2026-11-14.md](#consolidated-astra-boundary-2026-11-14-md) for exact objectives, unresolved stages, native grader outcomes, rubric and limitations. No defaults changed.
+
+## Independent model judging and complete neutral comparison, 2026-11-14
+
+Two fresh-context masked model assessors judged60 dev pairs each;55/60 preference agreement, kappa0.871. Balanced sample and same-model correlation prevent a global win/fresh-holdout claim. All six retrieval suites compare three frozen policy families with native, complete Python/Rust parity on5908 wordings per policy. All four full neutral captures and four-policy replays completed, including scale-h2; native gate tables match capture exactly. No candidate passes the required primary retrieval bars. Full scaled self-retrieval exposed a one-probe-per-scale distinct-record capacity failure; a recorded v2 completeness guard preserves the entire native response, without changing any primary retrieval response. All code checks/Nix packaging pass. Historical matched40/48 is original-query Hit@5, not Hit@1; actual native first-card count21/48, verified against identical archived calls. See [INDEPENDENT-FULL-EVAL-2026-11-14.md](#consolidated-independent-full-eval-2026-11-14-md) for all results, gate tables, model-judging limitations and preserved pre-repair failure. No product defaults changed.
+
+## Native term-identity record competition, 2026-11-15
+
+Implemented eight new record replacement policies in Rust with a native original-matcher term-witness/IDF collector. No candidate clears dev: strict dominance is flat; rarest-anchor gains XS-first but loses gold; conjunction reduces losses without a rise; semantic ordering adds a section loss. Full native/Python response parity holds on1470 dev wordings for all8 policies. Before/after native response and cached coverage parity pass. No h2 selection, default change or adoption; retain gains and divergence evidence. See [RECORD-COMPETITION-2026-11-15.md](#consolidated-record-competition-2026-11-15-md) for mechanisms, distinctions from closed work, every tested configuration and counterexamples.
+
+## 2026-11-15 — Source relationships and admission proof — not adopted
+
+[Full report](#consolidated-source-relationships-2026-11-15-md) and
+successive pre-score declarations (historical artifact).
+Eight configurations on1,470 dev wordings: action-frame swap/Pareto/order,
+primary-provenance conjunction, complete-NP swap/Pareto/order, obligation-preserving
+NP order. None has the required retrieval rise; provenance conjunction loses
+any/first and NP Pareto loses first. Action ordering loses one actual top1; NP
+ordering gains one and loses one. Final obligation control is exactly flat in
+primary counts, Hit@1 and MRR. Keep paired positive signals and counterexamples;
+no h2 selection or accepted-search change.
+
+Native NLP annotates6,503 unique raw-query/original-byte-span inputs; offline
+Python extracts surface frames, and native Rust selectors replay audited evidence.
+All1,470 cached/before/after native responses match during route collection.
+Action frames match available gold on0/85 original misses; complete NPs on1/85,
+although67/85 have a gold record in the bounded pool. Unknown original displayed-
+span tier often remains primary-reachable (1,160 cards), so unknown is not a
+fallback grade. Primary reachability alone still loses a unique resolved-symbol
+license (`RACE_CONDITION` to `ERR_REQUIRE_ESM_RACE_CONDITION`). Retaining other
+query-term identities blocks misleading NP promotions but also useful moves.
+No new calibrated rejection threshold, gate activation, extra cards/sections,
+model/index change or blind-validation claim. These settings are closed measured
+configurations; richer relationships and complete admission proofs remain open
+hypotheses, not permission to rerun them as new or tune against named losses.
+
+
+### Admission boundaries, sentence scale and five-card qualification — 2026-11-15
+
+The operator clarified that five cards is a maximum, not exact native-count parity:
+qualified hits may fill empty results and rejection may reduce counts. Fixed-count
+studies remain ranking controls. Product admission rules are unchanged.
+
+Five association/proof policies, seven sentence/pool controls, twelve constrained
+assignment configurations and four variable-count qualification policies are
+recorded in the linked reports. Proof-joint and sentence-pool controls improve dev
+but lose h2 XS/top1; they are not adopted. Corpus association is mostly topical,
+not discriminative. Native/prototype complete-response parity is required.
+
+Position-aware, source-admission-constrained assignment is the strongest new
+ranking control: dev gold412/357, XS31/28, no-gold35, section55, actual Hit@1 204
+(native412/354,31/25,35,55,199). Frozen h2 gives341/300,55/49,55,237,228
+(native341/298,55/48,54,237,230). It clears the historical six count gates but
+**fails actual rank-one nonfall**. Scale388/315,30/25,32,51,180 versus
+388/316,28/22,31,51,180 also loses one first-wording case. Reused h2 is not blind;
+no default change, adoption, universal improvement or integrated latency pass.
+Unordered assignment's Hit@1 collapse and floating-summation parity corrections
+are recorded before the final selected transfer, not hidden as successful runs.
+
+All four max-five admission/rejection arms fail dev despite XS-first gains;
+true silence stays0/10. All14 synthetic native misses already have hard/quote-
+compatible gold in the bounded pool. More candidate discovery does not explain
+those misses; current qualification/ordering fails to distinguish sparse semantic
+matches from topical competitors. Neither lower thresholds nor a different model
+is thereby authorized. Preserve these divergences for independently judged intent
+and a fresh blind evaluation, rather than tuning from h2.
+
+Reports: [ASSOCIATION-PROOF-2026-11-15.md](#consolidated-association-proof-2026-11-15-md);
+[SENTENCE-SCALE-2026-11-15.md](#consolidated-sentence-scale-2026-11-15-md);
+[CONSTRAINED-FUSION-2026-11-15.md](#consolidated-constrained-fusion-2026-11-15-md);
+[MAX-FIVE-2026-11-15.md](#consolidated-max-five-2026-11-15-md). All output remains ignored/uncommitted.
+
+
+### Display evidence and native-head constrained assignment — 2026-11-15
+
+Two displayed-source alignment arms retain dev six-count/Hit@1 gains; selected
+utility alignment fails exploratory h2 Hit@1 (227 versus230) and scale first
+recall. One new native-head anchor preserves actual rank one exactly and retains
+dev/h2 count improvements, but scale gold-any388→387 and first316→314 regress
+while XS28/22→30/25 improves. Not adopted; no universal gain or fresh holdout.
+This isolates unsafe head changes from lower-page target displacement rather
+than closing all positive fusion evidence. Protocols, paired cases, native
+implementation and reproduction: [DISPLAY-AND-HEAD-2026-11-15.md](#consolidated-display-and-head-2026-11-15-md).
+
+
+### Page evidence, scope cohorts and foreign-provenance control — 2026-11-15
+
+Four declared arms implemented/scored. Page coverage alone and combined with
+scope do not cure transfer. Scope-constrained local/far assignment recovers three
+previous scale targets but loses one h2 XS and one scale no-gold case. New
+`select_foreign` protects native foreign leads and competes only local slots;
+dev413/361 XS31/25 no-gold35 section55; reused h2341/301 XS55/48 no-gold54
+section237; scale388/317 XS28/22 no-gold31 section51. All six native count bars
+nonfall with a retrieval rise on each suite. Hit@1 identical; MRR rises on all
+three. Three of seven earlier scale misses recover; four remain. All4320 native/
+prototype responses match. H2/scale failures informed the fourth hypothesis: these
+are tuning diagnostics, not adoption confirmation or fresh blind validation.
+No product default, model, gate or index change. Full report and limitations:
+[PAGE-CONSERVATION-2026-11-15.md](#consolidated-page-conservation-2026-11-15-md).
+
+
+### Further recovery guards and located masked packet — 2026-11-15
+
+Two local-only non-regret guards (lexical, lexical+cosine) recover all four remaining
+targeted scale misses post-hoc but return dev recall413/361→412/354, equal native;
+no new selected transfer or adoption. Control exactly matches1470 frozen responses.
+The earlier60-pair packet and120 independent model assessments were located and
+integrity-checked. They are explicitly reused dev, not a new blind corpus. On42
+unanimous directional pairs, native-foreign contains only the preferred exact span
+on20 versus native18;4 paired improvements and2 regressions, with3 both/neither
+unclassified. This is partial old-pair coverage, not complete-page judging or a
+global/blind win. Frozen candidate unchanged. Full mechanisms, counterexamples and
+provenance: [LOCAL-NONREGRET-2026-11-15.md](#consolidated-local-nonregret-2026-11-15-md).
+
+
+### Scalar distinguishability, source ownership and judgment audit — 2026-11-15
+
+Eleven-feature exact comparisons on20 dev/29 scale changed-target block pairs
+show0 identical vectors, though2/5 pairs share structural tier/coverage classes.
+No proof of intrinsic indistinguishability or transferable classifier. New
+source_path ownership proxy distinguishes dependency docs inside the same scope:
+nondependency→dependency replacement guard leaves1470 dev responses unchanged
+and improves exploratory scale first317→319 (native316), other count gates hold.
+Recovers archive inspection and pre-push test/typecheck; no dev activation, no
+adoption or blind claim. Source audit also finds browser replacements contain
+the correct answer elsewhere in full official docs; signing target has an already
+returned explicit equivalent excluded by retrieval's object-level-only contract.
+Read-only declared-map sensitivity shrinks local-fusion dev gain+7→+2 and scale
++1→0; this is not revised truth or official scoring. Labels/scorer unchanged.
+Full findings, caveats and ranked signals: [SIGNAL-AND-JUDGMENT-AUDIT-2026-11-15.md](#consolidated-signal-and-judgment-audit-2026-11-15-md).
+
+
+### Query ownership and span-support feasibility — 2026-11-15
+
+Three declared additions to the ownership probe scored on dev/reused h2/scale:
+explicit package exception, exact source-term span dominance, combination. Six
+counts unchanged from ownership control; dev413/361, h2341/301, scale388/319.
+Span refinements change48/84/39 spans without official section gains. Explicit
+package occurrence changes two scale responses only by ordering and falsely
+licenses common-word `diff` for a prompt-injection query; not an intent classifier.
+Known-answer audit: auth-session explanations in both official browser sources
+and app guide Jest command are absent from exported candidate spans. Pure span
+reweighting cannot recover them; no pool expansion performed. Prepared outcome-
+masked pool14topics/90sources/97record ratings/90passages;0new judgments and no
+fresh holdout claim. Report: [OWNERSHIP-AND-SUPPORT-2026-11-15.md](#consolidated-ownership-and-support-2026-11-15-md).
+
+
+### 2026-11-15: record-local passage proposer — not adopted
+
+[Report](#consolidated-passage-proposer-2026-11-15-md). Native collection scans eligible existing blocks only within
+the selected records (maximum five); selectors retain record order/counts. Initial
+coverage dev/h2/scale section totals: 56/236/53 versus ownership control 55/237/51.
+Stable coverage ties retain the incumbent: 56/237/52, but original-query first-page
+section support becomes 37/177/34 versus 38/174/35. The @ref syntax-to-summary loss
+on dev/scale prevents a universal-improvement claim. Strict evidence preservation
+erases aggregate gains; original-pool ablation gives 55/236/51. Full outcomes and
+paired cases are in the report; all transfers are reused tuning evidence. Native
+and prototype stable outputs match on all 4,320 wordings. No default adopted.
+
+Correction to earlier support-feasibility interpretation: the qualified browser
+marker was absent, but the old full source span already links unqualified
+`openAuthSessionAsync`. The preview hid the pointer. Exact marker absence cannot
+establish absent support. A separate contiguous-source excerpt prototype exposes
+it without changing fetch spans; global presentation quality remains unjudged.
+
+
+### 2026-11-15: full frozen passage evaluation — not adopted
+
+[Full report](#consolidated-passage-full-eval-2026-11-15-md) and
+protocol (historical artifact). The operator
+requested the omitted full populations for the already frozen proposer; no scoring
+configuration was retuned. Six retrieval populations completed, 5,908 wordings
+per each of four native arms. Ordinary full-call archive parity passes throughout;
+previous ownership/combined outputs match exactly on dev/h2/scale-dev.
+
+Standalone section totals: dev 55→56, h2 237→237, scale-dev 51→52, scale-h2
+225→224, matched 9→9; synthetic has no section labels. Record metrics and true
+silence are identical. The scale-h2 incremental comparison is worse than the
+ordinary-search comparison suggests: ownership-only 227 sections becomes225 with
+the proposer. Losses are current signing-build guidance and the EAS file-size cap.
+Unscaled h2 retains alternate/later-call rescues for the cap; scale does not.
+
+Post-hoc source audit: the cap paragraph has higher lexical and cosine scores
+than the service-plan-limit introduction, but coverage 2→3 overrides them. The
+Router alternate-wording gain also has coverage 2→3 with both scores decreasing.
+A double-score-decrease veto would erase that gain. These are similar directions,
+not identical complete feature vectors or proof of signal insufficiency. The cap
+query/label is clear; the signing alternate is task-under-specified. No labels are
+changed and no new policy is fitted to these cases. Incumbent source-span ties can
+also change preview/fetch representation; those changes are not passage recovery.
+
+All four full physical neutral captures and 16 policy replays completed, covering
+30,683 state-specific requests. Complete capture/replay gate-table parity passes
+on every corpus; all proposer record-order/count/later-call invariants pass.
+Neutral Q4 baseline→standalone: dev .822→.836, h2 .900→.900, scale-dev
+.795→.808, scale-h2 .867→.863. Existing ordinary-search failures remain;
+research C2 also fails and includes redundant diagnostics/shared workload, so it
+is not optimized production latency. The combined policy clears the six-count
+formula on reused dev/h2/scaled sets relative to native; its inherited record
+gains do not rescue the proposer's incremental scaled loss or supply fresh
+confirmation. All software checks pass. No default adoption is authorized.
+
+
+### 2026-11-15: source-bound novel exact-pair adjustment — experimental
+
+[Report](#consolidated-passage-adjustments-2026-11-15-md),
+pre-score protocol (historical artifact).
+Four fixed new-exact anchor certificates retain dev section 55→56 and remove the
+original-query loss 38→37. Select the literal bound-pair arm by the declared fewer-
+changed-spans rule:3 dev spans, versus104/17/10 for the looser certificates. Freeze
+before reused transfer; no parameter sweep or case/heading/answer-name exception.
+Unchanged source keys now preserve complete incumbent cards and no-op call text.
+
+Both standalone and allocator-relative runs cover all 5,908 wordings. No lost
+labeled section hit on any wording, first call or all calls, across six suites.
+Sections: standalone55→56/237→237/51→52/225→225/9→9, synthetic unlabelled;
+allocator55→56/237→237/51→52/227→227/9→9. Original-query source support on
+scale-h2 rises 161→162 standalone,162→163 allocator-relative; other original-query
+counts are unchanged. Cap/current-build/reference-syntax losses are removed, but
+several gains of the unsafe proposer are deliberately given up. No universal
+semantic or independent generalization claim; changed unlabeled passages unjudged.
+
+Native/Python complete parity 4,320 wordings; remaining populations use the same
+frozen native selector with old-winner reproduction and complete native-call
+checks. Sparse pruning removes work only when filtering cannot change an incumbent
+winner; no case is removed from scoring. All record/order/count/later-call/pointer
+invariants and complete no-op card/call preservation pass.
+
+Quality-only replay consumes all 30,683 prior neutral requests, requiring complete
+control equality for prepared substitutions. Q4 allocator→adjusted .822→.836,
+.904→.904, .795→.808, .875→.875; other reported quality metrics unchanged.
+Singleton forget cannot activate; physical flags are inherited. C1/C2 UNMEASURED,
+not a new physical/full cost pass. Software checks pass. Product defaults unchanged;
+section-only gains do not authorize adoption and reused h2 is not confirmation.
+
+Standalone neutral-quality replay also completed all 30,683 prior requests with
+no reported quality decrease. Its h2 exposure is .429, equal ordinary search;
+.428 belongs to the old unsafe proposer. No preview-budget shortening applied.
+Both incremental comparisons are nonregressive on measured source labels; the
+whole allocator-plus-proposer combination retains the allocator's earlier
+scale-dev original-source loss 36→35 (s4-c-0040). Do not claim that whole pipeline
+dominates ordinary search.
+
+
+## Consolidated search research, November 14–15, 2026
+
+The following are historical measured reports consolidated during cleanup. Their
+CLI commands, file names and speculative follow-ups describe those runs, not the
+current evaluator interface or authority to reopen a closed setting. One-off source
+and raw outputs are retained outside the reviewed source tree. The LLPs alone
+specify current behavior; these reports supply measurement context.
+
+
+<a id="consolidated-association-proof-2026-11-15-md"></a>
+
+### Consolidated report: ASSOCIATION-PROOF-2026-11-15.md
+
+# Corpus dependence and native-proof protection — 2026-11-15
+
+Five new development configurations were measured. The **proof-joint** control
+qualifies on dev and improves actual Hit@1 from199 to207. Its frozen reused-H2
+confirmation fails cross-scope counts; scale also loses gold-any and section.
+It is not adopted. Preserve the gains: the failure does not establish that joint
+semantic competition or proof protection is ineffective. All work is uncommitted.
+
+## New hypotheses and prior art
+
+Pre-score declarations (historical artifact) distinguish this
+study from closed nominal-pair frequency, PMI/beam expansion, record/global IDF,
+Dirichlet, positional/POS and previous blend/normalization experiments.
+
+- [Metzler and Croft2005](https://cs.uwaterloo.ca/~jimmylin/workspace/Ivory/docs/publications/Metzler_Croft_SIGIR2005.pdf)
+  models term dependencies, including ordered/unordered phrase evidence. It also
+  discusses inconsistent historical results and sparse dependence estimation.
+  This motivates testing dependence; it does not supply our equation or weight.
+- [Fang's axiomatic IR resource](https://www.eecis.udel.edu/~hfang/AX.html) lists
+  discrimination, distinct coverage, length and query-aspect constraints. It
+  motivates making preservation obligations explicit, not a Linn-specific gain.
+- Prior qmd/Engrim/Vespa/Meilisearch research remains documented in
+  SEARCH-EVIDENCE-RULES-2026-11-14.md. Independent primary candidates are retained
+  as a promising mechanism; none of their product decisions/code is imported.
+
+Native `research_term_witnesses` now also exports whole eligible-row population,
+per-query-term A-or-B hit frequencies, and intersections for all meaningful term
+pairs. These are indexed query-local sets, not a new corpus-wide startup map,
+persistent index or model. No words are expanded, removed or invented. Unlike
+closed source-selected nominal-pair IDF, the event is unrestricted same-block
+co-occurrence of original query terms, with no grammatical relation claim.
+
+For nonempty intersection, positive normalized PMI uses probabilities
+(count+.5)/(N+1), then max(0, ln(pij/(pi*pj))/-ln(pij)). Identical normalized query
+atoms are skipped. A candidate's association coverage A is the fraction of all
+positive query-pair weight witnessed by its original same-block A-or-B term IDs.
+No pair gives0. It is neither calibrated relevance nor answer support. Explicit
+filters can narrow hits while N remains native global eligible-row population;
+these values are not calibrated event probabilities on filtered queries.
+
+Native implementation: `evals/src/query_association.rs`. Independent prototype:
+`evals/experiments/association_search.py`. Ordinary retrieval never calls either.
+
+## Configurations and controls
+
+All use the same bounded broad candidate pool, exact native per-call card counts
+and number of calls. No added sections, concatenation or later-call changes.
+Selected native records retain their original cards. Retained strong records
+keep their native slots. POS0.75, scope7, underlying lexical arithmetic and sole
+encoder stay fixed; no RRF, reranker, network or active confidence gate.
+
+New proof mask protects native duplicate slots, missing exact span alignment,
+unknown original displayed-span tiers, non-primary-reachable and addressed cards,
+in addition to the earlier strong tier0/1 record protection. A qualified-suffix
+query change preserves the complete native response. These are observable query
+and source facts, not gold/task/scope-category inputs. Overlapping dev card counts:
+6,836 native cards;1,877 strong,1,270 unknown-tier,144 duplicate slots,115 not
+primary,6 unaligned,4 addressed,6 on resolved-query-changing wordings. Counts
+are overlapping guards, not independent gains or a unique causal decomposition.
+
+1. **proof-joint:** earlier half-vector protected joint formula under the new
+   mask. New records use their best lexical/POS representative block.
+2. **proof-joint-source:** same but new records use their best combined-score
+   block, isolating displayed-source choice under the same mask.
+3. **association-joint:** proof-joint-source plus A at fixed coefficient1.
+4. **association-priority:** A before combined-score ties; no new weight.
+5. **association-swap:** at most one unprotected native slot replaced by strictly
+   greater A, nonfalling cosine, retained hard-term identities/quote obligations
+   and applicable tier. Candidate order A, cosine, lexical/POS; deterministic ties.
+
+For association variants a new record's score and pair witness come from one
+source block. Native selected records deliberately keep their native passage,
+which can differ from the best record-scoring block. This is not an assertion
+that every returned card independently certifies every record-level score feature.
+
+## Full dev outcomes
+
+All1,470 wordings, unchanged native grader. Gold439, XS42, mixed no-gold51,
+section73. First is original-query Hit@5; Hit@1 is actual first-card correctness.
+
+| Configuration | Gold any / first | XS any / first | No-gold / section | Hit@1 | Changed responses |
+|---|---|---|---|---:|---:|
+| native |412/354|31/25|35/55|199|0|
+| proof-joint |416/367|31/27|35/56|207|905|
+| proof-joint-source |416/367|31/27|35/56|207|905|
+| association-joint |406/348|31/27|35/55|194|877|
+| association-priority |397/319|31/23|36/54|180|920|
+| association-swap |408/346|31/25|35/54|194|532|
+
+Association graphs activate1,392/1,470 wordings, so this feature's failure is not
+the sparse action-frame activation failure. It can identify topical combinations
+without identifying the requested answer. The additive arm has15 top1 gains and
+20 losses; priority12/31. The guarded swap has0/5. Retain the actual gains and
+old/new A/edge/source witnesses in ignored dev-diagnosis.json; do not treat these
+counts as proof that all dependence models fail. No coefficient sweep follows.
+
+The proof control has14 top1 gains and6 losses, net+8; MRR@5 .597949886 to
+.618792711. It improves four gate numerators while none falls. Both proof controls
+qualify; the predeclared counts/top1/declaration-order rule selects **proof-joint**.
+Its exact response hash, source hashes and archived source bytes were frozen before
+H2 scoring in `frozen-selection.json` and `frozen/`. Formatting afterward changes
+source bytes, not selected arithmetic; native replay parity remains the authority.
+The representative control has different complete outputs despite equal metrics.
+
+## Frozen transfer results, no repair
+
+Only proof-joint is evaluated here, never an H2 runner-up or retuned association.
+H2 is reused exploratory confirmation; scale repeats dev questions with distractors.
+
+| Suite/configuration | Gold any / first | XS any / first | No-gold / section | Actual Hit@1 | MRR@5 |
+|---|---|---|---|---:|---:|
+| dev native |412/354|31/25|35/55|199|.597950|
+| dev proof-joint |416/367|31/27|35/56|207|.618793|
+| H2 native |341/298|55/48|54/237|230|.727872|
+| H2 proof-joint |343/305|54/44|54/237|227|.729708|
+| scale native |388/316|28/22|31/51|180|.533485|
+| scale proof-joint |386/317|29/23|31/50|182|.539028|
+
+H2 gold retrieval and MRR improve; sections/no-gold hold. XS-any/first fall and
+Hit@1 falls. Scale first-query retrieval, XS, Hit@1 and MRR improve, but gold-any
+and section fall. Thus the apparent dev progress does not meet the transfer bars.
+True silence stays0/10 dev,2/45 H2,0/10 scale. Exact-budget replacement cannot
+claim an abstention improvement. No full neutral or matched/synthetic rerun is
+needed to reject this candidate; earlier completed full suites remain separate.
+
+Minimal proof collection replays only resolved primary and addressing stages,
+not irrelevant lower fallbacks. It uses identical underlying native functions.
+Every collected wording checks full cached/before/after native response parity
+and original matcher coverage-count parity. H2/scale full Rust/Python response
+parity holds on1,380/1,470 wordings. All five dev configurations also match fully.
+
+## What changed in the diagnosis
+
+Proof protection can recover useful behavior that a global score alone discards.
+The control is stronger on dev top1 than the earlier protected-native result,
+but mask changes also alter who competes for scarce remaining slots. Protecting
+additional records can preserve wrong incumbents and displace cross-scope targets
+elsewhere. More protection is not a monotone quality improvement.
+
+The term-association feature supplies broad information but overvalues shared
+topic. Normalized pair coverage has no representation of role, requested property,
+conditions or applicability; correlated mentions are not independent confirmations.
+Its larger activation does not repair those missing distinctions. Neither sparse
+syntax nor dense statistical co-occurrence alone has identified a reliable
+replacement boundary. These are measured failure modes, not a proof of exhaustion
+or of a necessary second model/reranker.
+
+The separately declared sentence-granularity study changes source representation
+and candidate discovery at equal budgets; it does not alter this failed frozen
+configuration or use H2 cases to retune its score/mask.
+
+## Reproduction and limits
+
+Private outputs: `evals/output/association-20261115/`. Dev term collection uses
+`term_witnesses STORE CASES FEATURES NEW_OUTPUT`; minimal combined transfer
+collection uses `query_association_witnesses STORE CASES FEATURES NEW_OUTPUT`.
+Native replay: `query_association FEATURES TERMS ROUTES NEW_DIRECTORY [POLICIES]`.
+Selected transfer explicitly requests only proof-joint. Score with unchanged
+`score_search_iteration.py`, adding --all for H2. Source/response hashes and full
+raw paired results are retained. No corpus/model/output is staged or committed.
+
+This is repeated development research. No fresh blind, globally superior search,
+calibrated rejection, latency pass or production adoption is claimed. Diagnostic
+feature collection replays queries and does more work than an integrated first
+phase; its elapsed time is not product search latency. Index/model unchanged.
+
+
+
+<a id="consolidated-astra-boundary-2026-11-14-md"></a>
+
+### Consolidated report: ASTRA-BOUNDARY-2026-11-14.md
+
+# Final-boundary attribution, attainability and independent judging — 2026-11-14
+
+Follows the three recommendations in ASTRA-FOLLOWUP-REVIEW-2026-11-14.md.
+No new retrieval algorithm, product score/default, model or index change.
+All computed outcomes use existing development material; h2 is not used here.
+
+## 1. Matched corpus-growth attribution at the protected selection boundary
+
+`audit_growth_boundary.py` joins1470 dev/scale-dev wordings and candidate rows by
+record, byte span and preview text. It verifies common corpus record bodies are
+byte-identical (full body strings) before matching. Native scale budget, incumbent
+passages and slots are fixed throughout. The five counterfactual stages are:
+
+1. Common pool with dev features, dev full-pool query-max weight, dev strong records.
+2. Common pool with scale features, unchanged dev weight and protection.
+3. Common scale features with scale full-pool query-max weight.
+4. Add scale-only exported candidates with the same scale weight and dev protection.
+5. Apply scale protected-record set. This final page must equal the existing
+   protected-native scale selector exactly; asserted on every wording.
+
+Raw-feature stage includes normalizer/IDF-related changes and any stored cosine/POS
+changes; it is not an isolated IDF experiment. Fixed scale incumbents/slot counts
+mean this does not reconstruct every cause of actual dev→scale page differences.
+Dev-only rows are not assumed to have known scale features and are omitted from
+common stages. Their availability is recorded. Missing source features remain
+unresolved. Three common stages cannot fill the budget with distinct records and
+are explicitly null, not filled with manufactured candidates. Counts below skip
+undefined stage transitions.
+
+These are order-dependent counterfactuals, not Shapley attribution or actual
+retrieval runs. The score formula and coefficient were not changed. Final free-slot
+membership is tested, rather than counting arbitrary pair inversions.
+
+Across gold/XS target-wording witnesses, the raw-feature stage causes16 losses/5
+gains; max-weight stage1 loss/2 gains; entrants103 losses/1 gain; protection38
+losses/0 gains. These include targets not returned by native, and are correlated
+witness events, not independent case gains or native grader count differences.
+
+Among50 final scale-native target-wording witnesses lost by protected-native,
+49 have candidates in the common pool and1 does not. The last observed removal
+transition is entrants27, raw features7, protection2;14 were already missed or
+unresolved at the common starting stage. **Zero final native loss is last removed
+by the maxima transition in this decomposition.** This deprioritizes query-max
+instability as the principal explanation of these observed scale losses, despite
+the earlier mathematical sensitivity result. It does not prove zero normalization
+effect under all interaction orders or fully observed candidate populations.
+
+## 2. Joint fixed-budget attainability oracle
+
+`audit_attainability.py` is explicitly label-access diagnostic code, NEVER a
+retrieval policy, benchmark competitor, adopted change or parameter selector.
+It uses per-wording gold/XS/span witnesses from the shared native grader.
+Each case jointly assigns complete existing candidate/native cards across its
+three wordings. Per-wording per-call native card counts are exact; later calls
+are unchanged. Quoted-compatible exported candidates plus original native cards
+are allowed. No concatenation, generated text, extra cards or extra calls.
+
+The dynamic program tracks card count and a bitset for gold-any/first, XS-any/
+first, other-scope no-gold targets and each required document passage. Distinct
+candidate cards are used at most once per first page, while different native spans
+of one record are allowed. It first preserves every native case-level success in
+the four retrieval metrics, complete section success and the real mixed no-gold
+rule (far must_not can be desired, local must_not forbidden). It then maximizes
+the count of retrieval-success bits, with section coverage as a tie-break.
+
+This is an exact constrained objective over the exported card pool, but NOT a
+simultaneous componentwise maximum of all six metrics. Preserving each native
+case success is stricter than merely preserving aggregate floors. No-gold counts
+for previously failing cases are feasible outcomes, not an optimized no-gold
+ceiling. Complete native grader replay independently checks emitted assignments.
+
+Free assignment allows all original slots. Protected assignment fixes exactly
+the strong native tier0/1 record slots from the existing research policy, with
+their full cards. Both keep original empty pages empty. Missing candidate support
+and zero budget remain real limits.
+
+| Label-access diagnostic | Native grader |
+|---|---|
+| baseline | any 412/439 first 354/439 xs 31/42 25/42; empty 35/51 section 55/73 |
+| free | any 434/439 first 417/439 xs 40/42 38/42; empty 41/51 section 60/73 |
+| protected | any 433/439 first 410/439 xs 40/42 38/42; empty 41/51 section 60/73 |
+
+All native case-level successes can be preserved in both modes while improving
+retrieval. Free assignment gains some retrieval bit on78 cases; protected on72.
+Seven cases attain a larger sum of retrieval bits without protections. Thus
+protected slots have a measurable cost, but do not make a dev pass impossible.
+There is room in the observed pool and capacity; the deployed-information problem
+is recognizing the right assignments without oracle labels. The free/protected
+small net gap is not proof that no harmful incumbent exists; individual feasibility
+states and required masks are retained for audit.
+
+Four corpus-free tests cover one-slot gold/XS conflict, locked wrong incumbent,
+one span covering gold plus section, and preserving mixed no-gold exclusions.
+Native grading and exact card/later-call assertions pass on1470 wordings per mode.
+No oracle output may be used as training labels or a passing retrieval result in
+this branch without a separately declared supervised experiment and fresh validation.
+
+## 3. Matched displacement judging: packet ready, judgments pending
+
+`prepare_displacement_judging.py` predeclares deterministic sampling from dev
+native→protected-native changed pages. Eligible population:95 gain,37 loss and
+857 unchanged target-hit wording pairs (gold or explicit XS target). For each
+loss anchor, choose nearest available gain and unchanged controls by outgoing/
+incoming tier, coverage bucket, scope relation and score-margin bucket, with
+hash ties and at most one pair per case. This is nearest-stratum matching, not
+an assertion of exact balance or a representative deployment sample.
+
+Selected60 unique cases:20 gains,20 losses,20 unchanged controls. No h2 cases or
+hand-selected named failures. Packet order and A/B direction are deterministic
+and shuffled. Assessor view contains opaque pair IDs, query/task, caller scope,
+source scope, heading and the FULL original UTF-8 byte-span passage, not merely
+the truncated retrieval preview. It omits system identity, direction of change,
+existing target/outcome labels, scores and case/record IDs. A private key retains
+sampling strata and system correspondence separately.
+
+Files under ignored evals/output/astra-boundary-20261114/judging/:
+- assessor-packet.json — only material sent to assessors.
+- judgments-template.json — empty assessor response structure.
+- PRIVATE-key.json — never send to assessors.
+- sampling.json — population/selection information, kept from assessors.
+
+Independent assessors have not been assigned; zero judgments completed. The user
+has been asked who should assess the prepared packet. No messages were sent to
+external people. Parent/previous Astra reviews are not relabeled independent
+blind judgments. This remains reused dev material, never a fresh blind holdout.
+
+Give only packet, rubric and template to two independent assessors. For A and B,
+judge entity/project/version fit (yes/no/uncertain), transferable advice (yes/no/
+not-applicable/uncertain), direct answer support (complete/partial/none/uncertain),
+and topical-only overlap (yes/no/uncertain). Quote original passage bytes supporting
+each judgment. Choose A/B/tie/neither/uncertain; flag missing context rather than
+assuming absent evidence. Assess independently before disagreements are resolved;
+keep raw judgments and adjudication separate. Assessors must not inspect the key,
+prior ledgers or system outputs. Full-source access, if required, must be supplied
+uniformly and logged rather than selectively revealing known outcomes.
+
+Only after judgments arrive: compare feature regions, feature-matched disagreement
+rates, direction-independent preferences and assessor agreement. Do not infer an
+information deficit from a few selected disagreements. A consistent source-verifiable
+distinction across positive/negative controls may motivate one frozen mechanism.
+No learned score or per-case routing is fitted by this work.
+
+## Reproduction and verification
+
+Run audit_growth_boundary.py DEV_FEATURES SCALE_FEATURES DEV_CORPUS SCALE_CORPUS
+NEW_JSON. Run audit_attainability.py FEATURES CORPUS WITNESSES NEW_DIRECTORY,
+then existing score_search_iteration.py CORPUS NEW_DIRECTORY MATCHING_STORE.
+Run prepare_displacement_judging.py FEATURES AFTER_RESPONSES CORPUS NEW_DIRECTORY.
+Use test_audit_attainability.py for targeted capacity tests. All scripts are offline;
+no production retrieval path changes or added runtime. New artifact outputs remain
+ignored. Human judgments are the one pending recommendation dependency.
+
+Growth counterfactual setup initially encountered insufficient common-record
+capacity; the corrected protocol records null stages instead of violating the
+budget. This is a diagnostic correction, not a new fitted ranking configuration.
+
+Subsequent user authorization replaced deferred human judging with two fresh-context model assessments. Both complete raw files are retained; they are not a fresh holdout or human validation. See INDEPENDENT-FULL-EVAL-2026-11-14.md for validated judgments and full candidate comparisons.
+
+
+
+<a id="consolidated-astra-followup-2026-11-14-md"></a>
+
+### Consolidated report: ASTRA-FOLLOWUP-2026-11-14.md
+
+# Following all Astra recommendations — 2026-11-14
+
+All four recommendations in ASTRA-SEARCH-REVIEW-2026-11-14.md were attempted.
+Product retrieval/defaults, confidence gate, model and index remain unchanged.
+No extra cards, calls, concatenated passages or sections were introduced.
+
+## 1. Metric-specific diagnostic repair
+
+`search_divergences` now exports every case/wording, independently of whether a
+case's aggregates changed. Gold and XS targets are separate. XS targets use
+other-scope must_not under the cross-scope category. Each target carries before/
+after first-page success, native card witnesses, exported candidates (including
+path-pool membership, original matcher tiers and quoted obligations), and removal
+stage: returned, absent-from-export, quoted-obligation, selection-or-protection.
+Supporting spans are checked with the shared native Rust section grader across
+all calls, separately from document recall.
+
+Native-successful targets must have an exported candidate unless feature parsing
+explicitly failed. This assertion exposed two dev exceptions: s2b-c-0020 wording0
+`metro:bundling spans`, and s4-c-0020 wording0 `simulator:start free account max
+duration`. Native fallback returns a useful card, while research_features exits
+early with Unknown prefix and no pool. Native card witnesses and feature_parse_error
+are now explicit; these omissions are not ordinary retrieval pool failures.
+
+Cached exports do not record original rewritten-query/fallback admission paths.
+The new diagnostic explicitly reports admission_path=not-recorded-in-cached-export;
+original matcher witnesses are not claimed to establish the actual admission path.
+A future exhaustive path trace would require new native instrumentation/recollection.
+This is a remaining observability limitation, not a fabricated provenance label.
+
+Replayed all1470 dev,1380 h2,1470 scale wordings. Corrected XS target joins confirm
+that previous four h2 losses are selection/protection failures. No search output
+is modified by the offline diagnostic. Existing reason/aggregate calculations
+remain separate from the new per-wording witnesses.
+
+## 2. Preserve native slot multiplicity
+
+One predeclared `native-multiplicity` policy starts with protected-native record
+selection. For any native record that survives, restore all its original cards
+in their original slots; replacements consume only slots from wholly displaced
+records. Extra native spans consume existing capacity, never additional capacity.
+All later calls remain byte-identical. Dev native repeated-record pages69,h2 63,
+scale57. The policy also restores original ordering of surviving single-span
+records, so its intervention is broader than duplicated-page cases.
+
+It passes the six dev aggregate bars and was frozen before transfer. Its six
+aggregate counts are exactly those of protected-native on dev/h2/scale; original
+Hit@1 changes because native slot ordering is restored. It does not cure h2 XS/
+section losses or scale section loss. Thus preserving multiplicity is safe to
+study but is not sufficient, and is not an adopted change.
+
+## 3. Exhaustive POS candidate completeness audit
+
+Added diagnostic-only Store::research_pos_population and pos_population example.
+They use the existing query parser, occurrence pairs, indexed lookup, eligibility
+checks and exact existing bonus scoring, with no LIMIT160. They report raw/eligible
+lookup counts, all positive rows, first160 membership, old distinct top40 and
+full eligible distinct top40. No new collector is used by native search.
+
+All1470 dev wordings audited. **Zero exceeds160; maximum149. Old and full selected
+POS top40 sets match on every wording.** There are2792 positive row occurrences
+across the run. Native complete responses before/after each audit and cached
+feature baseline match exactly, including all cards/spans/hints/text, not counts.
+Thus truncation is not blocking this dev set. Following Astra's stop rule, no POS
+collector replacement or new selector was introduced. This result does not prove
+safety at larger corpora or on common-pair workloads absent from dev. Audit timing
+includes exhaustive lookup/scoring and is not production query latency.
+
+## 4. Query-max sensitivity audit and one justified follow-up
+
+On saved dev features, hold common candidates' lexical/POS/vector/scope inputs
+fixed and remove only unselected candidates under the half-vector selector.
+Two predeclared perturbations: remove a single unselected maximum-defining row,
+and remove all unselected records. Count inversions among different common
+records, distinguishing gold/non-gold flips. This is not a new retrieval score
+and does not change IDF or claim to reproduce real scale corpus growth.
+
+2051 counterfactual trials;592 change pairwise ordering across413 wordings;
+28 change top record among remaining candidates;101 gold/non-gold pair inversions
+across trials. These are correlated counts, not101 independent relevance cases.
+The all-unselected perturbation is a stress test; effects must not be presented
+as measured scale causation. Raw trial types and flips are retained.
+
+Material instability justifies one new dev-only normalization study, not another
+weight sweep: `stable-saturation` uses x/(1+abs(x)) +0.5*max(cosine,0), where
+x=(lexical+POS)/normalizer, then subtracts the existing far7/normalizer. No
+candidate maxima or newly fitted constants. The protected-native evidence rule
+and passage selector remain the preceding frozen policy. The lexical transform
+is monotone and bounded, independent of unrelated candidates. This differs from
+already measured full/half/equal linear weights. It passes dev and was frozen
+before reused transfer diagnostics. It recovers scale recall but loses XS,
+no-gold and section; h2 XS and no-gold also fall. Not adopted or retuned.
+
+## Complete native grader results
+
+Each row includes gold-any/first, XS-any/first, no-gold and sections. Hit@1 is
+original-wording only. All transfer sets are reused exploratory diagnostics,
+not independent holdout confirmation. Neither candidate clears every bar.
+
+### dev
+
+| Policy | Native grader | Hit@1 |
+|---|---|---|
+| baseline | any 412/439 first 354/439 xs 31/42 25/42; empty 35/51 section 55/73 | 199 |
+| native-multiplicity | any 418/439 first 370/439 xs 31/42 26/42; empty 36/51 section 56/73 | 196 |
+
+### h2
+
+| Policy | Native grader | Hit@1 |
+|---|---|---|
+| baseline | any 341/354 first 298/354 xs 55/62 48/62; empty 54/106 section 237/271 | 230 |
+| native-multiplicity | any 343/354 first 313/354 xs 53/62 49/62; empty 54/106 section 236/271 | 236 |
+
+### scale
+
+| Policy | Native grader | Hit@1 |
+|---|---|---|
+| baseline | any 388/439 first 316/439 xs 28/42 22/42; empty 31/51 section 51/73 | 180 |
+| native-multiplicity | any 389/439 first 317/439 xs 28/42 22/42; empty 31/51 section 50/73 | 182 |
+
+### stable-dev
+
+| Policy | Native grader | Hit@1 |
+|---|---|---|
+| baseline | any 412/439 first 354/439 xs 31/42 25/42; empty 35/51 section 55/73 | 199 |
+| stable-saturation | any 419/439 first 374/439 xs 31/42 26/42; empty 36/51 section 57/73 | 206 |
+
+### stable-h2
+
+| Policy | Native grader | Hit@1 |
+|---|---|---|
+| baseline | any 341/354 first 298/354 xs 55/62 48/62; empty 54/106 section 237/271 | 230 |
+| stable-saturation | any 343/354 first 309/354 xs 51/62 46/62; empty 52/106 section 237/271 | 231 |
+
+### stable-scale
+
+| Policy | Native grader | Hit@1 |
+|---|---|---|
+| baseline | any 388/439 first 316/439 xs 28/42 22/42; empty 31/51 section 51/73 | 180 |
+| stable-saturation | any 396/439 first 327/439 xs 26/42 19/42; empty 30/51 section 50/73 | 176 |
+
+## Reproduction and disposition
+
+- `native_multiplicity_search.py FEATURES NEW_OUTPUT`, then existing native scorer
+  helper `score_search_iteration.py CORPUS NEW_OUTPUT MATCHING_STORE`.
+- `pos_population STORE CASES FEATURES NEW_OUTPUT_FILE` built through Nix; dev
+  features define the exact audited population and scopes. Existing store must
+  match corpus. Audit does not manufacture author evidence or new embeddings.
+- `audit_max_sensitivity.py FEATURES CASES NEW_OUTPUT_FILE`.
+- `stable_score_search.py FEATURES NEW_OUTPUT`, then the same native scorer.
+- `search_divergences CORPUS EXPORT` reads features.jsonl and joint.jsonl alias;
+  output includes wording_witnesses. Alias manifests distinguish the policy.
+
+Raw outputs, frozen selections, complete native parity checks, per-wording
+witnesses, counterfactuals and build/check logs are under ignored
+`evals/output/astra-followup-20261114/`. No corpus or output is staged/committed.
+The POS audit's exhaustive bodies/index work is diagnostic-only; it adds no
+ordinary-query cost or persistent index. Every research card remains an existing
+native candidate passage with exact native per-query/per-call budget. These
+experiments do not establish improved true silence. No fresh blind claim, new
+encoder, reranker, RRF, network path or product flag was added.
+
+The actionable discovery is normalization instability and corrected metric-specific
+evidence attribution. POS truncation and native span multiplicity do not explain
+the dev barrier. A qualifying transferable search adjustment remains unproven.
+
+Final validation: formatting, all-target/all-feature Clippy, all-feature workspace tests, LLP reference checks, Nix packaging and diff whitespace pass. Rebuilt diagnostics replay all4320 wordings. Both selectors reproduce their saved responses on4320 wordings each, preserving exact per-call card counts and all later calls. Existing upstream libSQL warnings remain; workspace Clippy succeeds.
+
+Second Astra review qualification: multiplicity changes selected record sets on9/16/8 dev/h2/scale pages despite identical aggregate counts. Stable saturation changes lexical/vector/scope tradeoffs together and does not isolate removal of candidate maxima. Remaining section-loss witnesses are displaced records, not missing retained spans. See ASTRA-FOLLOWUP-REVIEW-2026-11-14.md for read-only joins and next measurements.
+
+
+
+<a id="consolidated-constrained-fusion-2026-11-15-md"></a>
+
+### Consolidated report: CONSTRAINED-FUSION-2026-11-15.md
+
+# Admission-constrained, position-aware fusion — 2026-11-15
+
+Exploratory study; accepted search is unchanged. All cases are reused. Protocol:
+pre-score declarations (historical artifact).
+
+## Mechanism and new evidence
+
+The boundary audit found 16 lost native-correct cross-scope first-page wording
+witnesses under proof-joint fusion; all were native tier2, and14 received an
+incoming tier3 record. This motivates preserving each incumbent's source
+admission ceiling while allowing global assignment, rather than another score
+normalization or the previously closed global tier sort/greedy dominance trial.
+The original scope penalty remains7; it is not removed or tuned here.
+
+The native Rust selector in `evals/src/constrained_fusion.rs` solves record-to-slot
+assignment over at most five free slots using a bitmask DP. A record may fill only
+one slot; stronger native records, address licenses, unaligned/unknown proofs,
+duplicates and query-resolution changes remain protected. Incoming rows require
+an equal-or-better A/B tier, or the matcher-family-specific equivalent in its
+control. Score is the existing exploratory lexical/POS plus half-vector joint
+score, with the unchanged scope penalty. The final objective discounts utility
+by output position using fixed DCG discounts, not reciprocal rank fusion.
+No learned model, new sections, encoder, reranker or product flag is introduced.
+
+Six predeclared objectives/constraints were tested on both original and strictly
+budget-matched sentence pools:12 configurations. Tier-profile-first controls lose
+gold-any. Score-first unordered assignment preserves the six dev counts but drops
+actual Hit@1 from199 to157: optimizing a set does not optimize its ordering. This
+was rejected before h2. Position-aware assignment yields412/357 gold,31/28 XS,
+35 no-gold,55 section and204 Hit@1, against412/354,31/25,35,55 and199. Both pools
+and constraint variants tie these counts; declaration order selects original-pool
+tier-ranked-assignment. Full outputs and source hashes were frozen before transfer.
+
+## Frozen transfer and disposition
+
+Numbers are case counts; gold-any allows all three wordings, gold-first is first
+wording recall across the page, and Hit@1 is actual rank one on that wording.
+
+| Suite | Gold any native→candidate | Gold first | XS any | XS first | No-gold | Section | Hit@1 | MRR@5 |
+|---|---|---|---|---|---|---|---|---|
+| dev |412→412|354→357|31→31|25→28|35→35|55→55|199→204|.597950→.606606|
+| h2 reused |341→341|298→300|55→55|48→49|54→55|237→237|230→228|.727872→.728437|
+| scale dev |388→388|316→315|28→30|22→25|31→32|51→51|180→180|.533485→.534055|
+
+This is a positive distinction from earlier fusion: the recorded six-count dev
+and h2 selection gates pass. It is **not an adopted or universal improvement**:
+h2 actual top1 loses2, scale first-wording recall loses1, and h2 is reused.
+No coefficient or mask repair is performed from these transfer results. True
+silence remains0/10 dev and2/45 h2; the no-gold count is not true silence.
+
+H2 rank-one gains: h2a1-c-0048, h2a1-c-0075, h2a2-c-0079, s7-c-0049.
+Losses: h2a1-c-0036, h2a1-c-0074, h2a2-c-0035, h2a3-c-0023,
+h2a3-c-0027, h2a3-c-0067. These paired changes must accompany any aggregate claim.
+Scale rank-one has six gains and six losses; equality does not imply page parity.
+
+## Correctness, cost and reproduction
+
+Independent Python uses exact rational sums of the computed binary float64 row
+utilities; Rust uses floating expansions for exact sum comparison. Initial naive
+summation produced four complete-response mismatches per policy from reordered
+equal sums. This was fixed before selection/transfer; rejected outputs remain in
+the ignored measurement directory. There is no epsilon, coefficient adjustment,
+embedding quantization or change to encoder arithmetic. See
+[Python Fraction](https://docs.python.org/3/library/fractions.html) and
+[robust arithmetic](https://www.cs.cmu.edu/~quake/robust.html) for the numerical
+principle, not retrieval efficacy.
+
+DP uses at most32 states per record and at most5 slots, with candidate-local
+proofs. Index size is unchanged. This is an eval-package implementation; exporting
+features/proofs incurs redundant diagnostic work, so no integrated latency pass
+is claimed. Product integration would need shared snapshot/feature plumbing and
+full neutral/performance checks. Do not call a diagnostic replay product latency.
+
+`constrained_fusion FEATURES TERMS PROOFS NEW_OUTPUT POLICIES` replays native
+selection; `constrained_fusion.py FEATURES PROOFS NEW_OUTPUT` is the independent
+prototype. Build through the flake. Full-response parity is checked for all1470
+dev wordings on both pools and for the frozen1380 h2/1470 scale responses.
+Frozen source, output hashes, native scorer pages, all failed controls and paired
+summaries are retained under `evals/output/constrained-fusion-20261115/`.
+
+Next evidence should distinguish the rank-one losses from gains with independently
+judged query intent and source relevance, then test one declared objective on fresh
+unseen queries. More h2-driven discounts would be tuning, not confirmation.
+
+Final validation: `cargo fmt --check`, workspace/all-target/all-feature Clippy
+with `-D warnings`, workspace/all-feature tests, `nix build`, LLP reference
+validation and `git diff --check` pass through the flake. The36 Python experiment
+tests pass. Existing vendored libSQL lifetime warnings remain; no vendor edits.
+Four max-five current-prototype response files also match all1470 measured dev
+responses each. Corpus-dependent ignored tests are not claimed as executed.
+
+
+
+<a id="consolidated-display-and-head-2026-11-15-md"></a>
+
+### Consolidated report: DISPLAY-AND-HEAD-2026-11-15.md
+
+# Display evidence alignment and native-head assignment — 2026-11-15
+
+Exploratory continuation, not product adoption. Governing protocols were written
+before scoring: `DISPLAY-PROOF-HYPOTHESES-2026-11-15.md` and
+`HEAD-ANCHORED-HYPOTHESES-2026-11-15.md`. No h2 coefficient fitting, larger pool,
+extra card/section, model or runtime. Five remains a maximum. These particular
+ranking controls retain native counts; variable-count studies remain separate.
+
+## Displayed-source hypothesis
+
+Original constrained assignment can score one block but retain a native card
+showing another. Previous independent record/passage scoring did not combine
+single displayed-source evidence with per-slot assignment qualification. Two new
+arms use displayed utility, or displayed utility plus displayed qualification.
+Maxima/strong guards are still computed on the complete original pool. Exact
+1470-response control equality with the prior frozen implementation passes.
+Both new arms change28 dev responses; six counts and Hit@1 remain identical to
+original constrained assignment (412/357 gold,31/28 XS,35/55 no-gold/section,
+204 Hit@1). Freeze displayed-utility by declaration order before transfer.
+
+Reused h2 retains six count gains but Hit@1 is227 versus native230 and previous
+candidate228. MRR .726318 versus native .727872. Scale gold388/315, XS30/25,
+no-gold32, section51: same primary failures as before. This does not cure transfer.
+The unselected displayed-proof outputs were generated by the generic replay but
+not graded on transfer or used for selection. No claim of independent validation.
+
+## Native-head hypothesis and result
+
+Existing source constraints establish admission, not pairwise rank-one
+superiority. Preserve native slot0 and its record while solving the same exact
+position-aware tier-constrained assignment over the remaining slots. This is a
+new conservative global-allocation control; earlier strong-native protection did
+not lock every first card. It deliberately cannot improve a wrong native head.
+One declared arm; freeze after qualifying dev and before descriptive transfer.
+
+| Suite | Gold any native→head | Gold first | XS any | XS first | No-gold | Section | Actual Hit@1 |
+|---|---|---|---|---|---|---|---|
+| dev |412→412|354→357|31→31|25→28|35→35|55→55|199→199|
+| reused h2 |341→341|298→300|55→55|48→49|54→55|237→237|230→230|
+| scale dev |388→387|316→314|28→30|22→25|31→32|51→51|180→180|
+
+Native rank one is preserved structurally, not statistically validated as better.
+This solves the top1 regression and clears historical dev/h2 six-count gates,
+but scale gold-any and first-wording recall still regress. It is not viable under
+a universal no-fall bar, and no production default is changed. True silence is
+unchanged. The h2/scale sets are reused, not blind confirmation.
+
+Scale first-wording has five gains and seven losses. Lost queries include
+`ArrayBuffer Uint8Array signed bytes`, `web browser auth callback iOS`,
+`signing package upgrade PEM`, `apps/launch Jest command`, archive inspection,
+lockfile installation and credential handling. Gains include native compatibility,
+Android device builds and token signing. Keep both sides: this is target-record
+competition among similarly topical technical notes, not a simple keyword-query
+versus natural-language-query split. All paired record IDs and output pages are
+retained in `evals/output/display-proof-20261115/scale-head-divergences.json`.
+This descriptive overlap does not establish a causal feature or authorize a
+query-specific exception. More discounted-score tuning is not justified.
+
+## Implementation and validation boundary
+
+`display_proof.py` is an isolated independent prototype with three corpus-free
+regressions; all39 Python experiment tests pass. `head_anchored.py` is the
+independent allocation prototype. Native `select_head` in
+`evals/src/constrained_fusion.rs` shares the existing exact-sum allocator through
+an internal keep-head argument, not a product runtime knob. The eval-only replay
+accepts `head-anchored`; accepted `select` delegates with false and is unchanged.
+A candidate at native slot0 is protected using original-reference identity, and
+its record is excluded from other slots. Later native calls remain unchanged.
+No new persistent index bytes. Native/prototype complete response parity is
+required on1470 dev,1380 h2 and1470 scale wordings. Diagnostic materialization is
+not production latency and there is no fresh blind claim.
+
+Reproduction: `head_anchored.py FEATURES PROOFS NEW_OUTPUT`; native
+`constrained_fusion FEATURES TERMS PROOFS NEW_OUTPUT head-anchored`;
+`score_search_iteration.py CORPUS OUTPUT STORE`, with `--all` for h2.
+Freeze JSONs record source/output hashes before transfer. Failed invocation/setup
+attempts produced no scored results and were not treated as configurations.
+
+The next unresolved problem is lower-page competing-record selection at scale.
+The native head anchor is a useful isolation control, not a solution to that
+problem. Independent graded source relevance at the displacement boundary is
+needed before inventing a distinguishing feature; labels from these losses
+must not become hardcoded exceptions. Original product search remains unchanged.
+
+Validation completed: full native/prototype response equality on4320 wordings;
+rank-one card identity checked on every nonempty original page. Formatting,
+workspace Clippy, workspace/all-feature tests, targeted native head-preservation
+assertions,39 Python tests, LLP references and diff whitespace checks pass.
+Existing vendored libSQL lifetime warnings are unchanged.
+
+
+
+<a id="consolidated-independent-full-eval-2026-11-14-md"></a>
+
+### Consolidated report: INDEPENDENT-FULL-EVAL-2026-11-14.md
+
+# Independent model judging and full frozen-policy comparison — 2026-11-14
+
+No candidate passes the existing retrieval adoption bars across the required dev
+and reused h2 suites. Full scaled measurements show additional tradeoffs, not a
+universal improvement. All product defaults and thresholds remain unchanged.
+
+## Scope and evaluation hygiene
+
+Three frozen candidates: protected-native, native-multiplicity, stable-saturation.
+Native is the baseline. All preserve exact per-query/per-call card counts and
+unchanged later calls, with no concatenation or extra sections. Python and Rust
+complete-response parity was checked on all six retrieval suites before neutral
+comparison:5908 wording responses per policy,17724 candidate responses total.
+No judge result was used to retune a candidate.
+
+A scale-dev neutral self-retrieval probe exposed an undefined case in version1:
+the native five-card page has only four distinct records, and the quote-compatible
+export cannot supply a fifth distinct replacement. Version1 panics rather than
+producing a gate table. The pre-repair failed log is retained. Version2 conservatively
+returns the complete native response whenever slot filling is impossible; it adds
+no candidate, content, coefficient or label-dependent exception. A targeted unit
+test checks exact native multi-span preservation. All5908 retrieval responses per
+policy remain identical after this completeness repair. Its guard never triggers
+in the full dev/h2 neutral traces, so those completed tables are unchanged. Scaled
+candidate replays use version2; guard audits are retained. This is explicitly a
+new completeness configuration, not a hidden repair of a failed quality metric.
+
+Retrieval grading uses the native full-call scorer on every wording of the standard
+q4 dev, h2 all, scale-q4 dev, scale-h2 all, synthetic all and historical matched
+populations. Dev/h2/scale-dev/synthetic replay earlier validated features; matched
+and scale-h2 collect fresh features with native parity on every query. Matched
+reconstructs the1243-record/53-case historical job, validating source records and
+questions. Matched159 and scale-h2 1380 complete native responses equal their
+archived comparison calls, not just counts. Matched/scale corpora and outputs
+remain ignored; nothing is committed, pushed or published.
+
+All data are reused/tuned development material, including repeatedly inspected h2.
+Scale reuses questions and matched is a subset. The suites are not independent
+replicates, so no pooled gain, fresh holdout or new adoption confirmation is claimed.
+The label-access attainability oracle stays diagnostic/dev-only and is excluded
+from this candidate comparison.
+
+## Independent masked model assessments
+
+Two fresh-context sub-agents each assessed all60 pairs using only the masked
+packet, rubric and blank template. They were not shown case/system outcomes,
+private keys, prior results or each other's assessments. Source access was
+restricted by prompt, not a filesystem security boundary. Both reported compliant
+reads. They use the same inherited model, so context independence does not imply
+independent model-family errors or human validation. Original byte-span passages,
+not truncated previews, were shown. Both raw files were frozen and hashed before
+parent analysis unmasked directions/outcomes. Quotes, enums, IDs and complete
+template coverage passed validation. Raw judgments are not overwritten.
+
+Assessors saw the original task as well as the shortened query and scopes. Search
+receives the query/context, not the benchmark task. A judged relevance distinction
+may therefore depend on intent omitted from the search input; these judgments
+cannot isolate a missing scoring feature from an underspecified query. No fresh
+query-only judging control was run, and no feature-insufficiency claim is made.
+
+Exact preference agreement:55/60 (91.7%); Cohen's kappa 0.871. Consensus prefers incoming24, displaced18, neither13; five pairs disagree.
+No adjudication or majority manufacture was applied. In sampled gain cases both
+judges prefer incoming19/20. In loss cases judges prefer displaced17/20 and18/20.
+The sample intentionally has20 gains,20 losses,20 unchanged controls, not deployment
+proportions:24 versus18 is NOT an unbiased global system win. Question/corpus
+families and same-model errors further limit uncertainty claims.
+
+The judges agree on answer-support ratings for115/120 cards. A descriptive feature
+audit finds15 coarse tier/coverage/scope/score buckets containing both complete
+support and no support. Of42 consensus directional preferences,23 favor the higher
+selected-span score and19 the lower. Coarsening, cross-query scale and span-versus-
+record-score differences prevent interpreting this as proof of feature insufficiency.
+It does suggest that another global threshold is not justified by these judgments
+alone. Cards are leads to records: lack of direct answer support in a shown span
+does not by itself invalidate the original record-retrieval judgment or justify
+abstention. No new classifier or rejection gate was fitted.
+
+Raw assessments remain under evals/output/astra-boundary-20261114/judging/;
+validation, direction comparisons, support features and raw hashes are in the
+current output's judgment-comparison.json and judgment-feature-audit.json.
+
+## Complete retrieval results
+
+`any/first` means gold found by any wording / original wording in the FIRST PAGE'S
+top five. XS uses other-scope must_not targets. No-gold is the native mixed outcome,
+not true silence. Section is the native exact original-span grader. Hit@1 and MRR
+use original-wording first-page rank. Case totals/denominators remain explicit.
+
+### dev
+
+| Policy | Native grader | Hit@1 | MRR@5 |
+|---|---|---|---|
+| baseline | any 412/439 first 354/439 xs 31/42 25/42; empty 35/51 section 55/73 | 199/439 | 0.5979 |
+| protected-native | any 418/439 first 370/439 xs 31/42 26/42; empty 36/51 section 56/73 | 202/439 | 0.6140 |
+| native-multiplicity | any 418/439 first 370/439 xs 31/42 26/42; empty 36/51 section 56/73 | 196/439 | 0.6039 |
+| stable-saturation | any 419/439 first 374/439 xs 31/42 26/42; empty 36/51 section 57/73 | 206/439 | 0.6212 |
+
+### h2
+
+| Policy | Native grader | Hit@1 | MRR@5 |
+|---|---|---|---|
+| baseline | any 341/354 first 298/354 xs 55/62 48/62; empty 54/106 section 237/271 | 230/354 | 0.7279 |
+| protected-native | any 343/354 first 313/354 xs 53/62 49/62; empty 54/106 section 236/271 | 239/354 | 0.7584 |
+| native-multiplicity | any 343/354 first 313/354 xs 53/62 49/62; empty 54/106 section 236/271 | 236/354 | 0.7532 |
+| stable-saturation | any 343/354 first 309/354 xs 51/62 46/62; empty 52/106 section 237/271 | 231/354 | 0.7464 |
+
+### scale-dev
+
+| Policy | Native grader | Hit@1 | MRR@5 |
+|---|---|---|---|
+| baseline | any 388/439 first 316/439 xs 28/42 22/42; empty 31/51 section 51/73 | 180/439 | 0.5335 |
+| protected-native | any 389/439 first 317/439 xs 28/42 22/42; empty 31/51 section 50/73 | 179/439 | 0.5330 |
+| native-multiplicity | any 389/439 first 317/439 xs 28/42 22/42; empty 31/51 section 50/73 | 182/439 | 0.5344 |
+| stable-saturation | any 396/439 first 327/439 xs 26/42 19/42; empty 30/51 section 50/73 | 176/439 | 0.5364 |
+
+### scale-h2
+
+| Policy | Native grader | Hit@1 | MRR@5 |
+|---|---|---|---|
+| baseline | any 325/354 first 275/354 xs 48/62 41/62; empty 47/106 section 225/271 | 211/354 | 0.6712 |
+| protected-native | any 328/354 first 283/354 xs 50/62 47/62; empty 49/106 section 223/271 | 210/354 | 0.6750 |
+| native-multiplicity | any 328/354 first 283/354 xs 50/62 47/62; empty 49/106 section 224/271 | 214/354 | 0.6844 |
+| stable-saturation | any 323/354 first 276/354 xs 47/62 41/62; empty 47/106 section 223/271 | 203/354 | 0.6595 |
+
+### synthetic
+
+| Policy | Native grader | Hit@1 | MRR@5 |
+|---|---|---|---|
+| baseline | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 31/49 | 0.6735 |
+| protected-native | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34/49 | 0.7041 |
+| native-multiplicity | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 31/49 | 0.6735 |
+| stable-saturation | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34/49 | 0.7041 |
+
+### matched
+
+| Policy | Native grader | Hit@1 | MRR@5 |
+|---|---|---|---|
+| baseline | any 45/48 first 40/48 xs 4/4 4/4; empty 4/5 section 9/10 | 21/48 | 0.6094 |
+| protected-native | any 45/48 first 43/48 xs 4/4 4/4; empty 4/5 section 9/10 | 19/48 | 0.5979 |
+| native-multiplicity | any 45/48 first 43/48 xs 4/4 4/4; empty 4/5 section 9/10 | 21/48 | 0.6247 |
+| stable-saturation | any 45/48 first 43/48 xs 4/4 4/4; empty 4/5 section 9/10 | 20/48 | 0.6066 |
+
+### Interpretation and historical metric correction
+
+All three improve some dev retrieval counts, but h2 cross-scope/section/no-gold
+regressions prevent adoption. Protected-native loses h2 XS-any and one section;
+native-multiplicity retains those aggregate losses. Stable saturation loses h2
+XS-any, XS-first and no-gold. Scaled h2 protected/multiplicity improve multiple
+recall metrics but lose two/one sections respectively; saturation regresses further.
+Original rank-one results also vary by suite; none dominates.
+
+The starting evidence called matched40/48 (Linn) versus34/48 (Engrim) top1. In the
+archived comparison those are Stats.first, which counts original-wording top5.
+The exactly matching archived native calls have actual first-card Hit@1=21/48,
+not40/48. This is a metric-name correction, not a new regression. Historical Engrim
+MRR/top5 evidence stays distinct from the current actual Hit@1 calculation; qmd
+is not rerun or assigned a new rank-one number here.
+
+True silence is unchanged by construction across candidates: dev0/10, h2 2/45,
+scale-dev0/10, scale-h2 0/45; consult each summary for matched/synthetic populations.
+Exact native card counts forbid removing weak cards or filling empty pages in this
+experiment. Synthetic14 empty native pages therefore stay empty. This protocol
+cannot demonstrate an abstention improvement and does not close a separately
+authorized no-expansion rejection study.
+
+### Historical Engrim comparison, not a new Engrim run
+
+Complete archived native calls match the new baseline on all5908 wordings across
+all six populations. Thus archived Engrim quality can be compared on those exact
+populations, while remaining explicitly historical. Encoder, chunking, scope and
+output cardinality differ. In particular Engrim can fill native-empty synthetic
+pages, which these strict-budget policies are forbidden to fill. No new latency,
+indexing or section result is assigned to Engrim here.
+
+The historical six-rate average uses MRR as its sixth component, not section
+accuracy. It is not the six-count adoption rule used above and is not optimized.
+
+| Suite | Archived Engrim gold-any | Original Hit@5 | Actual Hit@1 | MRR@5 |
+|---|---|---|---|---|
+| dev | 390/439 | 333/439 | 198/439 | 0.5672 |
+| h2 | 320/354 | 281/354 | 148/354 | 0.5524 |
+| scale-dev | 356/439 | 287/439 | 180/439 | 0.5043 |
+| scale-h2 | 277/354 | 239/354 | 151/354 | 0.5156 |
+| synthetic | 49/49 | 49/49 | 45/49 | 0.9531 |
+| matched | 39/48 | 34/48 | 21/48 | 0.5372 |
+
+
+## Complete neutral fixed-loop gate tables
+
+Every corpus uses its full prescribed case selection, plus independent rebuild,
+location, self-retrieval, exposure and scratch-forget queries. State-specific
+feature capture runs native execution on every request, verifying complete call
+parity. Identical requests on the same unchanged store may reuse diagnostic
+features; store identity/request key and a forget epoch guard that eval cache.
+The first dev capture predates that memoization and collects each request afresh.
+Streaming replay validates every request and rejects missing/extra rows. Before/
+after-forget captures are distinct, as are original/rebuilt stores. Native replay
+must reproduce the complete captured gate table exactly. All four did so.
+
+Research replay evaluates the frozen policy on those captured states while the
+neutral loop still performs its independent scratch rebuild, integrity and forget
+operations. This is full fixed-loop replay, not a production implementation or a
+new end-to-end agent benchmark. No empty selection or small fixture substitutes
+for these tables. The ordinary neutral grader's thresholds are unchanged.
+
+Neutral Q4 additionally accepts its declared alternate-section/equivalence rules;
+it is not the primary exact-span predicate. A neutral section gain therefore does
+not override a primary section-count regression or qualify a retrieval change.
+All captured first-loop native calls also match the separate retrieval references
+on all5700 standard-suite wordings. An additional before/after-forget target audit
+finds every probe target before deletion and zero returned target IDs after deletion
+for all four policies. That does not explain or waive the composite G4 failures.
+
+C2 for candidates adds diagnostic collector time (which includes redundant native
+queries) to selector time. Repeated requests may use their first collector sample.
+It excludes replay parsing and is NOT production latency or a controlled latency
+head-to-head. Native timing was sampled during capture with other diagnostic/build
+activity in some phases. C1 depends on the frozen research renderer, which renders
+first-call cards differently from native text/hints; do not attribute lower token
+cost solely to ranking. Full tables are retained, but these timing/presentation
+limitations prevent a production performance acceptance claim.
+
+### Neutral dev
+
+| Gate (fixed requirement; n) | Native | Protected | Multiplicity | Saturation |
+|---|---|---|---|---|
+| G1 eligibility violations (<= 0; —) | 0.000 pass | 0.000 pass | 0.000 pass | 0.000 pass |
+| G2 must-not rate (<= 0.02; —) | 0.014 pass | 0.014 pass | 0.014 pass | 0.016 pass |
+| G3 location invariance (>= 1; 490) | 1.000 pass | 1.000 pass | 1.000 pass | 1.000 pass |
+| G4 integrity and forget (>= 1; —) | 0.000 FAIL | 0.000 FAIL | 0.000 FAIL | 0.000 FAIL |
+| G5 determinism after rebuild (>= 1; —) | 1.000 pass | 1.000 pass | 1.000 pass | 1.000 pass |
+| Q1 empty-correct (>= 0.9; 51) | 0.686 FAIL | 0.706 FAIL | 0.706 FAIL | 0.706 FAIL |
+| Q2 core found (>= 0.85; 198) | 0.985 pass | 0.990 pass | 0.990 pass | 0.990 pass |
+| Q3 overall found (>= 0.75; 348) | 0.980 pass | 0.989 pass | 0.989 pass | 0.989 pass |
+| Q4 section hit (>= 0.75; 73) | 0.822 pass | 0.822 pass | 0.822 pass | 0.836 pass |
+| Q5 lateral found (>= 0.6; 39) | 1.000 pass | 1.000 pass | 1.000 pass | 1.000 pass |
+| Q6 paraphrase found (>= 0.35; 55) | 0.945 pass | 0.945 pass | 0.945 pass | 0.945 pass |
+| C1 tokens median (<= 600; —) | 176.000 pass | 171.000 pass | 171.000 pass | 171.000 pass |
+| C1 tokens p95 (<= 1500; —) | 287.000 pass | 275.000 pass | 275.000 pass | 274.000 pass |
+| C2 latency p95 ms (<= 50; —) | 8.770 pass | 25.600 pass | 25.600 pass | 25.600 pass |
+| R1 self-retrieval@5 (>= 0.9; 1070) | 0.987 pass | 0.989 pass | 0.989 pass | 0.989 pass |
+| R2 maximum exposure share (<= 0.1; —) | 0.229 FAIL | 0.212 FAIL | 0.212 FAIL | 0.217 FAIL |
+
+### Neutral h2
+
+| Gate (fixed requirement; n) | Native | Protected | Multiplicity | Saturation |
+|---|---|---|---|---|
+| G1 eligibility violations (<= 0; —) | 0.000 pass | 0.000 pass | 0.000 pass | 0.000 pass |
+| G2 must-not rate (<= 0.02; —) | 0.037 FAIL | 0.041 FAIL | 0.041 FAIL | 0.043 FAIL |
+| G3 location invariance (>= 1; 460) | 1.000 pass | 1.000 pass | 1.000 pass | 1.000 pass |
+| G4 integrity and forget (>= 1; —) | 0.000 FAIL | 0.000 FAIL | 0.000 FAIL | 0.000 FAIL |
+| G5 determinism after rebuild (>= 1; —) | 1.000 pass | 1.000 pass | 1.000 pass | 1.000 pass |
+| Q1 empty-correct (>= 0.9; 106) | 0.509 FAIL | 0.509 FAIL | 0.509 FAIL | 0.491 FAIL |
+| Q2 core found (>= 0.85; 307) | 0.993 pass | 0.993 pass | 0.993 pass | 0.993 pass |
+| Q3 overall found (>= 0.75; 267) | 0.981 pass | 0.985 pass | 0.985 pass | 0.989 pass |
+| Q4 section hit (>= 0.75; 271) | 0.900 pass | 0.908 pass | 0.908 pass | 0.904 pass |
+| Q5 lateral found (>= 0.6; 40) | 1.000 pass | 1.000 pass | 1.000 pass | 1.000 pass |
+| Q6 paraphrase found (>= 0.35; 48) | 0.958 pass | 0.958 pass | 0.958 pass | 0.958 pass |
+| C1 tokens median (<= 600; —) | 180.000 pass | 176.000 pass | 176.000 pass | 175.000 pass |
+| C1 tokens p95 (<= 1500; —) | 299.000 pass | 289.000 pass | 289.000 pass | 286.000 pass |
+| C2 latency p95 ms (<= 50; —) | 9.060 pass | 26.060 pass | 26.060 pass | 26.060 pass |
+| R1 self-retrieval@5 (>= 0.9; 1138) | 0.989 pass | 0.989 pass | 0.989 pass | 0.988 pass |
+| R2 maximum exposure share (<= 0.1; —) | 0.429 FAIL | 0.398 FAIL | 0.400 FAIL | 0.398 FAIL |
+
+### Neutral scale-dev
+
+| Gate (fixed requirement; n) | Native | Protected | Multiplicity | Saturation |
+|---|---|---|---|---|
+| G1 eligibility violations (<= 0; —) | 0.000 pass | 0.000 pass | 0.000 pass | 0.000 pass |
+| G2 must-not rate (<= 0.02; —) | 0.014 pass | 0.014 pass | 0.014 pass | 0.014 pass |
+| G3 location invariance (>= 1; 490) | 1.000 pass | 1.000 pass | 1.000 pass | 1.000 pass |
+| G4 integrity and forget (>= 1; —) | 0.000 FAIL | 0.000 FAIL | 0.000 FAIL | 0.000 FAIL |
+| G5 determinism after rebuild (>= 1; —) | 1.000 pass | 1.000 pass | 1.000 pass | 1.000 pass |
+| Q1 empty-correct (>= 0.9; 51) | 0.608 FAIL | 0.608 FAIL | 0.608 FAIL | 0.588 FAIL |
+| Q2 core found (>= 0.85; 198) | 0.970 pass | 0.965 pass | 0.965 pass | 0.975 pass |
+| Q3 overall found (>= 0.75; 348) | 0.957 pass | 0.948 pass | 0.948 pass | 0.960 pass |
+| Q4 section hit (>= 0.75; 73) | 0.795 pass | 0.808 pass | 0.808 pass | 0.808 pass |
+| Q5 lateral found (>= 0.6; 39) | 0.949 pass | 0.949 pass | 0.949 pass | 0.949 pass |
+| Q6 paraphrase found (>= 0.35; 55) | 0.891 pass | 0.891 pass | 0.891 pass | 0.891 pass |
+| C1 tokens median (<= 600; —) | 185.000 pass | 177.000 pass | 177.000 pass | 176.000 pass |
+| C1 tokens p95 (<= 1500; —) | 310.000 pass | 305.000 pass | 305.000 pass | 304.000 pass |
+| C2 latency p95 ms (<= 50; —) | 130.810 FAIL | 236.290 FAIL | 236.300 FAIL | 236.290 FAIL |
+| R1 self-retrieval@5 (>= 0.9; 2061) | 0.965 pass | 0.971 pass | 0.971 pass | 0.970 pass |
+| R2 maximum exposure share (<= 0.1; —) | 0.103 FAIL | 0.097 pass | 0.097 pass | 0.097 pass |
+
+### Neutral scale-h2
+
+| Gate (fixed requirement; n) | Native | Protected | Multiplicity | Saturation |
+|---|---|---|---|---|
+| G1 eligibility violations (<= 0; —) | 0.000 pass | 0.000 pass | 0.000 pass | 0.000 pass |
+| G2 must-not rate (<= 0.02; —) | 0.035 FAIL | 0.035 FAIL | 0.035 FAIL | 0.035 FAIL |
+| G3 location invariance (>= 1; 460) | 1.000 pass | 1.000 pass | 1.000 pass | 1.000 pass |
+| G4 integrity and forget (>= 1; —) | 0.000 FAIL | 0.000 FAIL | 0.000 FAIL | 0.000 FAIL |
+| G5 determinism after rebuild (>= 1; —) | 1.000 pass | 1.000 pass | 1.000 pass | 1.000 pass |
+| Q1 empty-correct (>= 0.9; 106) | 0.443 FAIL | 0.462 FAIL | 0.462 FAIL | 0.443 FAIL |
+| Q2 core found (>= 0.85; 307) | 0.971 pass | 0.977 pass | 0.977 pass | 0.967 pass |
+| Q3 overall found (>= 0.75; 267) | 0.959 pass | 0.966 pass | 0.966 pass | 0.963 pass |
+| Q4 section hit (>= 0.75; 271) | 0.867 pass | 0.867 pass | 0.871 pass | 0.863 pass |
+| Q5 lateral found (>= 0.6; 40) | 0.975 pass | 1.000 pass | 1.000 pass | 0.975 pass |
+| Q6 paraphrase found (>= 0.35; 48) | 0.896 pass | 0.896 pass | 0.896 pass | 0.854 pass |
+| C1 tokens median (<= 600; —) | 188.000 pass | 181.000 pass | 181.000 pass | 179.000 pass |
+| C1 tokens p95 (<= 1500; —) | 329.000 pass | 323.000 pass | 323.000 pass | 322.000 pass |
+| C2 latency p95 ms (<= 50; —) | 151.950 FAIL | 245.110 FAIL | 245.110 FAIL | 245.110 FAIL |
+| R1 self-retrieval@5 (>= 0.9; 2302) | 0.964 pass | 0.969 pass | 0.969 pass | 0.969 pass |
+| R2 maximum exposure share (<= 0.1; —) | 0.332 FAIL | 0.282 FAIL | 0.285 FAIL | 0.278 FAIL |
+
+## Disposition and validation
+
+No universal improvement, qualifying adoption or silence solution is established.
+Retain the candidates and paired gains for investigation rather than discarding
+hybrid competition wholesale. Model judging validates many actual useful/harmful
+swaps but supplies neither an unbiased system win nor fresh confirmation.
+
+Existing baseline neutral failures remain visible; neutral comparisons never
+authorize retuning fixed gates or replace LLP0005's retrieval adoption rule.
+The full per-case scores, complete responses, paired gain/loss IDs, trace manifests,
+all gate tables and raw judgments are in ignored independent-full-20261114/.
+Captured/replay source, exact budgets, missing/extra request rejection and raw
+judgment hashes are reviewable. The eval-only policy ports match the earlier
+Python definitions completely. Ordinary product search/ingest behavior and model
+arithmetic are unchanged. Eval-only CLI controls do not add product algorithm knobs.
+
+Reproduce via fixed_policy_replay FEATURES NEW_OUTPUT and
+score_search_iteration.py CORPUS NEW_OUTPUT MATCHING_STORE (h2/synthetic/matched
+use --all). See evals/README.md for neutral capture/replay CLI. Analyze frozen
+judges with analyze_masked_judgments.py JUDGING_DIRECTORY NEW_JSON, then compare
+the separate key only after raw validation. All tests/checks and operational logs
+are retained alongside the outputs. Formatting, all-target/all-feature Clippy,
+all-feature workspace tests, LLP references, Nix packaging and the coverage guard
+unit test pass. Debug compiler caches were removed to bound scaled scratch-database
+disk use; release executables, source, corpora and measured outputs were retained.
+No new model/runtime or external publication.
+
+
+
+<a id="consolidated-local-nonregret-2026-11-15-md"></a>
+
+### Consolidated report: LOCAL-NONREGRET-2026-11-15.md
+
+# Further target recovery and the existing masked validation — 2026-11-15
+
+No further overall improvement established. Two newly implemented evidence guards
+recover all four remaining targeted scale misses, but remove the frozen candidate's
+dev recall gains. Keep the foreign-provenance local allocator frozen as the best
+current candidate; no product defaults, native scoring, output budget or gate change.
+
+## Hypotheses, implementation and selection
+
+Pre-score declaration (historical artifact) specifies lexical
+nonfall and lexical-plus-vector nonfall per incumbent displayed local slot. Same
+foreign/head/source protections, pool, scores and exact-sum global assignment.
+These are new combinations with local-only allocation, explicitly distinguished
+from earlier closed single-swap term dominance; they do not claim that two-signal
+dominance itself is novel. No weight or threshold fitting.
+
+`local_nonregret.py` implements both isolated offline variants. The control matches
+all1470 full dev responses of frozen native-foreign, not just aggregate counts.
+Three new corpus-free tests cover exact control behavior and lexical/semantic
+tradeoffs. No unsuccessful guard is installed in the product or ported as a new
+native default. Earlier native candidate and source hashes remain unchanged.
+
+| Dev configuration | Gold any / first | XS any / first | No-gold / section | Hit@1 | MRR@5 |
+|---|---|---|---|---:|---:|
+| Native |412/354|31/25|35/55|199|.597950|
+| Frozen native-foreign |413/361|31/25|35/55|199|.602126|
+| Lexical floor |412/354|31/25|35/55|199|.597950|
+| Two-signal floor |412/354|31/25|35/55|199|.597950|
+
+The two guards change15 and13 full responses relative to native but produce no
+retrieval rise. Neither is selected for new full h2/scale scoring. They are retained
+as diagnostic controls, not categorically rejected as useless evidence.
+
+After this nonselection, a **post-hoc targeted four-case diagnostic** replays only
+the four unresolved original wordings from scale using the unchanged declared
+formulas. It is not the predeclared selected-transfer test or a global scale result.
+Both guards recover all four: archive inspection `s3a-c-0004`, browser auth callback
+`s3b-c-0049`, signing/PEM upgrade `s4-c-0040`, apps/launch Jest `s4-c-0105`.
+This plus the earlier three recoveries does **not** establish a single policy with
+seven recoveries and retained gains. The guards suppress useful lexical/vector
+tradeoffs as well as false promotions. The divergence is concrete: target-specific
+recovery improves while aggregate dev gains disappear. Query-specific exceptions
+or a fitted compromise from those known cases would overfit.
+
+Reproduce: `local_nonregret.py FEATURES WITNESSES NEW_OUTPUT`, then ordinary native
+`score_search_iteration.py CORPUS OUTPUT STORE`. All outputs, exact control check,
+selection evidence and the targeted diagnostic are under ignored
+`evals/output/local-nonregret-20261115/`. No new model, encoder call, persistent
+index bytes or performance claim. No full neutral rerun is justified for a dev-flat
+nonselected prototype; product code is unchanged in this continuation.
+
+## Located validation packet and its actual provenance
+
+The earlier packet exists at
+`evals/output/astra-boundary-20261114/judging/assessor-packet.json`, with two complete
+60-pair assessments. Its `ASSESSOR-INSTRUCTIONS.md` explicitly says these are reused
+development questions, not a fresh holdout. `assessment-status.json` records
+fresh_context=true, fresh_holdout=false, human_judgments=false. The assessors were
+context-isolated, used the same model family, and did not receive private mappings
+or prior outcomes. See [the original independent assessment report](#consolidated-independent-full-eval-2026-11-14-md).
+No separate new blind corpus was found in this worktree/shared corpus directories.
+
+This pass revalidates all120 judgments, quote membership, enums and pair coverage
+through `analyze_masked_judgments.py`. Raw files are unchanged. Root analysis uses
+the mapping only after the earlier native-foreign policy is already frozen; no
+judgment is supplied to retrieval or used to tune the two new guard formulas.
+This is a post-freeze **existing masked-pair compatibility check**, not independent
+new assessment of all cards returned by the new candidate.
+
+`check_masked_policy.py` joins exact record+byte-span identity on first-page cards
+to each old A/B pair and unanimous directional preference. It does not transfer a
+passage judgment to a different span in the same record or invent judgments for
+new cards. Presence of both/neither is unclassified, not scored as a win/loss.
+
+| On42 consensus directional pairs | Native | Frozen native-foreign |
+|---|---:|---:|
+| Only preferred passage present |18|20|
+| Only other passage present |24|19|
+| Both passages present |0|1|
+| Neither passage present |0|2|
+
+Paired transitions:4 other→preferred;2 preferred→other;2 other→neither;
+1 other→both. Remaining16 preferred and17 other stay identical. The other18
+packet pairs are13 non-directional consensus judgments and5 assessor disagreements;
+they are not forced into directional wins. Across all60 pairs, the new policy has
+57 single-side presences,1 both and2 neither.
+
+This is modest supporting evidence with meaningful counterexamples, **not a blind
+pass or unbiased global win**. The packet is stratified and reused, has correlated
+model-judge errors, and predates the candidate's changed outputs. It covers old
+pairs rather than complete new result pages. Unjudged incoming passages remain
+unknown. Nothing here establishes improved silence, semantic admission or rank one.
+
+## Disposition
+
+Freeze and retain the existing native-foreign implementation for a genuinely new
+corpus/question confirmation plus integrated performance/neutral checks. The located
+packet cannot serve that role again. Further recovery needs a feature that predicts
+when semantic evidence legitimately outweighs lexical specificity; a universal
+lexical nonfall rule is too conservative in this observed development population.
+Keep all four target rescues and lost aggregate gains visible for that research,
+without training on the masked-pair preference labels or calling reused h2 blind.
+
+Validation:47 Python experiment tests, LLP reference check and diff whitespace
+check pass. Native/production Rust is unchanged in this continuation, so earlier
+workspace/build results are not presented as newly rerun checks.
+
+
+
+<a id="consolidated-max-five-2026-11-15-md"></a>
+
+### Consolidated report: MAX-FIVE-2026-11-15.md
+
+# Qualification and rejection within five cards — 2026-11-15
+
+Phil clarified that five cards is a maximum, not native per-query count parity.
+New hits may fill empty results and wrong hits may be rejected. Earlier exact-count
+trials remain ranking controls. The pre-score protocol (historical artifact)
+declares four source-backed admission/rejection arms on the original bounded pool.
+
+The primary-license control requires native A/B tier0–2. Three balanced-evidence
+arms require a lexical anchor, all original hard/quoted constraints on the same
+source block, and C−(1−C)(1−max(0,cosine))≥0. C is count coverage, IDF coverage,
+or their minimum. This is a fixed hypothesis, not a calibrated relevance
+probability. All native calls are filtered, so later fallback cannot masquerade
+as silence after an empty first page. Unknown source spans and explicit query
+resolution/address licenses remain protected. Qualified new records show original
+bytes. Counts can vary0–5; no new sections, model or output calls are added.
+These are explicit research departures from the fixed admission contract, not
+changes to the product confidence gate.
+
+| Dev arm | Gold any / first | XS any / first | No-gold / section | Hit@1 |
+|---|---|---|---|---:|
+| native |412/354|31/25|35/55|199|
+| primary-license |401/330|30/26|33/53|190|
+| balance-count |406/335|30/26|35/53|192|
+| balance-idf |405/336|30/27|34/52|194|
+| balance-min |403/332|30/26|34/52|192|
+
+None qualifies for h2 selection. Keep improvements such as XS-first visible;
+these results do not prove that every admission method fails. True silence stays
+0/10 for every arm despite permitted count changes. No threshold sweep or h2
+repair follows. On the reused synthetic diagnostic, native35/49 gold falls to
+34,34,33,33 respectively; this is not independent validation.
+
+A separate blocker audit finds **all14 synthetic misses already have the gold
+record in the candidate pool**, all14 have a quote-compatible and hard-compatible
+gold block. Thus these misses are not caused by the bounded pool or hard-literal
+filter. Many gold rows match only one generic/content term and have low existing
+cosine (roughly .12–.48); one has no meaningful lexical anchor. Examples include
+“when do I need to be online” and “that tradeoff between data correctness and
+always being up”. Candidate availability alone cannot justify admission; loosening
+the evidence balance also admits topical competitors. This locates a real
+qualification/semantic-discrimination problem without proving a different encoder
+or reranker would fix it. Previously closed replacement-encoder studies remain
+closed; no second model is proposed for silent adoption.
+
+Implemented as `max_five_search.py`, with five corpus-free tests for admission,
+all-call rejection, literal constraints and proof/unknown-span handling. Native
+`max_five_witnesses` collects original terms and complete route licenses with
+before/after native parity. No unsuccessful arm was ported into product ranking.
+All full responses, native grading and the14-case blocker audit remain under
+`evals/output/max-five-20261115/`. No independent blind result or latency pass
+is claimed. Fresh silence labels must distinguish no gold from genuinely no
+relevant result, and verify all returned calls, before a rejection policy is trusted.
+
+
+
+<a id="consolidated-ownership-and-support-2026-11-15-md"></a>
+
+### Consolidated report: OWNERSHIP-AND-SUPPORT-2026-11-15.md
+
+# Query-conditioned ownership and supporting-span feasibility — 2026-11-15
+
+Explored the two directions suggested by the source/judgment audit. No additional
+retrieval-count improvement over the earlier ownership probe is established.
+Three new configurations and their exact control were implemented and fully
+scored on dev, reused h2 and scale-dev. A fresh outcome-masked pooled-source
+packet is ready for independent review, but it uses old cases and has **no new
+judgments yet**. Product defaults and official relevance labels remain unchanged.
+
+## Protocol, mechanisms and distinctions from closed work
+
+Pre-score protocol (historical artifact) declares:
+
+- **Ownership explicit:** release the dependency-source boundary only when the
+  raw query names the package identified by the last node_modules component.
+  Require the full @scope/name for scoped packages. This only permits competition;
+  it does not admit a record without existing source/tier evidence. Original
+  path words are provenance, never lexical body evidence. Missing paths stay
+  unknown; original query, scope7 and head/foreign/source protections are fixed.
+- **Span dominance:** keep selected record identities/order/card counts and refine
+  only an original displayed passage with a same-record existing candidate that
+  preserves all meaningful matcher-A and A-or-B term identities and strictly adds
+  at least one. Require nonworse tier/hard/quoted obligations. Addressed, unknown,
+  duplicate and non-primary displayed spans remain unchanged. Choose most union
+  evidence, then exact evidence, original lexical/POS, cosine and stable span.
+- **Combined:** both. No enlarged candidate pool or output section/card budget.
+
+This is not the closed max-lexical/max-joint passage sorter: the replacement must
+strictly dominate the actual displayed source identities. Nevertheless it is not
+an entailment test. Scope/provenance remains an explicit research departure from
+the fixed source policy; no product confidence gate or second model is introduced.
+
+Implementation: `ownership_support.py`. Same exact-sum global allocator as the
+frozen ownership prototype; no new native product implementation. Corpus-free
+fixtures cover nested/scoped package parsing, explicit dependency exemption,
+no-new-admission behavior, exact control equality, span-source dominance, explicit
+addresses and unchanged call budgets. Controls match all1470 complete dev outputs
+from the previous ownership probe. Source and every dev arm were hashed/frozen
+before transfer. All dev six counts tie; ownership-explicit wins declaration
+order, with no dev output effect. Other transfer arms are frozen feasibility
+diagnostics, not reselection or holdout confirmation.
+
+## Full official-score results
+
+| Suite / policy | Gold any / first | XS any / first | No-gold / section |
+|---|---|---|---|
+| dev native |412/354|31/25|35/55|
+| dev control and each of3 new arms |413/361|31/25|35/55|
+| reused h2 native |341/298|55/48|54/237|
+| reused h2 control and each new arm |341/301|55/48|54/237|
+| scale native |388/316|28/22|31/51|
+| scale control and each new arm |388/319|28/22|31/51|
+
+Native Hit@1 stays199/230/180 by record-preserving head constraints. Existing
+candidate improvements are retained, but no new recall/section gain follows from
+these additions. Aggregate equality is not output parity:
+
+| New arm versus ownership control | Dev changed responses / spans | H2 changed responses / spans | Scale changed responses / spans |
+|---|---|---|---|
+| ownership explicit |0 /0|0 /0|2 /0|
+| span dominance |44 /48|80 /84|35 /39|
+| combined |44 /48|80 /84|37 /39|
+
+The explicit exception causes five card-position record changes in two scale
+responses, but **the record sets stay the same**; these are lower-page reorderings,
+not recovered records. Queries: Expo module Kotlin/Swift test selection, and an
+alternate “instructions inside diff comment” wording for reviewer prompt injection.
+The latter names npm package `diff` lexically without asking about that package.
+Thus literal package occurrence is a provenance cue, **not a sufficient intent
+classifier**. The fixture preserves this counterexample rather than declaring
+all explicit-name exceptions safe. Dependency-API correctness remains unvalidated
+by new independent relevance judgments. No dev activation means no dev evidence
+for the exception's transfer safety.
+
+Span refinements preserve source term evidence but official section counts remain
+flat. More matched terms can still be topical rather than answer-supporting.
+Record counts cannot test this refinement because record sets are fixed; the
+pooled record/passage review below is the right separate diagnostic. No post-h2
+coefficient repairs, default change, deployment latency pass or fresh blind claim.
+
+## Why the remaining supporting passages cannot be chosen from this pool
+
+A post-freeze known-answer reachability audit reads original source bytes and the
+unchanged candidate pool; it does not add answer needles or spans to selection.
+
+| Original query/record | Answer probe occurrences in full source | Exported candidate spans for record | Candidates containing probe |
+|---|---:|---:|---:|
+| browser auth / SDK53 WebBrowser doc |2|2|0|
+| browser auth / SDK54 WebBrowser doc |2|2|0|
+| apps/launch Jest / app guide |1|1|0|
+
+Browser probe is `WebBrowser.openAuthSessionAsync`; Jest probe is `Run Jest tests`.
+These exact strings indicate answer-location reachability, not complete relevance
+judgments. Both browser documents contain the authentication explanation in full
+source, but candidates are ordinary-browser/dismiss-browser passages. The app
+guide has the command in Commands but its lone candidate is project structure.
+No selector over the existing exported spans can output those particular answer
+passages. For Jest, the gold record is also absent from the final page: a pure
+after-selection span refinement cannot recover an unselected record.
+
+This distinguishes record availability, supporting-span availability and selection.
+“Signals are identical” was not the right diagnosis. Existing scalar inputs omit
+specific supporting-source evidence because it is outside the proposer boundary.
+Finding another source paragraph is a **candidate-generation/within-record lookup
+question**, not another lexical/vector coefficient. This report does not silently
+enlarge the section pool under the operator's no-extra-sections constraint.
+
+A next bounded design would replace a selected record's one proposed passage
+through an indexed record-local support lookup, preserving output/card and overall
+candidate budgets. It must first establish a label-free support criterion that
+beats generic term dominance; reading more paragraphs alone is not a retrieval
+quality result. Model-free term/phrase constraints have closed counterexamples;
+the newly observed answer-location population justifies a targeted proposal study,
+not reopening generic source expansion. Preserve unknown support and avoid a
+claim that a record's most similar paragraph answers the user's actual request.
+
+## Outcome-masked relevance pool prepared
+
+`prepare_source_pool.py` pools all original-wording target-membership-changing
+cases in the previous dev/scale audit, combining duplicate query/scope/task topics.
+Sources include returned records across native/control/new arms and existing
+explicit gold/equivalent mappings. This is a targeted pooled audit, not deployment
+sampling and not a new independently authored corpus. No evaluator source labels,
+case IDs, ranker identities, target flags or outcomes appear in public packets.
+
+Prepared pool: **14 topics,90 original documents,97 topic-document ratings,
+90 distinct displayed passages**. Original source bodies/byte-span texts are
+preserved, source hashes recorded, and every passage byte range was checked
+against its original document. Opaque IDs/order are stable and outcome-masked.
+Original source paths/scopes remain available as legitimate context evidence.
+
+The ignored directory `evals/output/ownership-support-20261115/pooled-review/`
+contains:
+- `query-only.json` and `documents.json`: phase1, query-only record usefulness.
+- `task-context.json`: open only after phase1 ratings freeze; phase2 full intent.
+- `passages.json`: phase3 exact displayed-span support versus merely topical text.
+- `ratings-template.json`, `ASSESSOR-INSTRUCTIONS.md`, source hashes/manifest.
+- `PRIVATE-map.json`: coordinator only; forbidden to assessors.
+
+Tracked review rubric (historical artifact) separates complete/partial
+record lead, entity/version compatibility, transferable scope and passage support/
+contradiction. Independent raw ratings and disagreements must freeze before
+unmasking. Root source inspection is **not** an independent assessment. The new
+pool has0 completed ratings; no result is implied by preparing it. The earlier
+60-pair judgments cannot automatically label these newly pooled records/passages.
+
+## Cost, reproduction and next decision
+
+Ownership package matching is candidate-local metadata/string work. Span refinement
+reuses existing query witnesses and candidate scores, with no new stored embeddings
+or persistent index bytes. Current prototype materializes cached features; it is
+not a product resident-latency measurement. There is no new model/reranker/runtime
+on search/write paths and no native performance claim.
+
+Build tools through the flake. Prototype: `ownership_support.py FEATURES WITNESSES
+RECORDS NEW_OUTPUT`; scorer: `score_search_iteration.py CORPUS OUTPUT STORE`,
+`--all` for h2. Packet: `prepare_source_pool.py NEW_DIRECTORY`. Exact response
+counts/unchanged later calls/card-count checks, source freezes, full native-grade
+pages, activation differences and reachability audit are retained under ignored
+`evals/output/ownership-support-20261115/`.
+
+The useful next decision is whether the pooled assessments confirm record-level
+alternatives while exposing passage failures. That determines whether to prioritize
+annotation reconciliation, a source-local support proposer, or package-intent
+reasoning. None of the current evidence authorizes treating dependency paths as
+irrelevance, literal package words as intent, or extra candidate sections as a gain.
+
+Validation:56 Python experiment tests, LLP reference check and diff whitespace
+check pass. Packet checks verify14 topic IDs,90 source documents,97 topic-document
+entries and90 exact UTF-8 source byte slices. No native/production Rust changed,
+so earlier workspace/Nix checks are not claimed as rerun in this continuation.
+
+
+### Correction after full-span inspection (2026-11-15)
+
+The earlier qualified `WebBrowser.openAuthSessionAsync` marker probe is too narrow
+to support an absence-of-evidence conclusion. Both versioned browser spans already
+contain an unqualified `openAuthSessionAsync` link and the cookie-sharing caveat.
+The original 180-character preview hides it. The recorded exact-string counts
+remain literal counts, not passage-support judgments. See the
+[passage-proposer report](#consolidated-passage-proposer-2026-11-15-md) for source spans, native
+experiments and a separate source-bound preview prototype. This correction neither
+changes official labels nor proves those pointers fully answer the callback task.
+
+
+
+<a id="consolidated-page-conservation-2026-11-15-md"></a>
+
+### Consolidated report: PAGE-CONSERVATION-2026-11-15.md
+
+# Page evidence, scope cohorts and foreign provenance — 2026-11-15
+
+**A narrower native Rust experimental candidate now clears the six count gates
+on dev, reused h2 and scale-dev while preserving actual rank one.** It improves
+local selection only; it is not an adopted product change, a universal per-case
+improvement or fresh confirmation. The foreign-provenance hypothesis was informed
+by h2/scale failures, so those final results are tuning diagnostics.
+
+## Declared hypotheses and implementation
+
+Pre-score protocol (historical artifact) records the initial
+three arms, selection freeze, secondary diagnostic extension and fourth arm.
+Read LLP0002/0005 and the closed record-dominance, anchor, scope-penalty and
+record/passage studies first. Existing head-anchored assignment is an exact control.
+
+1. **Page coverage:** retain the union of meaningful A-or-B term identities
+   witnessed by native displayed spans. Other selected cards may supply the same
+   evidence; no per-record strict superset requirement. DP tracks slot and source
+   coverage masks, retaining distinct source-evidence alternatives within a record.
+   Native retained records use displayed evidence; unknown spans are protected.
+   This differs from the closed one-swap dominance/rare-anchor studies.
+2. **Scope cohort:** each replacement must retain its incumbent's far/local class.
+   Scope7 still affects utility; this is an explicit research departure from
+   scalar-only scope allocation, not a coefficient sweep.
+3. **Page and scope:** combine those two constraints.
+4. **Native foreign provenance:** keep native farther-scope cards in place and
+   apply scope-constrained assignment only to eligible local slots. This prevents
+   substituting a different foreign record for a native imported lead. It gives up
+   potential cross-scope gains; it does not claim better foreign discrimination.
+
+All arms preserve native rank one, protected strong/address/unknown/duplicate
+cards, source admission constraints, raw query resolution and later calls. Same
+bounded original candidate pool, scores, normalizers, half-vector contribution,
+DCG discounts and exact-sum objective. No new model, sections/cards, RRF, reranker,
+index bytes, authored evidence or product configuration. Five remains the maximum;
+these are count-preserving ranking controls, not the separate admission study.
+
+`page_conservation.py` and `foreign_provenance.py` are isolated offline prototypes.
+Native `select_scope` and `select_foreign` are implemented in
+`evals/src/constrained_fusion.rs`; the existing helper's extra research arguments
+are not product runtime flags. Native eval replay accepts `scope-cohort` and
+`native-far`. Ordinary `select` and the previous head control retain false values
+for the new restrictions. No product algorithm or ordinary search path changes.
+
+## Every measured configuration
+
+Counts: gold-any / first-wording page recall; XS-any / first-wording cross-scope;
+no-gold / section. No-gold includes foreign-target tasks and is not true silence.
+
+| Suite / policy | Gold any / first | XS any / first | No-gold / section |
+|---|---|---|---|
+| dev native |412/354|31/25|35/55|
+| dev old head control |412/357|31/28|35/55|
+| dev page coverage |412/357|31/28|35/55|
+| dev scope cohort |413/361|31/27|35/55|
+| dev page and scope |413/361|31/27|35/55|
+| dev native foreign |413/361|31/25|35/55|
+| h2 native |341/298|55/48|54/237|
+| h2 page coverage |341/300|55/49|55/237|
+| h2 scope cohort |341/301|54/48|54/237|
+| h2 page and scope |341/301|54/48|54/237|
+| h2 native foreign |341/301|55/48|54/237|
+| scale native |388/316|28/22|31/51|
+| scale page coverage |387/314|30/25|32/51|
+| scale scope cohort |388/317|28/23|30/51|
+| scale page and scope |388/317|28/23|30/51|
+| scale native foreign |388/317|28/22|31/51|
+
+Initial dev selects scope cohort, ahead of the tied combination by declaration
+order. Full output/source freeze precedes transfer. Scope recovers scale recall
+but loses h2 XS-any and scale no-gold; not adopted. Already declared dev-qualified
+coverage arms receive explicitly secondary transfer diagnostics, not reselection.
+Coverage does not repair the failures. The fourth structural hypothesis is then
+declared and scored on dev, frozen and transferred. No old frozen source is edited.
+
+Actual Hit@1 remains native199,230,180 on dev/h2/scale for all arms. Final native-
+foreign MRR@5 improves .597950→.602126, .727872→.731968, .533485→.536219.
+Complete native-foreign responses change339/1470,269/1380,340/1470. True silence
+stays0/10,2/45,0/10. Rank-one preservation is a guarantee, not a ranking gain.
+
+## Desired target recovery and remaining divergence
+
+The selected scope arm recovers three of the seven original-wording scale targets
+lost by head fusion, and the native-foreign control preserves those recoveries:
+
+- `s2b-c-0078`, ArrayBuffer/Uint8Array signed bytes → `s2b-r-0092`.
+- `s4-c-0012`, noxcturnal install lockfile → `s4-r-0232`.
+- `s4-c-0027`, Launch Hosting/Expo credential handling → `s4-r-0048`.
+
+Four remain unrecovered: archive inspection (`s3a-c-0004`), browser authentication
+callback (`s3b-c-0049`), signing upgrade/PEM (`s4-c-0040`), and apps/launch Jest
+command (`s4-c-0105`). Passing aggregate bars does not erase these losses. The
+native-foreign policy also sacrifices some previous XS gains. Do not claim a
+universal target-recovery or per-query no-regression guarantee.
+
+Scope cohort's exact remaining foreign-target failures are h2 `s7-c-0080`
+(noxcturnal lint checks; targets `s7-r-0043`/`s7-r-0044`) and scale `s4-c-0119`
+(internal package references; targets `s4-r-0164`/`s4-r-0166`). These cases use
+foreign-target judgments, not ordinary gold; a gold-only divergence join would
+miss them. Keeping each native foreign lead addresses the identity-substitution
+failure. This explains the fourth hypothesis and why its transfer is tuning.
+
+Full paired wording outcomes, target recovery and scope-target diagnostic files
+are retained under ignored `evals/output/page-conservation-20261115/`.
+
+## Cost, correctness and adoption boundary
+
+Native scope/provenance controls add candidate-local eligibility/protection checks
+to the existing at-most32-state/5-slot DP. No additional persistent storage or
+encoder calls. They reduce available replacement choices. Coverage tracking can
+multiply DP states by2^k relevant native-page terms; it has no adoption-quality
+gain here and remains offline research. No integrated resident latency, p95 or
+neutral-loop pass is claimed from feature replay. Product integration must share
+a consistent store snapshot and avoid diagnostic feature materialization overhead.
+
+Independent/native complete response parity passes all4320 dev/h2/scale wordings
+for both native scope and native-foreign implementations. Exact old-head control
+parity holds all1470 dev wordings. Corpus-free tests cover evidence conservation,
+locality blocking, same-page substitution and native foreign preservation. Native
+tests cover the protected imported lead and unchanged head/call budgets.
+
+Build through the flake. Prototype signatures: `page_conservation.py FEATURES
+WITNESSES NEW_OUTPUT`, similarly `foreign_provenance.py`. Native replay:
+`constrained_fusion FEATURES TERMS PROOFS NEW_OUTPUT scope-cohort` or `native-far`.
+Grade with `score_search_iteration.py CORPUS OUTPUT STORE`, plus `--all` for h2.
+Output manifests, source/response hashes and full pages are retained; no corpus,
+model or evaluation output is committed. No hidden task/label enters a selector.
+
+This is a promising local-recall improvement worth fresh validation, not permission
+to ship a transfer-tuned algorithm. Required next evidence: freeze this exact
+native policy; fresh corpus/questions with independent gold/section/scope/silence
+judgments; full scaled and neutral performance comparison after native integration.
+Cross-scope improvement and calibrated rejection remain unresolved independent
+problems. No extra h2-driven coefficient or case exception is justified.
+
+Final checks: workspace/all-target/all-feature Clippy with `-D warnings`,
+workspace/all-feature tests,44 Python experiment tests, formatting, LLP reference
+validation and diff whitespace checks pass. Nix product build also completed
+during this study. Existing vendored libSQL lifetime warnings are unchanged.
+No integrated neutral/performance pass or fresh blind validation is claimed.
+
+
+
+<a id="consolidated-passage-adjustments-2026-11-15-md"></a>
+
+### Consolidated report: PASSAGE-ADJUSTMENTS-2026-11-15.md
+
+# Small passage adjustments — 2026-11-15
+
+The frozen `bound-pair` adjustment preserves the Router source gain and removes
+the previous measured source regressions. Across all six reused retrieval suites,
+the incremental comparisons have no lost labeled section hits, including every alternate wording and
+both first-call/all-call checks. The wider neutral-quality replay also shows no
+quality-gate decrease. This is a modest, conservative passage improvement, not
+proof of generalization or a new record-ranking/silence gain. Defaults are unchanged.
+
+## Mechanism and selection
+
+Pre-score declaration (historical artifact). Keep the stable
+coverage proposer, its incumbent tie rule and all hard-ID/quote/address/duplicate/
+resolved-query guards. A proposed new span additionally needs two *newly matched
+meaningful exact query IDs*, consecutive in the parsed query, appearing in order
+in the original span on one line, joined only by whitespace, hyphen or underscore.
+No task, case ID, heading name, known answer, filename metadata or source label
+enters the certificate. `comment-card.tsx` is original body evidence, not a filename
+field. No score coefficient, threshold sweep, model, gate or record budget changes.
+
+This distinguishes a new literal pair from an extra generic stemmed hit. The cap
+loss added stemmed “limits,” while the Router example adds exact “comment card.”
+The certificate is conservative: it does not prove entailment or applicability.
+It still ranks eligible spans with the unchanged coverage/lexical/POS/cosine key.
+
+A separate safety repair retains the complete original Card when its source key
+(record, section, span) is unchanged, and keeps the original Call.text if all cards
+are unchanged. When a span changes, render from the final, repaired card list.
+This removes the earlier same-span preview/fetch churn without crediting it as a
+retrieval gain. Earlier intermediate renderer outputs are retained, not rescored
+as a selected policy.
+
+Four dev eligibility ablations were declared before scoring:
+
+| Dev arm | Section cases | Original-query section cases | Changed source spans |
+|---|---|---|---:|
+| Ownership control |55|38|0|
+| Previous stable, presentation repaired |56|37|150|
+| At least one new exact ID |56|38|104|
+| At least two new exact IDs |56|38|17|
+| Consecutive new exact pair |56|38|10|
+| Consecutive new exact pair, literally bound in source |56|38|3|
+
+All four new arms keep the official gain and eliminate the original-query loss.
+The declared tie-break selects fewer changed spans, so `bound-pair` was frozen
+before transfer. Other arms were not selected on h2. This does not show that binding
+has better dev accuracy than the simpler certificates: it has narrower activation.
+
+Closed work is not presented as new: full old-ID preservation already erased gains;
+scalar non-regret guards already traded gains away; P1 added positional contributions
+before global record cuts and P2 joined spans. This trial adds neither score
+contributions nor joins/admission. It gates a novel within-record coverage move in
+the previously expanded local pool. Its motivation includes reused transfer evidence,
+so none of the subsequent h2 results is independent confirmation.
+
+## Complete retrieval comparison
+
+Native code: certificate (historical artifact),
+full replay (historical artifact), and
+sparse validated capture (historical artifact).
+Independent Python implementation: `passage_adjustments.py`.
+
+Each configuration covers 5,908 wordings. Record IDs/order, card counts (maximum
+five), later calls, first-call hints/related pointers, actual Hit@1/MRR and true
+silence remain identical to its control. Every unchanged-span incumbent Card and
+unchanged-card Call is now preserved completely. Native/Python complete-response
+parity passes all 4,320 dev/h2/scale-dev wordings. The remaining suites run the
+same frozen native selector on freshly collected required local inputs.
+
+| Suite | Ordinary search: section → adjusted | Allocator: section → adjusted | Ordinary original-query sections → adjusted | Allocator original-query sections → adjusted |
+|---|---|---|---|---|
+| dev |55→56|55→56|38→38|38→38|
+| h2, reused |237→237|237→237|173→173|174→174|
+| scale-dev |51→52|51→52|36→36|35→35|
+| scale-h2, reused |225→225|227→227|161→162|162→163|
+| matched |9→9|9→9|6→6|6→6|
+| synthetic |not labeled|not labeled|not labeled|not labeled|
+
+There are no lost labeled cases on any prepared wording, whether judged on its
+first page or its full calls. Gains are Router `s4-c-0021` wording1 (the same reused
+question on dev/scale) and scale-h2 `h2a2-c-0076`, original “MCP evaluation low
+accuracy,” first page. The latter was already found through another route, so
+it raises direct source support rather than aggregate case recall.
+
+The cap and current-build regressions are gone: scale-h2 allocator-only227 section
+successes remain 227, instead of the previous proposer's 225. The reference-syntax
+original-query loss is also gone. All matched/synthetic record outcomes are flat;
+this does not close the synthetic retrieval gap or improve top-one ranking.
+
+This is non-regression against ordinary/allocator controls, **not dominance over
+every success of the unsafe proposer**. In particular its additional unscaled-h2
+original-query gains are given up: the former net 174→177 becomes174→174. The
+scaled-h2 net 162→166 becomes162→163, with all labeled losses removed. The gate
+intentionally exchanges broad activation for a smaller set of certified moves.
+Unlabeled changed passages have no fresh independent judgments; a zero measured
+loss count is not a universal semantic guarantee.
+
+## Reuse, pruning and input hygiene
+
+The old stable winner can be pruned safely when it is the incumbent: removing
+nonincumbent alternatives cannot create a new winner. Fresh native collection
+therefore runs only where the old source winner changed. For every such request,
+check complete ordinary calls against the archived baseline, reproduce the old
+stable *source* winner, and check ordinary calls again after collection. Collect
+all existing blocks of the same selected records; no extra record is admitted.
+The equivalence concerns source keys, not the earlier noisy preview representation.
+
+This skips model work on provable no-op requests, not evaluation cases: every
+query gets an output and the unchanged full native grader scores the complete
+population. Input corpus/store identities remain those verified in the full study.
+One scale-dev native replay initially received the smaller q4 body file and stopped
+on a missing record. It was corrected to scale-q4, retained under a new output
+directory, and complete native/Python parity was required. The partial failed
+output was not scored or treated as evidence.
+
+## Neutral-quality replay, not fresh physical/cost validation
+
+All 30,683 prior state/request entries are consumed in order. For each prepared
+question, require complete allocator-control response equality before substituting
+the frozen new calls, including rebuild and location occurrences. Unknown diagnostic
+sessions are rejected. Self-retrieval is record-identity-only, and those identities
+and pointers are invariant. The 40 forget requests are single alphabetic terms;
+a two-new-term pair cannot activate, so their complete responses stay the control.
+Physical integrity flags come from the prior actual captures. Diagnostic previews
+are not claimed to be newly executed complete responses.
+
+| Neutral quality gate | Allocator control | Adjusted |
+|---|---|---|
+| Dev Q4 section |.822|.836|
+| H2 Q4 section |.904|.904|
+| Scale-dev Q4 section |.795|.808|
+| Scale-h2 Q4 section |.875|.875|
+
+All other reported quality gates, including exposure, are unchanged at the native
+reported precision. Existing integrity, silence and exposure failures remain.
+This is **not a clean neutral pass**. C1 and C2 explicitly print UNMEASURED; the
+replay reader rejects a quality-only trace without the explicit quality-only mode.
+A corpus-free test verifies that guard. No new physical capture, fresh holdout,
+startup/index benchmark or integrated production latency pass is claimed.
+
+## Disposition and verification
+
+Keep this as the conservative native passage candidate for further validation.
+It passes the measured source-support no-loss checks more convincingly than the
+previous proposer. It does not settle the original record-selection problem:
+all record-rank/cross-scope/silence gains in the combination are inherited from
+the allocator. Standalone section-only improvement cannot satisfy LLP0005's
+primary-retrieval-rise adoption rule. The old h2 is reused, and an independently
+prepared passage benchmark plus integrated cost measurement are still required
+before default adoption. No product default or ingestion/index change is made.
+
+Workspace/all-feature tests, all-target/all-feature Clippy, formatting, Nix product
+build and 77 Python tests pass; native certificate fixtures cover source binding,
+literal guards, complete incumbent preservation and lower-score useful spans.
+LLP links and whitespace checks are recorded with the run.
+
+Ignored artifacts: `evals/output/passage-adjustments-20261115/`. `freeze.json` records
+dev selection; `summary.json` records both six-suite controls, every wording-level
+transition, complete invariants, native parity and the quality-only neutral replay.
+Old unsafe configurations, failed partial inputs and all prior measurements remain
+available. Nothing is committed, pushed or published.
+
+
+### Inherited allocator differences must stay visible
+
+The new standalone proposer has no measured source-support loss against ordinary
+search. Adding it to the allocator also has no measured incremental loss. This
+does **not** make the entire allocator-plus-proposer pipeline dominate ordinary
+search: the allocator already loses scale-dev original-query section case
+`s4-c-0040` (signing package upgrade PEM). It remains 36→35 in the whole combination,
+while the standalone adjustment retains 36→36. The allocator's h2 exposure difference
+also remains. These are inherited differences, not repaired or newly introduced
+by the certificate. Do not collapse these two comparisons into an unconditional
+“combined search has no regressions” claim.
+
+
+### Standalone neutral-quality cross-check
+
+The same quality-only replay was also completed against ordinary search, with
+all 30,683 requests and all prepared control responses checked. Q4 changes are
+.822→.836, .900→.900, .795→.808 and .867→.867 on dev/h2/scale-dev/scale-h2.
+No reported quality metric decreases. Standalone h2 exposure is .429→.429; the
+.428 value belongs to the old unsafe proposer, not ordinary search. Direct
+per-record character-count comparison confirms identical prepared exposure inputs
+on h2. No preview-budget change or metric-driven shortening was introduced.
+C1/C2 and fresh physical checks remain unmeasured in both quality replays.
+
+
+
+<a id="consolidated-passage-full-eval-2026-11-15-md"></a>
+
+### Consolidated report: PASSAGE-FULL-EVAL-2026-11-15.md
+
+# Full frozen passage evaluation — 2026-11-15
+
+Status: complete. The standalone proposer is not accepted; full results and
+remaining regressions are recorded below.
+
+The operator requested the missing full suite, not a new tuned candidate. The
+protocol (historical artifact) freezes the existing stable
+proposer. The previous result and known original-query losses remain recorded in
+[the initial study](#consolidated-passage-proposer-2026-11-15-md).
+
+## What is being compared
+
+- Baseline: ordinary accepted search, freshly executed.
+- Native-stable: the existing stable proposer on ordinary search's selected records.
+- Ownership-control: the preceding fixed source-ownership allocator, now ported
+  to the native eval package without changing its rule.
+- Ownership-stable: the previously measured combination of that allocator and
+  the stable proposer.
+
+This distinguishes proposer effects from inherited record-allocation gains. Each
+proposer variant examines existing indexed blocks in at most five already
+selected records and emits one original span per existing card. It does not add
+records, output cards, ingestion sections, model encoders, rerankers or persistent
+indexes. Source inspection and query work increase and are measured explicitly.
+The preview-only experiment is excluded.
+
+Corpus identity checks verify the exact IDs/body hashes in each matching store,
+record/case file hashes against archived feature manifests, all selected split
+keys/query strings, model identities, and duplicate/missing/extra population keys.
+Every fresh retrieval execution checks complete ordinary calls against the archived
+page and after collection. Dev/h2/scale-dev also require exact equality with the
+previous ownership control and combined stable outputs. No comparison uses a
+favorable subset or counts alone to establish parity.
+
+## Full neutral protocol and cost interpretation
+
+Capture runs the full unchanged neutral request sequence on actual input and
+independently rebuilt stores, including location variants, self-retrieval,
+exposure and real scratch forget. All four arms execute at each unique state/
+request, with full ordinary-call parity. Repeated unchanged diagnostic work is
+cached within a store epoch, but current ordinary search still executes and its
+full response is checked. Stored diagnostic cost is charged again rather than
+being treated as free.
+
+Four pure-call policy replays recompute the unchanged native gate table from the
+captured state-specific calls. They verify every request in order, the mandatory
+actual-integrity footer and complete exhaustion. Actual rebuild/forget happen in
+capture once per corpus, shared by all four frozen policies; pure replay does not
+repeat ingestion merely to consume saved calls. The combined capture and replay
+tables must match exactly. A fixture or empty selection is never substituted for
+the physical capture.
+
+C2 uses the measured component sum including redundant feature/proof/block
+collection. Independent neutral/retrieval jobs overlap on the 96-GiB/28-logical-CPU
+host, so timings are exploratory under shared workload. They are not optimized
+production latency or evidence that an integrated implementation passes C2.
+Store opening is profiled separately on APFS clones, without queries; these are
+shared-workload warm-file samples, not cold-disk startup measurements. The proposer
+adds no stored vector/index bytes or startup scan by construction.
+
+## Important audit distinctions
+
+A changed complete response need not mean a different passage: candidate cards
+can supply a different preview and explicit fetch reference even when section/span
+is retained. The audit separates changed spans, same-span preview changes and
+fetch-reference changes. Such re-rendering must not be counted as passage recovery
+or unjudged answer-quality improvement. It also means research C1 changes include
+presentation differences, rather than pure ranking improvements.
+
+Official section counts can credit alternate wordings and later calls. The report
+also retains the shared native source-span predicate on the original query's first
+page, with paired gains/losses. Record recall, actual original-query Hit@1/MRR,
+true silence, displayed passage support and excerpt visibility remain distinct.
+
+## Acceptance boundary
+
+All six populations are reused research material; scale duplicates questions and
+matched is a subset. Repeated h2 inspection informed this hypothesis. These runs
+cannot restore one-shot confirmation or become a fresh blind benchmark. No new
+judgments or label corrections are introduced, and no private answer key is opened.
+
+LLP0005 requires a rise in at least one of gold-any, gold-first, XS-any and XS-first,
+no fall in those metrics and no-gold/section preservation, selected on dev followed
+by one frozen independent confirmation. Section-only improvement does not meet
+that rule. Neutral gates are a separate measurement and cannot supply missing
+retrieval-rise or holdout authority. Newly introduced failures must be distinguished
+from already failing ordinary-search gates.
+
+## Reproduction and artifacts
+
+Run through the flake:
+
+```sh
+nix develop -c python3 evals/experiments/run_passage_full_eval.py retrieval
+nix develop -c python3 evals/experiments/run_passage_full_eval.py neutral
+nix develop -c python3 evals/experiments/audit_passage_populations.py
+nix develop -c python3 evals/experiments/summarize_passage_full_eval.py
+```
+
+Commands require a new ignored output directory; they intentionally refuse to
+clobber an existing run. The script records corpus/store/feature paths explicitly.
+Native code: `evals/src/passage_evaluation.rs`, `passage_proposer.rs`, the frozen
+ownership boundary in `constrained_fusion.rs`, and eval-only neutral capture/replay.
+Ordinary product search remains unchanged. Raw responses, scorer pages, section
+pairs, costs, source freezes, identity audit, full gate tables and logs stay under
+`evals/output/passage-full-20261115/`. Nothing is committed, pushed or published.
+
+## Post-freeze divergence audit
+
+The newly completed scale-h2 retrieval comparison exposes a real section loss
+that the smaller h2 case-level total hid. For `h2a3-c-0049`, query “eas workflow
+file size limit,” the old span is Workflow File Location [2071,2191], explicitly
+stating the 16 KiB cap. The proposer selects the skill introduction [372,783],
+which discusses paid-service/free-tier limits. This is the wrong constraint type
+for an explicit file-size query, not evidence that the supplied label is flawed.
+Unscaled h2 still finds the cap on another wording and a later call; those rescues
+are absent on scale-h2. Hence a first-query loss becomes a case-level loss without
+changing the proposer. No question/label is changed to conceal it.
+
+Both lexical score and the existing cosine favor the correct cap paragraph.
+Meaningful A-or-B coverage nevertheless rises from 2 to 3 through stemmed “limits,”
+and that comparison wins before either score is consulted. “File” is a kind word;
+“size” matches neither block. Merely increasing the cosine tie-break weight cannot
+reverse this earlier decision. This example does not require claiming that the
+embedding model lacks a discriminating signal.
+
+The gain case is a counterexample to a simple score-decrease veto. For Router
+`comment card routes folder`, the Code Style paragraph contains `comment-card.tsx`
+and the kebab-case rule. It also wins by coverage 2→3 while both lexical and cosine
+scores fall relative to frontmatter. Preventing every such double decrease would
+erase the known dev section gain. This gain is on an alternate wording; the
+original query still does not select Code Style. Similar score directions are
+not identical full feature vectors or proof that no existing signal can separate
+these cases. Term identity/binding and source function need examination, rather
+than fitting a threshold to this pair.
+
+The combined scale-h2 total also hides an incremental loss: the ownership control
+has 227 sections and adding the proposer reduces it to 225, even though ordinary
+search also has 225. The two lost cases are the file cap and `h2a1-c-0075`. For the
+latter's alternate query “cold require build process,” the proposer replaces the
+explicit current Build simplification section (restore plain tsc; bundle removed)
+with an earlier Performance comparison section. The full task asks whether the
+esbuild bundle is still current; its short alternate query is more ambiguous.
+This is a case for separate query-only/full-task judgments, not silently deleting
+the existing judgment or pretending the known source-currentness conflict is solved.
+
+The score-direction contrast is quantitative (query-local lexical/POS score):
+
+| Case and outcome | Meaningful coverage | Normalized lexical/POS | Cosine |
+|---|---|---|---|
+| EAS cap → service limits, loss |2→3|0.4767→0.3688|0.5973→0.5575|
+| Router frontmatter → Code Style, gain on alternate query |2→3|0.3180→0.1654|0.3261→0.2618|
+
+Term identities and source spans differ, as do score magnitudes and lengths.
+This is not exact feature indistinguishability. A sign-only score guard fails
+this contrast; a magnitude threshold fitted to it would be tuning on reused
+outcomes rather than independent evidence.
+
+All of this is a post-hoc explanation of frozen outcomes, not a new measured
+candidate. Raw source spans, scores, witness IDs, rescue locations and the positive/
+negative contrast are retained in `divergence-audit.json` under this run's output.
+
+
+## Completed retrieval results
+
+All six populations completed with four native arms:5,908 wordings per arm.
+The standalone proposer preserves all primary record metrics exactly; its only
+official-grade differences are section spans. The table shows ordinary search
+and the combined experiment so inherited allocator gains remain visible.
+
+| Suite | Arm | Gold any | Gold first | XS any | XS first | No-gold | Section |
+|---|---|---|---|---|---|---|---|
+| dev | baseline | 412/439 | 354/439 | 31/42 | 25/42 | 35/51 | 55/73 |
+| dev | ownership-stable | 413/439 | 361/439 | 31/42 | 25/42 | 35/51 | 56/73 |
+| h2 | baseline | 341/354 | 298/354 | 55/62 | 48/62 | 54/106 | 237/271 |
+| h2 | ownership-stable | 341/354 | 301/354 | 55/62 | 48/62 | 54/106 | 237/271 |
+| scale-dev | baseline | 388/439 | 316/439 | 28/42 | 22/42 | 31/51 | 51/73 |
+| scale-dev | ownership-stable | 388/439 | 319/439 | 28/42 | 22/42 | 31/51 | 52/73 |
+| scale-h2 | baseline | 325/354 | 275/354 | 48/62 | 41/62 | 47/106 | 225/271 |
+| scale-h2 | ownership-stable | 327/354 | 277/354 | 48/62 | 41/62 | 47/106 | 225/271 |
+| matched | baseline | 45/48 | 40/48 | 4/4 | 4/4 | 4/5 | 9/10 |
+| matched | ownership-stable | 45/48 | 40/48 | 4/4 | 4/4 | 4/5 | 9/10 |
+| synthetic | baseline | 35/49 | 35/49 | n/a | n/a | n/a | n/a |
+| synthetic | ownership-stable | 35/49 | 35/49 | n/a | n/a | n/a | n/a |
+
+Original-query support below uses the same native exact-span predicate on the
+first wording and first call; it is not the broader neutral Q4 predicate.
+
+| Suite | Official section: baseline → proposer | Original query: baseline/proposer | Original query: baseline/combination |
+|---|---|---|---|
+| dev | 55/73 → 56/73 | [38, 37] | [38, 37] |
+| h2 | 237/271 → 237/271 | [173, 176] | [173, 177] |
+| scale-dev | 51/73 → 52/73 | [36, 35] | [36, 34] |
+| scale-h2 | 225/271 → 224/271 | [161, 165] | [161, 166] |
+| matched | 9/10 → 9/10 | [6, 6] | [6, 6] |
+| synthetic | n/a → n/a | [0, 0] | [0, 0] |
+
+The full paired lists stay in each `*-sections.json` artifact. Counts alone do
+not show case churn. The repeated dev/scale `@ref LLP comment` loss is replacement
+of Reference syntax with Summary. Dev/scale official improvements reuse the same
+Expo Router filenames case; they are not independent replications.
+
+Actual first-card Hit@1/MRR remain unchanged by the standalone proposer on every
+suite. The historical matched 40/48 “first” statistic is original-query top-five
+recall; actual Hit@1 on these exactly matching calls is 21/48. This is the previously
+recorded metric-name correction, not a new regression or a new competitor run.
+
+| Suite | Baseline/proposer Hit@1 | Baseline/proposer MRR@5 | Combined MRR@5 | Baseline/proposer true silence |
+|---|---|---|---|---|
+| dev | 199/439 | 0.5979 | 0.6021 | 0/10 |
+| h2 | 230/354 | 0.7279 | 0.7320 | 2/45 |
+| scale-dev | 180/439 | 0.5335 | 0.5375 | 0/10 |
+| scale-h2 | 211/354 | 0.6712 | 0.6724 | 0/45 |
+| matched | 21/48 | 0.6094 | 0.6042 | 0/1 |
+| synthetic | 31/49 | 0.6735 | 0.6735 | n/a |
+
+The count-bar checks below apply the rise/no-fall formula independently. A pass
+on a reused transfer is not a fresh confirmation or adoption authority.
+
+| Suite | Proposer primary rise | Proposer six counts nonfall | Combined primary rise | Combined six counts nonfall |
+|---|---|---|---|---|
+| dev | False | True | True | True |
+| h2 | False | True | True | True |
+| scale-dev | False | True | True | True |
+| scale-h2 | False | False | True | True |
+| matched | False | True | False | True |
+| synthetic | False | True | False | True |
+
+The complete allocator-plus-proposer combination clears the six-count no-fall/
+primary-rise formula on dev, reused h2 and both scaled suites relative to ordinary
+search; matched and synthetic are flat. Its record gains are all inherited from
+the allocator. Adding the proposer instead of stopping at that allocator loses
+two scale-h2 section successes (227→225). Thus baseline-relative counts alone
+would conceal an incremental regression. The combination also lacks independent
+one-shot confirmation, and the original-query and representation caveats remain.
+
+## Completed full neutral results
+
+All four physical captures and all 16 policy replays completed:30,683 state-specific
+requests, including rebuild/location, self-retrieval, exposure and scratch forget.
+The combined capture/replay gate table matches exactly for each corpus.
+
+| Corpus | Requests | Q4 baseline | Q4 proposer | Q4 allocator | Q4 combined |
+|---|---|---|---|---|---|
+| dev | 7348 | 0.822 | 0.836 | 0.822 | 0.836 |
+| h2 | 6916 | 0.900 | 0.900 | 0.904 | 0.904 |
+| scale-dev | 8339 | 0.795 | 0.808 | 0.795 | 0.808 |
+| scale-h2 | 8080 | 0.867 | 0.863 | 0.875 | 0.867 |
+
+Every gate table is retained; these summaries do not imply all gates passed.
+The following baseline failures were present before the proposer; new diagnostic
+C2 failures are separated rather than blamed on the existing search quality.
+
+- **dev:** baseline failures: G4 integrity and forget, Q1 empty-correct, R2 maximum exposure share. Additional proposer failure: C2 latency p95 ms.
+- **h2:** baseline failures: G2 must-not rate, G4 integrity and forget, Q1 empty-correct, R2 maximum exposure share. Additional proposer failure: C2 latency p95 ms.
+- **scale-dev:** baseline failures: G4 integrity and forget, Q1 empty-correct, C2 latency p95 ms, R2 maximum exposure share. Additional proposer failure: none.
+- **scale-h2:** baseline failures: G2 must-not rate, G4 integrity and forget, Q1 empty-correct, C2 latency p95 ms, R2 maximum exposure share. Additional proposer failure: none.
+
+Research C2 is a component sum including redundant diagnostics and shared load;
+it is not optimized product latency. These values do not prove an irreducible
+algorithm cost or an integrated production pass.
+
+| Corpus | Baseline C2 ms | Proposer C2 ms | Allocator C2 ms | Combined C2 ms |
+|---|---|---|---|---|
+| dev | 8.540 | 97.670 | 40.880 | 97.190 |
+| h2 | 9.960 | 119.960 | 43.030 | 119.960 |
+| scale-dev | 140.890 | 720.120 | 507.980 | 720.290 |
+| scale-h2 | 159.560 | 758.960 | 542.360 | 758.950 |
+
+## Representation and cost audit
+
+| Suite | Changed responses | Changed spans | Same-span previews changed | Fetch refs changed |
+|---|---|---|---|---|
+| dev | 1434 | 153 | 2811 | 6572 |
+| h2 | 1323 | 282 | 2881 | 5881 |
+| scale-dev | 1451 | 131 | 2809 | 6814 |
+| scale-h2 | 1361 | 257 | 2598 | 6128 |
+| matched | 150 | 14 | 309 | 654 |
+| synthetic | 35 | 1 | 27 | 66 |
+
+The frozen implementation can replace the incumbent card object with its
+research-candidate representation even when section/span wins a stable tie. That
+explains much response churn. It is not new passage recovery; those preview changes
+have no fresh independent quality judgments. The conservative tie rule currently
+protects span selection, not complete presentation identity. This collateral
+behavior remains a concrete integration issue. No repair was tuned mid-evaluation.
+
+Record order/counts, later calls and first-call hints/related pointers are identical
+for baseline→native-stable and allocator→combined on all 5,908 wordings, and record/
+count/later-call invariants also hold for every neutral state request. Source/model
+identity audits pass. Opening is separately profiled with zero resident headers;
+no additional persistent index/model data is introduced by this read-only stage.
+
+## Acceptance decision
+
+**Do not adopt the current proposer as the default.** Its section gains do not
+produce a rise in any of LLP0005's four primary retrieval metrics, so the standalone
+change does not qualify on dev. Original-query source-support regressions remain,
+incumbent presentation changes are not independently judged, and optimized
+production latency has not been validated. The combined experiment must also be
+assessed separately from the proposer; any inherited allocator gains are not
+evidence that this passage stage improves record retrieval.
+
+These findings keep the passage hypothesis useful rather than closing it solely
+because one metric failed. A subsequent experiment should first preserve complete
+incumbent cards on unchanged-span ties, separate source-purpose quality from
+token coverage, and obtain independently prepared passage judgments. A passage-only
+acceptance rule would need to be explicitly settled rather than silently replacing
+the current primary-retrieval-rise rule. Reused h2 and existing masked packets
+cannot supply fresh confirmation. Product defaults and thresholds remain unchanged.
+
+Workspace tests, neutral harness tests, all-feature/all-target Clippy, formatting,
+LLP references, Nix product build and 70 Python tests passed. Full scorer/population
+and complete response parity checks are retained in the ignored artifacts.
+
+
+The actual run handed the scaled corpora to two independent workers after curated
+h2. The original serial driver's existing-output guard then stopped duplicate
+execution at the reserved scaled directories. `neutral/parallel-handoff.json`,
+`neutral/all-completion.json` and the overall `completion.json` distinguish that
+orchestration handoff from capture/replay failures; every measured child completed
+successfully. The proposer source hash stayed unchanged across retrieval and
+neutral; all neutral source/binary hashes match their pre-capture freeze.
+
+
+
+<a id="consolidated-passage-proposer-2026-11-15-md"></a>
+
+### Consolidated report: PASSAGE-PROPOSER-2026-11-15.md
+
+# Record-local passage proposer — 2026-11-15
+
+Implemented a native selected-record proposer and tested five passage-selection
+configurations. The strongest **stable-coverage** variant improves official
+section counts on dev/scale while holding reused h2, without changing record
+ranking or output counts. It still loses one original-query passage-support case
+on dev/scale, so it is not a universal improvement or ready for adoption. A
+preview prototype also exposes an existing API reference that an earlier source
+probe incorrectly treated as absent. Official labels and product defaults stay fixed.
+
+## Mechanism and scope
+
+Pre-score protocol and subsequent declarations (historical artifact)
+record every study extension, source freeze, failure and diagnostic distinction.
+
+`Store::research_record_passages` reads existing indexed blocks of at most five
+already-selected first-page records. Native query parsing, scope statistics,
+A/B matching, POS0.75, original float32 embeddings and dot arithmetic supply
+aligned candidate features. It admits no new record, creates no ingestion
+section, changes no persistent index, and emits at most one replacement original
+block per existing card. Record IDs/order/card counts/later calls remain fixed;
+preexisting duplicate-record cards remain untouched. This increases **record-local
+inspection work**, explicitly measured below; it does not increase the returned
+section/card budget or the top-level record-candidate set.
+
+Passage eligibility is separate from the unchanged selected record's admission:
+a passage needs a meaningful source anchor, every quoted obligation and no loss
+of originally witnessed hard term identities. It need not independently pass the
+top-level record-coverage cut. This is an explicit research departure in passage
+proposal, not a changed product threshold. Addressed, unresolved, duplicate and
+unaligned source passages are protected. No hidden task, gold, known-answer
+needle, author term list, filename lexical match, generated summary, new model,
+RRF or learned reranker enters selection. Cards remain leads to original bytes.
+
+Native collector: `evals/examples/record_passages.rs`; native coverage/stability
+selectors: `evals/src/passage_proposer.rs`, with separate replay examples. Python
+prototypes are independent offline checks, not product runtimes. Normal `agent`
+search does not invoke the new diagnostic method or evaluator selectors.
+
+## Declared configurations and measured official section counts
+
+All use the same frozen ownership-boundary record allocation. The old exported
+pool's record/passage max-score studies are closed; this study changes the
+population to previously unproposed blocks **inside selected records**, justified
+by the verified source-span audit. It is not another record-ranker weight sweep.
+
+| Configuration | Dev /73 | Reused h2 /271 | Scale dev /73 |
+|---|---:|---:|---:|
+| Ownership control |55|237|51|
+| Local joint lexical/POS+half-vector |55|not selected|not selected|
+| Local maximum coverage |56|236|53|
+| Record-local query-term IDF |55|not selected|not selected|
+| Full source-identity non-regret |55|237|51|
+| Stable coverage ties |56|237|52|
+| Original-pool coverage ablation |55|236|51|
+
+Initial three arms were declared before dev scoring. Joint keeps the existing
+half-vector normalization from the original record pool. Coverage ranks meaningful
+A-or-B count, then A count, native normalized lexical/POS, cosine and source span.
+Distinctive IDF weights term presence across the selected record's indexed blocks,
+not global record scoring. All retain original scopes and score arithmetic.
+
+Coverage wins dev by section count; full responses and source were frozen after
+all 1,470 native/Python responses matched, before h2/scale capture. Its h2 section
+failure is retained: one gain (mixed-version signing issuance), two losses (MCP
+SDK migration instruction and provider-thread staleness policy). No coefficient
+repair or claim of successful independent confirmation follows.
+
+The subsequent full-identity guard permits only strict supersets of old A and
+A-or-B term sets. It restores h2 but erases the new gains on dev/scale. This is the
+previous narrow-pool strict predicate on the expanded proposal population, not
+claimed as an untested general technique. Its transfer is diagnostic only.
+
+The attribution ablation uses the same safe coverage key but restricts candidates
+to old exported block IDs. It loses the new dev/scale gains; the MCP regression
+persists. Thus more source-local blocks enable genuine annotated gains, while
+forced equal-coverage lexical-score movements cause at least one unrelated loss.
+The ablation is explanatory after transfer, never a newly selected winner.
+
+### Stable coverage rule
+
+Keep the original passage when both coverage counts tie; otherwise let a larger
+(union count, exact count) tuple win. Among improved alternatives use the same
+lexical/POS/cosine/span key. This preserves an incumbent's existing source-selection
+prior until there is additional query coverage. It allows nonhard term exchanges,
+unlike the overly strict identity-superset guard. Hard IDs/quoted obligations stay
+protected. There is no fitted scalar margin or threshold.
+
+This variant retains the dev section gain and is separately frozen after native
+parity before its own transfer. **Its hypothesis was informed by the earlier h2
+failure**, so the h2/scale results are tuning diagnostics, not another independent
+holdout confirmation or adoption authority. The previous frozen failure is not
+rewritten. Native stable replay matches the prototype on all 4,320 wordings.
+
+The stable official gain is `s4-c-0021`, Expo Router shared component filenames,
+on both dev and scale. Maximum coverage also gains scale `s5-c-0074` (bot commit
+sign-off), which stable ties conservatively gives up. Stable h2 has no case-level
+section gains/losses relative to control. Selection is not equivalent to entailment.
+
+## Record outcomes and a stronger original-query check
+
+Every variant preserves the control's first-page record IDs and ranking:
+
+| Suite | Gold any / first | XS any / first | No-gold | Actual Hit@1 |
+|---|---|---|---:|---:|
+| dev |413/361|31/25|35|199|
+| reused h2 |341/301|55/48|54|230|
+| scale dev |388/319|28/22|31|180|
+
+These inherited retrieval gains belong to the earlier ownership allocation, not
+to this passage stage. MRR and true silence also remain unchanged. No new top1
+record, cross-scope, admission or abstention improvement is claimed here.
+
+Official section scoring can credit any prepared wording and later call. A new
+descriptive audit applies the **same native section predicate** to the original
+wording's first call/five-card page:
+
+| Stable versus ownership control | Official case-level section | Original-wording first-page section |
+|---|---|---|
+| dev |55→56|38→37|
+| reused h2 |237→237|174→177|
+| scale dev |51→52|35→34|
+
+The dev/scale original-query loss is the same reused case, `s6-c-0017`, query
+`@ref LLP comment`: Reference syntax is replaced with Summary. Both contain
+`@ref`; preserving its raw punctuation would not fix this. Summary adds the
+English word comment and broader query coverage, but loses the concrete syntax
+example required by the label. That is a source-role/intent distinction, not
+identical scalar features or absence of the raw operator. Do not add a one-case
+kind-word exception or hardcode the expected heading.
+
+H2 original-query support has8 gains/5 losses despite its flat case-level section
+count. Full paired case IDs are retained. Stable therefore clears the existing
+aggregate count columns on these inspected suites, but **fails original-query
+passage nonfall on dev/scale**. It is not a universal or per-query no-regression
+solution. The new diagnostic does not silently replace the official metric.
+
+For completeness, initial dev joint/distinctive variants have original-query
+support35/36 respectively, against38 control, despite their flat official55.
+No unselected variant is promoted from a favorable example or transfer slice.
+
+## Literal-safety and representation corrections
+
+The first count-based hard guard permitted one h2 hint to exchange which hard
+term was present (third-party versus GitHub), while keeping the missing count
+constant. All original outputs remain archived. The current native/prototype
+requires the original hard term-ID set to be a subset of the new one; quoted
+obligations remain mandatory. The corrected coverage outputs differ on0 dev,
+1 h2 and0 scale wordings. H2 was regraded: all official counts, including236
+sections, remain unchanged. This corrects literal safety, not the failed quality
+gate or a coefficient. Native/Python parity passes all 4,320 corrected outputs,
+and the hard-identity audit reports no exchanges. Corpus-free tests cover this
+specific count-versus-identity trap.
+
+Initial collector attempts stopped before scoring on a JSON representation
+comparison: an archive-decoded f64 and an in-memory promoted f32 differed by one
+f64 unit. Compare both through the same decoder, with no tolerance or changed
+kernel. An independent Python check finds exact original-feature equality for all
+shared selected-record candidates, including9754 h2 and9908 scale candidates.
+Native cold-store fixtures also check f32/f64 score bits directly. Empty failed
+collection files are retained; only complete dev-v3/h2/scale captures supply scores.
+
+A diagnostic loading correction checks indexed eligibility/filter headers before
+loading bodies. Cold-reopen tests confirm closed bodies stay unloaded, excluded
+kinds produce no rows, only requested records return, and six-record requests
+fail. Ordinary before/after responses remain equal on every completed capture.
+These are safety/collection fixes, not additional selected ranker settings.
+
+## Correction to the earlier browser reachability inference
+
+The earlier exact needle `WebBrowser.openAuthSessionAsync` was absent from the
+two exported WebBrowser spans, but that did **not** prove absence of a useful
+pointer. Both existing openBrowserAsync spans already say to use the unqualified
+`openAuthSessionAsync` and link to its method documentation. The qualified-name
+probe missed it. The direct method explanation is elsewhere, but the old fetched
+span already contains related guidance. Earlier reports implying total absence
+of browser support are superseded by this full-byte-span inspection.
+
+The original180-character excerpt hid that reference by centering the earliest
+query term near the method heading. A separate preview-only prototype chooses
+one contiguous source excerpt of at most 180 characters from the **same fetch
+span**, using unique meaningful query-term IDF and complete source units, with
+original excerpt preference on ties. It does not move a card, change a fetch,
+add a source span, manufacture text or claim to answer the request.
+
+Raw window maximization exposed clipped URLs; syntax-boundary fixtures required
+avoiding split links/code/words. An unfinished-tail fixture required evidence in
+complete units. A hard-wrap negation fixture then showed why lone newlines cannot
+be treated as complete statements. The final prototype uses sentence/blank-
+paragraph boundaries and retains the original when safe complete evidence is
+unavailable. Intermediate source/output revisions are preserved, not reported as
+successful independent configurations. These are readability/safety iterations;
+no official retrieval metric could select a winner because spans/records are fixed.
+
+On the two known browser records the final preview surfaces the existing auth-
+session reference, with unchanged fetch spans. This is a demonstrated visibility
+change, **not proof of full callback answer support or global preference**. A
+partial Markdown/sentence heuristic still needs independent context/negation
+review before product adoption. Exact source/length/metadata invariants are
+checked across all 1,470 scale wordings; rendering remains an offline prototype.
+
+The Jest guide's exact command is outside its old candidate span, and that guide
+is not selected on the first page. This selected-record proposer cannot recover
+an unselected record. Literal needle absence alone does not rule out other useful
+sources or equivalent commands; no such general absence claim is made.
+
+## Cost, implementation and reproduction
+
+At most five record IDs are visited. The captured eligible block counts and
+read-only diagnostic times are:
+
+| Suite | Median / maximum inspected blocks | Median / p95 capture ms |
+|---|---|---|
+| dev |97 /1133|35.3 /163.5|
+| h2 |95 /1145|43.3 /210.5|
+| scale |117 /1129|154.6 /534.5|
+
+Capture includes redundant native matching/term-witness/query-encoding work;
+ordinary before/after agent calls are outside that timer. Some runs overlap
+compiler work. These are **not integrated resident-search latency or neutral C2
+passes**, and should not be added to historical baseline timings. The expanded
+inspection is not free. Integration should reuse query scoring/hit sets and
+indexed frequencies, compute coverage on headers first and fetch/encode only
+necessary candidates without changing arithmetic or result order. No new stored
+vectors/model/index bytes are required. A consistent store snapshot and lifecycle/
+publication invalidation remain mandatory. No startup corpus maps are introduced.
+
+- `src/retrieval/lexical.rs::research_record_passages`: native indexed collection.
+- `evals/examples/record_passages.rs`: capture with cached/native before/after and
+  shared-feature parity; argument order STORE CASES FEATURES RESPONSES NEW_OUTPUT.
+- `evals/src/passage_proposer.rs`: safe coverage and stable coverage implementation.
+- `evals/examples/passage_proposer.rs` / `passage_stable.rs`: native replay;
+  FEATURES PROOFS PASSAGES NEW_OUTPUT_DIRECTORY.
+- `passage_proposer.py`, `conservative_passage_proposer.py`,
+  `stable_passage_proposer.py`: independent declared controls/follow-ups.
+- `passage_pool_ablation.py`: original-pool attribution control.
+- `passage_section_pairs.rs`: native official predicate plus original-query
+  diagnostic; CORPUS BEFORE AFTER NEW_OUTPUT.
+- `passage_preview.py`: presentation prototype over original source bytes only.
+
+All tools build through the flake. Native scorer commands remain unchanged;
+use `--all` for h2. Full complete-response parity holds for dev1470, h21380,
+scale1470 (4320 total), not just counts. Source/output freezes, numeric/literal
+checks, all full scorer pages, paired source outcomes and failed controls remain
+under ignored `evals/output/passage-proposer-20261115/`. All work is uncommitted.
+
+No new matched, synthetic, scale-h2 or full neutral-loop validation is claimed
+for these passage variants; earlier studies' checks do not validate this code.
+No fresh blind corpus/judgments are claimed. The existing14-topic pooled packet
+has0 new ratings and does not automatically judge newly proposed spans/previews.
+
+## Disposition
+
+Retain native stable coverage as the strongest passage experiment and preview
+focusing as a separate source-faithful prototype. Do not wire either into default
+search: current evidence is tuned/reused and original-query support still falls
+on one case. The next useful signal is query-conditioned source purpose (syntax
+example, migration decision, reference list, workflow overview), validated with
+query-only versus full-task judgments. Earlier positional/action-frame studies
+remain closed; new source-role work needs a distinct predeclared hypothesis and
+new counterexamples, not tuning to the known @ref or MCP cases.
+
+For record misses such as the unselected Jest guide, proposer timing before record
+selection is a separate future experiment over a fixed record-candidate budget;
+this selected-record stage cannot solve it. It must not be credited as a gain
+merely for inspecting more records/sections. Keep record relevance, passage
+support, excerpt visibility and exact-source navigation as separate measurements.
+
+
+Validation completed: workspace/all-feature Rust tests, all-target/all-feature
+Clippy with `-D warnings`, formatting, LLP references, `nix build`, and diff
+whitespace checks passed. The existing vendored libSQL lifetime warnings remain.
+Python experiment tests: 70 passed. Native stable replay matches the prototype on
+all 4,320 wordings; cold-store collection tests cover eligible candidate-local body
+loading and original feature bits. These are implementation checks, not evidence
+of fresh retrieval generalization.
+
+Final blank-paragraph/sentence-bound preview validation covers 1,470 scale wordings:
+3,147 card texts change; every new text is a contiguous original-source substring
+of at most 180 characters; all other card fields and subsequent calls are identical.
+The two known browser pointers become visible. Earlier preview revisions are
+archived separately and are not the final output. See
+`evals/output/passage-proposer-20261115/preview-paragraph-validation.json`.
+No independent presentation judgments have been collected.
+
+
+### Subsequent full-suite evaluation
+
+The operator requested the missing full populations after this initial study.
+[The full evaluation](#consolidated-passage-full-eval-2026-11-15-md) records four attribution
+controls, all six retrieval populations and the full neutral protocol/completion
+status. It adds a scaled-h2 aggregate section loss and identifies two incremental
+losses against the ownership allocator. Earlier statements about omitted suites
+describe this initial freeze, not the later coverage. No selector was retuned.
+
+
+
+<a id="consolidated-record-competition-2026-11-15-md"></a>
+
+### Consolidated report: RECORD-COMPETITION-2026-11-15.md
+
+# Query-term evidence in record competition — 2026-11-15
+
+Implemented the record-distinction mechanism, rather than only diagnosing corpus
+growth. Eight native Rust experimental selectors now compete challengers against
+actual native cards using query-term identities and separate feature comparisons.
+**No tested configuration passes the dev retrieval-rise/no-fall requirements.**
+No candidate was selected for h2 or adopted as the ordinary search algorithm.
+The mechanisms and observed gains remain research evidence, not a conclusion that
+all record-aware competition is ineffective.
+
+## Native implementation and original evidence
+
+- `src/retrieval/lexical.rs::research_term_witnesses` exports per-candidate original
+  matcher-A and matcher-B query-term identities and the query term's existing IDF.
+  It reuses native matcher semantics, POS pair generation, original term indexes,
+  eligibility/filters and fixed scoring; it does not tokenize previews or use
+  labels, filenames, authors, task text or generated summaries as body evidence.
+- Terms expose content/hard/quoted flags. IDF is the arithmetic mean of the existing
+  surface-token IDFs belonging to that parsed term. This is query-background IDF,
+  not a maximum over competing candidate scores. Original matcher-A evidence is
+  not claimed to be a stronger raw-byte proof than the accepted matcher semantics.
+- `evals/src/record_competition.rs` implements all eight policies in Rust.
+  `evals/examples/record_competition.rs` replays them without a Python runtime.
+  `evals/examples/term_witnesses.rs` collects the new native diagnostic evidence.
+  Python is an independent offline prototype/analysis and scoring orchestrator.
+- No index/schema/model, ordinary query/write path, confidence gate or ingestion
+  change. No RRF, reranker, new embedding model, network dependency or surrogate
+  content. Original scores/embeddings are reused; the algorithm changes which
+  record is allowed to replace a native record, not their underlying arithmetic.
+
+Every policy keeps the exact native number of cards and calls; later calls are
+byte-identical. At most one first-page slot changes. Native repeated-record spans
+are retained, never supplemented or concatenated. An incumbent must have an exact
+record/block/span alignment with exported features; unresolved span evidence is
+retained. Challenger score and term witnesses come from the same original block,
+not independent maxima over unrelated sections. Empty pages remain empty.
+Unchanged responses preserve the full native rendering; changed first pages use
+the existing experimental card renderer. There is no token-cost claim.
+
+## Why this is new, and what was not retried
+
+FINDINGS closes field normalization, Dirichlet scoring, native tier weaving,
+lexical strict-superset replacement, token-vector/nearest-neighbor controls and
+semantic word-assignment certificates. These were read and are not rerun.
+
+The first new rule permits *equal* term coverage with stronger lexical/POS plus
+vector evidence, preserves actual term identities rather than aggregate counts,
+and uses the broader independently generated candidate pool. It is a bounded
+challenger/incumbent comparison, not the old native-cut strict-superset rewrite.
+The anchor variants do not delete query terms or manufacture semantic coverage:
+they prioritize witnessed original query anchors when deciding a replacement.
+Two original anchors are matched in one stored block, not joined over separate
+units or assigned to unverified semantic synonyms. This differs from the closed
+P1/P2/word-assignment settings. Same-block co-occurrence is not a claim of a
+semantic relation, same-sentence attachment or full answer support.
+
+## Development sequence: every tested configuration
+
+No gold, category, hidden task or previously judged preference enters a selector.
+Each iteration was declared before its dev score. This is still repeated dev
+selection and must not be called blind validation or independent replication.
+No source constants were swept. Scope7 and accepted POS0.75 remain numerical
+inputs; anchor evidence classes explicitly precede locality in the anchor arms.
+
+1. **dominance:** retain all meaningful incumbent matcher-A and A-or-B term IDs;
+   require no worse hard/quoted obligations, applicable strong native tier,
+   scope-adjusted lexical+POS and cosine, with at least one strict score gain.
+   Preserve unknown native original tiers. Order challengers by adjusted lexical
+   score then cosine; replace the earliest eligible slot once.
+2. **two-signal-agreement:** same identity/provenance guards, but require strict
+   gains in at least two of lexical, POS and cosine, plus adjusted-score nonfall.
+3. **rarest-anchor:** give the highest-IDF meaningful query term an evidence grade:
+   matcher-A=2, matcher-B-only=1, absent=0. Preserve attested hard-term identities.
+   A higher grade may overcome generic term mass if cosine does not fall; equal
+   grades require adjusted-score/cosine dominance. Unknown admission tiers are
+   not assigned a low tier, but this arm permits comparison via actual span terms.
+4. **anchor-two-signal:** higher anchor grade additionally needs a strict cosine
+   or POS gain; equal grades follow the preceding rule.
+5. **known-anchor:** rarest-anchor but retain unknown-tier and original-quote-
+   incompatible native incumbents, which may have stronger fallback/address proofs.
+6. **conjunctive-anchors:** require both of the two highest-IDF meaningful parsed
+   terms in one challenger block (query order breaks equal-IDF ties). Fewer than
+   two terms gives no conjunctive anchor. Accepted A/B matches count equally.
+   Preserve unknown/fallback incumbents and matched hard witnesses. A new complete
+   conjunction needs cosine nonfall; an already complete conjunction requires
+   adjusted-score/cosine dominance. This trades generic term mass only for a
+   complete conjunction, not for a merely rare generic word.
+7. **semantic-conjunction:** exactly the same constraints, but order eligible
+   challengers by cosine before adjusted lexical score within anchor grade.
+8. **semantic-dominance:** the strict dominance constraints with cosine-first
+   challenger ordering. This is an order ablation, not another blend coefficient.
+
+## Dev measurement
+
+All1470 wording responses (490 cases) were scored by the unchanged native grader.
+Gold population439, XS42, mixed no-gold51, doc-section73. First means original-
+wording first-page Hit@5. Hit@1 is the actual first card, not the historical
+misnamed first-wording count. True silence remains0/10 by exact-budget design.
+
+| Policy | Native grader | Actual Hit@1 | Changed wordings |
+|---|---|---|---|
+| baseline | any 412/439 first 354/439 xs 31/42 25/42; empty 35/51 section 55/73 | 199/439 | 0 |
+| dominance | any 412/439 first 354/439 xs 31/42 25/42; empty 35/51 section 55/73 | 199/439 | 6 |
+| two-signal-agreement | any 412/439 first 354/439 xs 31/42 25/42; empty 35/51 section 55/73 | 199/439 | 0 |
+| rarest-anchor | any 407/439 first 349/439 xs 31/42 26/42; empty 35/51 section 55/73 | 195/439 | 667 |
+| anchor-two-signal | any 407/439 first 347/439 xs 31/42 26/42; empty 35/51 section 55/73 | 194/439 | 672 |
+| known-anchor | any 405/439 first 351/439 xs 31/42 26/42; empty 35/51 section 55/73 | 199/439 | 572 |
+| conjunctive-anchors | any 411/439 first 351/439 xs 31/42 25/42; empty 35/51 section 55/73 | 198/439 | 275 |
+| semantic-conjunction | any 411/439 first 352/439 xs 31/42 25/42; empty 35/51 section 54/73 | 198/439 | 275 |
+| semantic-dominance | any 412/439 first 354/439 xs 31/42 25/42; empty 35/51 section 55/73 | 199/439 | 6 |
+
+Dominance changes six responses without moving a retrieval metric; two-signal
+agreement is completely flat. Neither has the required retrieval rise. Single-
+anchor variants gain one XS-first case but lose gold recall. Conjunctive anchors
+reduce those losses but still fail dev, and cosine-first ordering adds a section
+loss. None is selected. There is no new h2, scale, neutral, latency, index-size
+or blind-validation claim for these configurations. Earlier full evaluations
+concern different frozen policies and are not attributed to these new ones.
+
+## Divergence investigation, not blanket rejection
+
+Strict preservation blocks useful challengers: a dev-only audit of92 wordings
+where the earlier protected-primary policy gains a gold record found many potential
+comparisons losing incumbent A or A/B witnesses. Unknown native original tiers
+also block130 comparisons. These are overlapping comparison counts, not130 cases
+or proof that every blocked swap is desirable. `dev-blockers.json` records them.
+This motivated explicit anchor classes rather than another global normalization.
+
+The rarest-anchor counterexample is concrete. For `Play Store version code rejected`,
+`rejected` is the rarest term; for `signing package upgrade PEM`, it is `upgrade`;
+for `claim closure replacement record storage path`, it is `closure`. A rare word
+can identify the wrong topic when its entity/relation is missing. The original-
+wording rarest-anchor result has6 rank-one losses versus2 gains. Paired cases and
+term grades are retained in `anchor-divergences.json`; no case-name exceptions
+were implemented.
+
+Source-addressing losses include queries naming tailscale.nix and instructions.nix.
+The correct native note may lack that string as original-query body evidence but
+be licensed by native address/fallback handling. A new body literal alone does
+not supersede that proof. Preserving unknown provenance is safer, but not a
+universal fix: under one-swap capacity it changes which other incumbent is the
+victim, and may also freeze a useful weak fallback's replacement. Known-anchor
+therefore does not monotonically improve the single-anchor result.
+
+Two anchors reduce the generic-word error; they do not model entity/action
+attachment or distinguish transferable advice from another project's similar
+text. Cosine-first ordering recovers one original-wording hit relative to lexical
+ordering but loses a section. These results retain the positive scope/body-anchor
+signals while showing that neither the coverage count nor rare-token conjunction
+is a sufficient decision rule. They do not establish a necessary encoder failure,
+a need for a forbidden reranker, or permission to relax an adoption floor.
+
+## Validation and reproduction
+
+Native evidence collection checked complete native before/after responses against
+the cached baseline on all1470 wordings. The new term sets independently reproduce
+cached A/B coverage counts for every exported candidate. Both initial and IDF
+collector artifacts are kept; early strict controls replay identically. The final
+Rust implementation matches the Python prototype's complete responses on all1470
+wordings for all eight policies plus baseline:13230 full response comparisons.
+Seven Python behavior tests and two Rust corpus-free tests verify term identity,
+scope non-compensation, hard-term preservation and anchor/tier rules. Formatting,
+workspace all-target/all-feature Clippy, all-feature tests, LLP refs and Nix build
+pass. Pre-build syntax/patch adjustments did not create scoring configurations.
+
+```sh
+nix develop -c cargo build --release -p linn-eval --example term_witnesses --example record_competition
+target/release/examples/term_witnesses MATCHING_STORE CASES FEATURES NEW_WITNESSES
+target/release/examples/record_competition FEATURES WITNESSES NEW_RESPONSES
+nix develop -c python3 evals/experiments/score_search_iteration.py CORPUS RESPONSES MATCHING_STORE
+```
+
+All evidence, configurations, scores, paired audits and logs are under ignored
+`evals/output/competition-20261115/`. `dev-selection.json` explicitly records no
+selection. No default retrieval code path was changed or promoted; implementation
+is an experimental native selector, not a claimed improved deployed search.
+Everything remains uncommitted. No push, PR, publish or modified corpus.
+
+
+
+<a id="consolidated-search-2026-11-14-md"></a>
+
+### Consolidated report: SEARCH-2026-11-14.md
+
+# Search algorithm experiments — 2026-11-14
+
+Exploratory, authorized by the request to implement experiments following
+SEARCH-RESEARCH.md. Accepted retrieval defaults remain authoritative. Each
+candidate is an isolated source patch, not a runtime flag. No additional model,
+reranker, RRF, confidence gate, author enrichment or corpus change.
+
+Base: f2250acf77d1d5a80da9c9e59dc28d6223616341.
+Private outputs and frozen binaries: evals/output/search-experiments-20261114/.
+Corpus: unchanged reimplement/evals/corpus/q4, dev split only for selection.
+All tested configurations and dispositions are recorded below. Historical h2
+is reused; a confirmation on it cannot establish blind generalization.
+
+## Predeclared candidates
+
+S1: replace the far-record penalty of 7 with min(7, 0.1 * score), before each
+existing matcher record cut. This caps the preference at both the existing
+absolute amount and ten percent of the candidate's nonnegative score. Preserve
+tiers, candidate eligibility, shared population, arrival ties and all later
+page construction. One setting only, no sweep. The hypothesis is that a weak
+local match should not beat a substantially stronger cross-project match merely
+because the score scale is small. Risk: local-note displacement. No improvement
+to pure lexical nonadmission is expected.
+
+B1 (conditional): only proceed if a surface-word screen shows original query
+obligations split across adjacent same-section blocks. Investigate an original
+prose boundary overlap, not the closed table-row or one-structural-unit cutter.
+The exact cutter must be declared before its scored run. A population screen
+is not a native FTS admission test or evidence of a relevance gain.
+
+Stop rules: no constant retuning after measurement. An isolated candidate must
+satisfy LLP 0005's four retrieval no-fall/one-rise and no-gold/section no-fall
+rules on dev before freezing for one h2 confirmation. A flat/failed candidate
+is retained as a patch for review, removed from product source and closed.
+Do not combine failed candidates. Report paired case changes, complete response
+changes and actual original-wording Hit@1 separately from first-wording Hit@5.
+
+B1 declared cutter (before scoring): retain the normal 1,400-byte greedy blocks,
+then extend each later block backwards by its preceding block's final complete
+paragraph only when that paragraph has at most 350 bytes (one quarter of the
+normal target) and both sides are prose. Exclude fence, list, heading, table,
+quote and indented-code lines. Never cross sections or create synthetic text.
+This changes indexed row bytes/statistics and overlapping-card competition;
+rows are not added. Existing oversized units remain possible. No parameter sweep.
+The surface screen yielded 18 wordings, only three originals; all three original
+gold records already appear on the first page. This is a ranking/section study,
+not a demonstrated cure for the synthetic empty pages. The bounded paragraph
+rule is deliberately narrower than the screen's whole-adjacent-block union.
+
+## Results — closed, neither candidate adopted
+
+All rows are **exploratory q4-dev measurements**, not fresh blind evidence.
+Baseline reproduces current counts; the trace-only build matches all 1,470
+baseline ordered pages. Each candidate used a fresh store from the unchanged
+corpus. No h2, scale, synthetic, neutral or competitor run was performed.
+Both candidates fail dev selection, so neither consumes a confirmation run.
+
+| Configuration | Gold any / first-wording Hit@5 | XS any / first-wording Hit@5 | No-gold | Section | Actual original Hit@1 | Original MRR@5 |
+|---|---|---|---|---|---|---|
+| Accepted baseline | 412/439, 354/439 | 31/42, 25/42 | 35/51 | 55/73 | 199/439 | 0.597950 |
+| S1 bounded scope | 398/439, 337/439 | 32/42, 26/42 | 36/51 | 52/73 | 191/439 | 0.572285 |
+| B1 prose overlap, baseline scope | 410/439, 352/439 | 31/42, 25/42 | 35/51 | 55/73 | 197/439 | 0.593964 |
+
+True silence: 0/10 cases on all three configurations, inspecting all calls and
+wordings. S1's no-gold increase does not establish improved true silence.
+Neither candidate gains any original-query rank-one case.
+
+S1 changes 768/1470 ordered pages and 791 complete responses. XS-any gains
+s3a-c-0028; XS-first gains s5-c-0032. Gold-any loses 14 cases and gold-first
+loses 17, without gains; original rank-one loses eight. This configuration is
+closed, without coefficient tuning or combination with B1. It does not prove
+that the existing penalty is universally optimal.
+
+B1 changes 83 ordered pages and 329 complete responses. Gold-any, gold-first
+and rank-one lose s2b-c-0006 and s4-c-0002 without gains. For “pairing auth
+failure stored state”, short gold s2b-r-0007 (bytes 0..294) is displaced. For
+“TestFlight no-wait upload completion status”, gold s4-r-0109 (0..201) is
+replaced by s4-r-0015 (2996..3746). Neither gold needs a prose overlap. This
+shows collateral changes outside the intended population; the causal roles of
+changed statistics, competitors and fallback interception are not isolated.
+B1 is closed without a window-size sweep.
+
+Closed database bytes: baseline 196,194,304; S1 196,190,208; B1 196,476,928.
+All have 6,096 blocks. These are descriptive, not the reason for rejection.
+Trials overlapped diagnostic/build work; timing exports are exploratory only,
+with no controlled latency claim. Model/binary costs are separate.
+
+## Screens, setup corrections and limitations
+
+`boundary_inventory` uses production spans and query parsing but surface-word
+sets, not native FTS, stems, hard-term semantics, eligibility, gold-section
+restrictions or final admission. Hard queries and filters are excluded. It
+finds 18 adjacent-block candidates, three on original queries: s1-c-0009,
+s1b-c-0047 and s6-c-0001. All three gold records already appear in baseline
+first pages. This broad union screen does not prove that narrow B1 overlap
+recovers any witness. B1's full scored run finds no gold or top-1 benefit.
+The first inventory attempt stopped on an invalid prefix after seven entries;
+that incomplete output was discarded. The corrected diagnostic reports and
+skips five invalid wordings, without changing product parsing. This is a setup
+correction, not another algorithm configuration.
+
+`scope_screen.py` reconstructs first-record raw matcher cuts under old/S1
+penalties from LINN_POS_RANK_TRACE. There are 1,273 changed raw-order events
+across 406 cases, 11 target-entry events and zero target-loss events. These
+include matchers, wordings and repeated traces; they are not independent
+queries or final-page gains. Rewritten queries are excluded. Later admissions,
+fills and interleave are not reconstructed. The full native trial, not this
+optimistic population screen, determines rejection.
+
+## Implementation and reproduction
+
+The two patch files contain the actual isolated algorithm implementations.
+The B1 patch includes a Unicode and section-boundary overlap test. Both apply
+separately on base f2250acf, with the harmless trace-context addition. Never
+apply both for these trials. No runtime algorithm switches were added.
+Product source has been restored; retaining a patch does not adopt it.
+
+```sh
+git apply --check evals/experiments/search-s1-bounded-scope.patch
+git apply evals/experiments/search-s1-bounded-scope.patch
+nix develop -c cargo build --release -p linn-eval --bin linn-eval
+# Use unchanged private corpus and a new output store/destination.
+target/release/linn-eval --corpus /absolute/path/to/q4 \
+  --store evals/output/new-s1.db \
+  --pages evals/output/new-s1-pages.jsonl \
+  --responses evals/output/new-s1-responses.jsonl \
+  --timings evals/output/new-s1-timings.jsonl
+git apply --reverse evals/experiments/search-s1-bounded-scope.patch
+```
+
+Use the B1 patch separately only to reproduce its closed result. Rebuild the
+ordinary binary after reversal: existing executables retain experimental code.
+The final target/release/linn-eval is rebuilt against restored source.
+
+`../examples/boundary_inventory.rs` screens unchanged dev corpus spans.
+`scope_screen.py CORPUS TRACE` emits the raw scope screen.
+`compare_search.py CORPUS BEFORE_RESPONSES AFTER_RESPONSES` measures actual
+original-query Hit@1/MRR and true silence. The native scorer remains authoritative
+for LLP counts. Existing `page_changes` supplies paired Hit@5/XS case ledgers.
+Frozen binaries, snapshots, response/page exports, timings and paired outputs
+remain under ignored evals/output/search-experiments-20261114/. The redundant
+trace store was removed during disk recovery; traces and pages are retained.
+
+## Conclusion
+
+Two implemented algorithm hypotheses were rejected. No search improvement is
+claimed and accepted defaults remain intact. Fresh independent query collection
+and causal attribution are preferable to another coefficient/window sweep.
+
+## Validation and operational provenance
+
+The B1 candidate's full workspace/all-feature tests passed, including its new
+original-byte overlap test. Formatting, strict workspace/all-target/all-feature
+Clippy, Nix build, LLP references and patch-application checks passed on restored
+source. Restored release replay matches all 1,470 baseline **complete responses**
+exactly, not merely aggregate counts or first-page ids.
+
+The first Clippy/Nix attempts failed from a full disk. Only task-created debug
+build artifacts and redundant experiment stores were removed; exports, frozen
+binaries, source snapshots and manifests remain. Three incomplete test executable
+artifacts left by disk exhaustion were removed before retrying tests. Final
+checks use reduced debug information and disabled incremental builds where
+needed, with no retrieval/runtime setting changes. Concurrent Nix evaluation
+cache contention was bypassed per invocation with --option eval-cache false;
+no live configuration was altered. S1/B1 and trace stores were removed after
+measurements; recreate them from unchanged corpus when reproducing.
+
+Final restored workspace/all-feature test retry passed after removing the
+non-executable build outputs (including the CLI artifact). No test failure
+required a product-code fix. All required final checks are complete.
+
+
+
+<a id="consolidated-search-evidence-rules-2026-11-14-md"></a>
+
+### Consolidated report: SEARCH-EVIDENCE-RULES-2026-11-14.md
+
+# Competitor-informed evidence rules — 2026-11-14
+
+## Findings that changed this experiment
+
+Read FINDINGS' closed wide rewrites, cross-matcher tier priority, field-normalization
+controls, historical partial-page semantic replacement, and the recent joint and
+scope experiments. These rule out presenting another normalization, superset
+replacement, native tier sort or single vector replacement as new. Earlier tier
+weaving kept each matcher's cut and yielded no gains. The recent broad-pool joint
+experiments materially change the population: independent vector/POS candidates
+are available, but unrestricted score competition displaces useful native cards.
+This is new evidence for testing evidence rules on the broad pool; it does not
+reopen or rerun the old native-cut tier-weave configuration.
+
+## Prior art and what can be used within the constraints
+
+- Meilisearch uses ordered relevance buckets; later rules refine existing buckets
+  rather than overriding every earlier criterion. Rechecked primary documentation:
+  https://www.meilisearch.com/docs/capabilities/full_text_search/relevancy/ranking_rules
+- Vespa permits independent top-k retrieval operators contributing a union before
+  first-phase scoring. Multiple ranking phases are optional. Rechecked:
+  https://docs.vespa.ai/en/ranking/phased-ranking.html
+- qmd still retrieves original-query vector candidates even when expansion is
+  suppressed by strong lexical evidence. Its RRF/multiple models/reranker are not
+  transferable under Linn's constraints. Pinned prior inspection:
+  https://github.com/tobi/qmd/blob/86d2365d17fc682e491c2c53d1e4a884aee8682a/src/store.ts#L6263
+- Engrim independently gathers lexical and semantic candidates; its rank blend,
+  semantic floor, model and scope differ. Its win does not identify one cause:
+  https://github.com/timgordontg/engrim/blob/e041da05a8de69550998489f8c9231b4c6e11977/src/engrim/cli.py#L651
+
+The research inference is broad candidate access with explicit evidence priorities,
+not adoption of any competitor's product rules or code. No copied code, new
+runtime/model, RRF or reranker was introduced. None of these external sources
+establishes a Linn-specific qualifying gain.
+
+## Three predeclared policies
+
+All use the same cached broad candidate pool, quoted-compatibility filter and
+half-strength query-max balanced lexical+POS+vector score as the preceding study.
+For each record, preserve its native first-page passage when present, otherwise
+choose its highest lexical+POS passage. One existing span per card, no expansion.
+
+1. `bucket-scope7`: rank records by best available matcher tier, then joint score
+   with scope7 inside that tier. Unknown tiers sort after known native partials.
+2. `bucket-scope-tie`: same, but far scope is only a tie-break after the unpenalized
+   joint score within a tier. This is an ordering change, not another fitted scope
+   coefficient; it is still only an ablation inside the exported candidate pool.
+3. `protected-native`: keep each native first-page record with an exported tier0
+   or1 witness in its exact native slot and bytes. Fill only remaining slots by
+   joint score with scope7. Non-native strong matches may compete in the remaining
+   slots; no new slot is created. Existing later calls stay unchanged.
+
+The score is evaluated directly over the broad pool. Protected slots are a
+hypothesis about evidence priority, not an additional model or reranker. All
+per-query per-call card counts are exactly native. Empty pages remain empty.
+Card lengths may differ for replacements; equal bytes/latency are not claimed.
+
+## Dev selection and transfer
+
+Only protected-native passes all six dev aggregate bars, with at least one
+retrieval rise. It was frozen before transfer, with summary hash saved. No other
+policy is selected after inspecting h2/scale. All transfer outcomes are reused-set
+exploratory evidence, not a new independent holdout confirmation.
+
+### dev
+
+| Policy | Native grader | Original Hit@1 |
+|---|---|---|
+| baseline | any 412/439 first 354/439 xs 31/42 25/42; empty 35/51 section 55/73 | 199 |
+| bucket-scope7 | any 411/439 first 351/439 xs 33/42 27/42; empty 38/51 section 55/73 | 196 |
+| bucket-scope-tie | any 390/439 first 328/439 xs 35/42 30/42; empty 38/51 section 53/73 | 182 |
+| protected-native | any 418/439 first 370/439 xs 31/42 26/42; empty 36/51 section 56/73 | 202 |
+
+### h2
+
+| Policy | Native grader | Original Hit@1 |
+|---|---|---|
+| baseline | any 341/354 first 298/354 xs 55/62 48/62; empty 54/106 section 237/271 | 230 |
+| bucket-scope7 | any 342/354 first 298/354 xs 56/62 52/62; empty 56/106 section 231/271 | 225 |
+| bucket-scope-tie | any 331/354 first 289/354 xs 58/62 53/62; empty 57/106 section 228/271 | 210 |
+| protected-native | any 343/354 first 313/354 xs 53/62 49/62; empty 54/106 section 236/271 | 239 |
+
+### scale
+
+| Policy | Native grader | Original Hit@1 |
+|---|---|---|
+| baseline | any 388/439 first 316/439 xs 28/42 22/42; empty 31/51 section 51/73 | 180 |
+| bucket-scope7 | any 383/439 first 304/439 xs 27/42 23/42; empty 30/51 section 51/73 | 179 |
+| bucket-scope-tie | any 357/439 first 279/439 xs 29/42 23/42; empty 32/51 section 50/73 | 164 |
+| protected-native | any 389/439 first 317/439 xs 28/42 22/42; empty 31/51 section 50/73 | 179 |
+
+### synthetic
+
+| Policy | Native grader | Original Hit@1 |
+|---|---|---|
+| baseline | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 31 |
+| bucket-scope7 | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34 |
+| bucket-scope-tie | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34 |
+| protected-native | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34 |
+
+## Paired diagnosis: useful distinction, no qualifying improvement
+
+Protected-native passes dev, but h2 XS-any falls55→53 and section237→236.
+Scale gold-any rises388→389 and first316→317, with XS and no-gold unchanged,
+but section51→50 and original Hit@1180→179 fall. It does not pass the bars.
+
+Dev gold-any has11 gains/5 losses; first has30/14. H2 gold-any3/1, first19/4,
+XS-any2/4, sections2/3. Scale gold-any13/12, first23/22, XS-any1/1,
+sections1/2. These close net results contain real regressions, not just noise
+that can be omitted. All paired case IDs are retained in diagnostics.
+
+H2 cross-scope losses: h2a1-c-0034 (oxlint warning CI), h2a2-c-0102 (ripgrep
+fallback helper), s7-c-0054 (eslint warnings), s7-c-0080 (pnpm lint warning count).
+Astra follow-up correction: all four desired XS targets are present in the pool
+on the exact wordings where native succeeds. Three cases have empty gold lists;
+XS targets use other-scope must_not records, so gold-span absence was irrelevant.
+These are selection/protection failures, not pool misses. H2 section losses h2a2-c-0028,
+h2a2-c-0074,s7-c-0001 still have supporting pool spans and original-wording gold
+records; case-level alternate wording/span scheduling still matters. No repair
+was fitted to those cases. Scale section losses s3a-c-0006 and s4-c-0031 lose
+original-wording gold despite available supporting pool spans.
+
+Broad tier sorting improves h2 XS-any and no-gold, but loses sections and scale
+recall. Thus neither a flat score nor a universal bucket order solves the tradeoff.
+Protected lexical evidence reduces disruptive changes, but preserves some wrong
+incumbents and cannot rank similar weak evidence reliably under distractors.
+The wall is partly candidate/source evidence and partly nontransferable relevance
+ordering; existing measurements do not identify one sufficient fix.
+
+## Next decisions, without silently relaxing constraints
+
+A label-free score/rule search on these repeatedly inspected sets is approaching
+a tuning exercise. Further useful evidence should isolate missing relevant source
+units before fitting new weights. qmd's expensive components and Engrim's different
+encoder/chunking remain confounders, not proof that their forbidden components
+are required. A similarly fast native replacement encoder is authorized research,
+but must measure native build/latency and full fixed-budget retrieval; no additional
+model or default replacement is justified here. A fresh blind corpus remains
+necessary to trust any eventually passing adjustment. No fixed-budget passing
+configuration was found in this experiment, and no gate or bar was relaxed.
+
+## Reproduction and validation
+
+Run `python3 evals/experiments/evidence_bucket_search.py FEATURES NEW_OUTPUT`,
+then `score_search_iteration.py CORPUS NEW_OUTPUT MATCHING_STORE`, using `--all`
+for h2/synthetic diagnostics. It reuses the record/passage export driver, never
+changes corpus or scores through gold labels. Full native grading succeeds.
+All13,107 policy responses (1470 dev,1380 h2,1470 scale,49 synthetic ×3) were
+independently checked for exact call/card counts, untouched later calls, and
+membership of every card in the exported candidate/native set. Every protected
+native slot retains the complete original card. Source hashes, frozen selection,
+full response/score exports, invariant counts and paired diagnostics are under
+ignored `evals/output/evidence-bucket-20261114/`. Diff whitespace passes.
+No Rust product changes; no new production latency/index claim. Work remains
+uncommitted, without push/PR/publish.
+
+
+
+<a id="consolidated-search-fixed-budget-2026-11-14-md"></a>
+
+### Consolidated report: SEARCH-FIXED-BUDGET-2026-11-14.md
+
+# Fixed-card-budget search follow-up — 2026-11-14
+
+The operator excludes extra cards/sections as improvements. This supersedes the
+previous recommendation of supplementary spans. Those measurements remain in the
+historical log, but are out of scope and provide no adoption evidence.
+
+## Protocol
+
+Five label-free policies were declared before scoring: balanced reranking of
+existing native cards; equal joint scoring; query-max balanced scoring at half
+vector strength; full balanced scoring; lexical+POS without vector scoring.
+All use existing cached native float32 features, the same quoted compatibility
+filter and scope penalty, and deterministic record/span/section ties. The latter
+four replace first-page slots with distinct records. Calls, per-call card counts,
+and every later call are identical to native for every query; empty native pages
+stay empty. No supplementary passage, concatenated section, extra call or added
+card is allowed. This is stricter than merely limiting all methods to five cards.
+One card still uses a derived native block, so passage lengths can differ; equal
+card budget does not establish equal bytes or latency. No product code changes.
+
+Selection is dev-only: equal and balanced pass the six LLP0005 aggregate
+requirements. Balanced wins their Hit@1 tie-break (215 versus211) and is frozen
+before transfer scoring. Half-vector fails dev cross-scope-any (30 versus31),
+and lexical-only fails both cross-scope metrics and no-gold. Native-only reordering
+has no retrieval rise and hence cannot qualify, despite improving dev Hit@1.
+All h2 runs are reused exploratory diagnostics, never fresh confirmation. No
+coefficient or routing changes were made after transfer results were inspected.
+
+## Full native grader outcomes
+
+Each row: gold-any, gold-first, cross-scope-any, cross-scope-first; no-gold;
+section. Denominators are unchanged from the historical suite. Hit@1 below is
+original wording only, whereas gold-any permits any wording.
+
+### dev
+
+| Policy | Native grader | Hit@1 |
+|---|---|---|
+| baseline | any 412/439 first 354/439 xs 31/42 25/42; empty 35/51 section 55/73 | 199 |
+| native-reorder | any 412/439 first 354/439 xs 31/42 25/42; empty 35/51 section 55/73 | 216 |
+| equal | any 417/439 first 366/439 xs 31/42 27/42; empty 36/51 section 55/73 | 211 |
+| balanced-half | any 419/439 first 371/439 xs 30/42 26/42; empty 36/51 section 55/73 | 213 |
+| balanced | any 416/439 first 370/439 xs 31/42 27/42; empty 36/51 section 55/73 | 215 |
+| lexical | any 417/439 first 365/439 xs 28/42 22/42; empty 34/51 section 57/73 | 206 |
+
+### h2
+
+| Policy | Native grader | Hit@1 |
+|---|---|---|
+| baseline | any 341/354 first 298/354 xs 55/62 48/62; empty 54/106 section 237/271 | 230 |
+| native-reorder | any 341/354 first 298/354 xs 55/62 48/62; empty 54/106 section 237/271 | 217 |
+| equal | any 340/354 first 305/354 xs 54/62 50/62; empty 55/106 section 222/271 | 220 |
+| balanced-half | any 343/354 first 313/354 xs 52/62 49/62; empty 53/106 section 227/271 | 237 |
+| balanced | any 341/354 first 305/354 xs 53/62 50/62; empty 54/106 section 224/271 | 224 |
+| lexical | any 345/354 first 310/354 xs 54/62 46/62; empty 54/106 section 232/271 | 240 |
+
+### scale
+
+| Policy | Native grader | Hit@1 |
+|---|---|---|
+| baseline | any 388/439 first 316/439 xs 28/42 22/42; empty 31/51 section 51/73 | 180 |
+| native-reorder | any 388/439 first 316/439 xs 28/42 22/42; empty 31/51 section 51/73 | 183 |
+| equal | any 374/439 first 311/439 xs 28/42 21/42; empty 31/51 section 47/73 | 182 |
+| balanced-half | any 387/439 first 321/439 xs 29/42 21/42; empty 31/51 section 48/73 | 196 |
+| balanced | any 378/439 first 317/439 xs 29/42 21/42; empty 31/51 section 48/73 | 184 |
+| lexical | any 398/439 first 327/439 xs 26/42 19/42; empty 30/51 section 52/73 | 193 |
+
+### synthetic
+
+| Policy | Native grader | Hit@1 |
+|---|---|---|
+| baseline | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 31 |
+| native-reorder | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34 |
+| equal | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34 |
+| balanced-half | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34 |
+| balanced | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34 |
+| lexical | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 31 |
+
+## Interpretation and next avenues
+
+No tested fixed-budget adjustment passes all bars. The dev-selected balanced
+candidate fails h2 cross-scope-any (55→53) and section (237→224), and scale
+any-wording recall (388→378), cross-scope-first (22→21), and section (51→48).
+It is not eligible for adoption.
+
+Half-vector scoring is the strongest ranking-only signal: Hit@1 rises on dev,
+h2, scale and synthetic, respectively199→213,230→237,180→196,31→34. Its
+cross-scope losses on dev/h2 and scale XS-first prevent adoption. Keep the
+candidate as a research lead, not a universal improvement or a closed finding
+that vector competition is useless. Lexical-only gains scale recall and h2
+Hit@1 while losing cross-scope; this supports investigating scope-sensitive
+competition and distinguishing record selection from source-block selection.
+The vector term does not explain all failures: lexical-only also loses sections
+on h2 and cross-scope across sets. More vector weight is not a general cure.
+
+All14 synthetic baseline misses have empty first pages; this experiment preserves
+those empty budgets and therefore cannot fix their recall. Its previous49/49
+result cannot be used as evidence of a fixed-card-budget ranker improvement.
+That identifies admission as a separate unresolved mechanism. A later admission
+study must explicitly agree whether replacing an empty result with one card is
+allowed, and compare it against silence under a common budget; it cannot be
+quietly counted as ranker success here.
+
+The next promising *research* avenue is joint record scoring with independently
+selected existing source spans, evaluated under this exact budget. The section
+losses show that promoting a record and choosing the block that supports the
+question are different problems. A second avenue is a scope-conditional score
+calibration learned only on dev, with explicit local/far reliability and no case
+rules. These are hypotheses, not implemented successes. Broad weight sweeps or
+case-conditioned routing on inspected h2 would not establish acceptance.
+Combined-score rejection is still unresolved; empty-page and true-silence counts
+are unchanged by construction here, not improved.
+
+## Reproduction and verification
+
+Run `python3 evals/experiments/fixed_budget_search.py FEATURES NEW_DIRECTORY`,
+then the existing `score_search_iteration.py CORPUS NEW_DIRECTORY MATCHING_STORE`
+with `--all` for h2 and synthetic. Artifacts, frozen dev selection, full native
+scores and paired case IDs are in ignored `evals/output/fixed-budget-20261114/`.
+Assertions independently verified exact per-call cardinality, query population,
+and untouched later calls on1470 dev,1380 h2,1470 scale and49 synthetic wordings.
+All runs use the native Rust grader, not a proxy success metric. No source weights,
+product thresholds or default retrieval paths changed; the Python script is eval
+only. The measurements are exploratory, not adoption or blind validation.
+
+
+
+<a id="consolidated-search-iteration-2026-11-14-md"></a>
+
+### Consolidated report: SEARCH-ITERATION-2026-11-14.md
+
+# Primary evidence iteration — 2026-11-14
+
+Most promising direction: independent semantic candidates plus lexical/POS primary
+competition. Earlier dev/synthetic gains and h2 divergences motivate a bounded
+mechanism study, not abandonment or an unrestricted coefficient sweep. All h2
+results in this iteration are exploratory reused-data diagnostics, not another
+holdout confirmation. Defaults remain unchanged.
+
+## Declared before scoring
+
+Hold candidate pools, source bytes, encoder, exact native feature values and scope
+penalty fixed. Compare two score scales and three span schedules (six policies,
+including the existing joint control; five new primary configurations):
+
+- Equal evidence: existing L+P+V-7/B.
+- Balanced maxima: let M=max(L+P) and C=max(max(0,cosine)) over eligible quoted-term
+  compatible candidates. Score L+P+(M/C)*V-7/B. If M=0 use M=1; if C=0 use C=1.
+  This gives semantic and lexical paths equal observed maximum contributions,
+  rather than equating raw cosine to a theoretical BM25 maximum. It is one
+  label-free normalization rule, not a fitted vector weight.
+- Records: existing one-block-per-record primary page.
+- Disjoint: permit multiple nonoverlapping spans per record in primary top five,
+  using native strict overlap exclusion, with the same ordering.
+- Supplement: retain the records primary page and baseline later calls; append
+  at most one further disjoint pool span per selected record, round-robin in
+  primary order, into spare capacity of calls2/3 (five cards per call). Never
+  remove existing cards or add a new record solely for support. No hidden gold
+  or section judgments enter scheduling. This preserves the returned record set;
+  any unchanged-score no-gold change is a bug, not a gain.
+
+All six share explicit quoted obligations and existing tie order. Baseline later
+calls remain anchored on native seeds as in the previous suite. Missing/invalid
+feature cases retain native baseline behavior. No new content surrogate, model,
+RRF, reranker or runtime product flag.
+
+Select for a scale stress test using q4 dev only: prefer policies satisfying the
+ordinary native no-fall/one-rise rule; among them maximize original Hit@1, then
+first-wording Hit@5, section and simpler schedule. Report every arm on q4/h2 and
+synthetic as exploratory; do not label any result independent confirmation.
+If none dominates the incumbent on every relevant measured metric, say so.
+
+Rejection: re-fit the same two-fold logistic prototype with the far-indicator
+feature set to zero (same fold assignments, labels, 500 steps, .1 learning rate,
+.01 L2). Preserve .25/.5/.75 thresholds. Compare against the unchanged old joint
+page first; do not select a gate from h2. This tests removing a metadata prior
+from confidence, not claiming the fitted score is calibrated probability. Scope
+remains in ranking. No product gate activation or fresh risk guarantee.
+
+Fresh blind validation remains deferred per the user. A good observed result
+can motivate future confirmation, not a universal quality claim.
+
+## Additional bounded routing study, declared after the first iteration
+
+Balanced-maxima plus supplementary spans improves dev and fixes the section
+regression, but reused h2 still has small top-1/scope/silence losses. Investigate
+preserving native behavior for query types with explicit literal semantics.
+Add two policies, with no new coefficients or case exceptions:
+
+- Literal route: if native Query parsing fails or any parsed term is hard under
+  the *existing* parser, keep the full native calls. Otherwise use balanced
+  maxima + supplementary spans. This differs from the previous strict-hard
+  candidate arm: it preserves the entire native literal/fallback procedure.
+- Literal + phrase route: additionally keep native calls when its original first
+  card is tier0 in either original native matcher. Other natural queries still
+  get semantic competition even with nonempty native results. This is a new
+  route on the broad semantic union, not another lexical cross-matcher ordering
+  control. Exact phrase protection is a hypothesis, not a confidence certificate.
+
+These are generic source/query rules motivated by the observed divergences;
+h2 is already known and all subsequent h2 results are exploratory. Keep the
+original two-by-three results intact. Scale policy selection still uses dev
+alone, under the originally declared metric order.
+
+## Isolating the monotone span change
+
+The balanced primary policy still trades some h2 scope/silence for recall. Add
+one final structural control: apply the same supplementary-span scheduling to
+the **unchanged native calls**, using balanced ordering only to choose spare
+supporting spans. Native call1 is kept byte-for-byte; every existing card is
+retained, only already-returned primary records can receive an extra disjoint
+span, and later-call capacity stays five cards/three calls. This tests the span
+mechanism separately from all primary retrieval/routing changes. Record-level
+recall/XS, first-page ranking and true silence must remain exactly unchanged;
+section containment can only improve under the native scorer. It does not prove
+reader utility or latency improvement, and section-only gains do not satisfy
+the current adoption rule. It is distinct from closed passage score bonuses or
+replacement/deduplication controls: no score, original span or existing card is
+removed or changed.
+
+## Results and recommendation
+
+The strongest **broader search candidate** is balanced-maxima lexical/POS/vector
+competition plus supplementary original spans. It was selected from dev under
+the declared order before scale scoring. This is not a universal improvement.
+The safest **isolated change** is native-only supplementary spans: it improves
+curated section coverage while preserving the first page, old cards and record
+set. It does not improve note-level recall or ranking and remains unadopted.
+
+### Selected primary combination, full native scoring
+
+| Population | Policy | Gold any / first-wording Hit@5 | XS any / first | No-gold | Section | Actual Hit@1 |
+|---|---|---|---|---|---|---|
+| q4 dev | Native | 412/439, 354/439 | 31/42, 25/42 | 35/51 | 55/73 | 199/439 |
+| q4 dev | Balanced + support | 418/439, 381/439 | 31/42, 27/42 | 36/51 | 57/73 | 218/439 |
+| Reused h2 | Native | 341/354, 298/354 | 55/62, 48/62 | 54/106 | 237/271 | 230/354 |
+| Reused h2 | Balanced + support | 344/354, 318/354 | 54/62, 52/62 | 53/106 | 245/271 | 229/354 |
+| Scale q4 dev | Native | 388/439, 316/439 | 28/42, 22/42 | 31/51 | 51/73 | 180/439 |
+| Scale q4 dev | Balanced + support | 383/439, 323/439 | 29/42, 21/42 | 31/51 | 50/73 | 186/439 |
+
+Original-query MRR@5 changes .597950→.642483 on dev,
+.727872→.754284 on reused h2, and .533485→.546849 on scale (rounded values;
+raw values are in the summaries). The public six-document diagnostic remains
+46/49 Hit@1,49/49 Hit@5 and .965986 MRR, versus native 31/49,35/49,.673469.
+It supplies no scope/silence/section judgments and is not blind evidence.
+
+Thus the combination improves original-wording retrieval and MRR across these
+populations, but h2 top-1 remains one below native and scale any-wording recall
+loses five. True silence remains 0/10 on dev and0/45 on h2 (native 0/10 and 2/45).
+Do not average those losses away or describe a universal success.
+
+### What the component comparisons establish
+
+- Balanced normalization raises top-1 from 214 to 218 on dev and 225 to 229 on h2
+  relative to equal-evidence primary scoring, without fitted coefficients.
+  Supplementary spans raise section success from 226 to 245 on h2 at the same
+  balanced score, without changing primary results or returned record sets.
+- Allowing repeated records directly in call1 crowds out distinct notes:
+  balanced-disjoint dev first-wording Hit@5 is 376 versus 381 for records/support;
+  h2 is 315 versus 318. Preserve the first page's record diversity and put extra
+  disjoint spans in spare later-call slots instead.
+- Coarse native literal/phrase routing is not a reliable solution. Literal-only
+  routing scores dev 414/439 any and 366/439 first, top1 211; h2 falls to 339/354
+  and 298/354, top1 217. Adding phrase protection changes dev first to 365 and
+  top1 to 210; h2 is essentially unchanged. These observations argue against a
+  blanket query-type bypass, not against preserving genuine literal obligations.
+- Removing locality from the fitted gate restores much of cross-scope retention
+  at weak cutoff .25 (dev XS 31/42 and 27/42), but does not produce useful silence.
+  At .5 gold recall is 405/439 and 339/439, top1 206, no-gold 34/51, section 53/73.
+  At .75 it silences 4/10 true-negative cases while gold-any drops to 247/439 and
+  top1 to116. Removing the wrong prior is not enough to create a calibrated
+  relevance boundary. All three variants are out-of-fold development diagnostics,
+  not deployment posteriors or blind calibration.
+
+### Isolated native support: a measured nonregression
+
+Native-only support leaves *all* first-page cards, original-query Hit@1/MRR,
+gold-any/first, cross-scope-any/first, no-gold correctness and true silence
+unchanged on dev, h2, synthetic and full scale-q4. Section success rises:
+
+| Population with section judgments | Native | Native + support |
+|---|---|---|
+| q4 dev | 55/73 | 56/73 |
+| Reused h2 | 237/271 | 246/271 |
+| Full scale-q4 dev | 51/73 | 51/73 |
+
+For every exported wording (1470 dev, 1380 h2, 49 synthetic, 1470 scale), checks
+verify byte-equivalent serialized first calls, the same all-call record set,
+retention of every old card including duplicates/metadata, at most three calls
+and five later-call cards. With fixed eligibility and this call budget, those
+invariants make the native record-level/first-page scoring metrics unchanged
+and section containment monotone. They do not guarantee that every added passage
+is useful to a reader, or that retrieval latency/exposure improves.
+
+The cost is additional reading: native support adds 1408 cards over 1470 dev
+wordings (mean .958), 1483 over 1380 h2 wordings (1.075), and 738 over 1470 scale
+wordings (.502). No extra records are exposed, but more bytes of existing
+records are. The current prototype draws support from the bounded global union;
+its failure to improve scale section coverage suggests a future record-local
+support candidate study, rather than increasing a global top-k to fit cases.
+That extension has not been implemented or measured here.
+
+Section-only gains do not meet LLP0005's required retrieval rise. Keep this
+change available for explicit consideration; do not silently adopt it or claim
+it solves finding/ranking the right note. The broader primary candidate is also
+retained for investigation, not abandoned because its outcomes diverge.
+
+## Scale stress test and remaining divergences
+
+A fresh output export ran all 1,470 dev wordings against the unchanged 16,906-record
+scale-q4 corpus and a private copy of its existing store. Each feature collection
+checked native before/after parity. All 1,470 baseline complete responses also
+match the earlier Engrim comparison's native scale calls exactly. Selection was
+fixed from curated dev first; scale results did not change the formulas.
+
+For the selected primary combination, scale first-wording gains/losses are 39/32,
+while any-wording gains/losses are 18/23. Top-1 gains/losses are 46/40. Two section
+cases lose and one gains; the lost supporting spans still exist in the pool.
+This is a shift in competition, not a uniform collapse: better original-wording
+ranking coexists with losses on some alternate-only cases. No scale-specific
+constants were adjusted and no runner was promoted on scale scores.
+
+The data still do not justify a uniform ranking/silence improvement. Candidate
+quality/competition under distractors and a genuinely transferable abstention
+boundary remain unresolved. New independently judged queries are needed to
+choose between tradeoffs without fitting this growing collection of known cases.
+
+## Reproduction, validation and provenance
+
+`search_iteration` replays fixed JSONL feature exports through label-free Rust
+selectors. The product encoder, store, retrieval code and confidence gate are
+unchanged in this iteration. `--without-locality` belongs only to an offline eval
+script, never ordinary search. Original six policies, two routing policies, one
+native support control and three locality-free gates give 12 policy outcomes,
+including the previous equal-records control (11 new configurations).
+
+```sh
+nix develop -c cargo build --release -p linn-eval --example search_iteration --bin linn-eval
+target/release/examples/search_iteration \
+  evals/output/search-suite-20261114/dev/features.jsonl evals/output/new-iteration
+nix develop -c python3 evals/experiments/score_search_iteration.py \
+  /absolute/path/to/q4 evals/output/new-iteration evals/output/search-suite-20261114/dev.db
+```
+
+Use `--all` on the scoring helper for h2/synthetic diagnostics. Do not call those
+new holdout confirmations. To regenerate scale features, use the existing
+`search_research` example with the unchanged scale corpus and a matching private
+store, `--arm baseline`, and a new destination; replay that feature file through
+`search_iteration`. Native open must validate the model/publication normally.
+
+The old equal-records control matches all complete prior joint responses on
+dev/h2/synthetic, and the six original policies match after helper refactoring.
+Artifacts include manifests, exact parity/invariant checks, source hashes,
+dev-only selection, all response/score exports, scale divergence diagnosis and
+validation logs under ignored evals/output/search-iteration-20261114/. Nothing
+was pushed, committed or published; original uncommitted work was preserved.
+
+Two unmeasured setup issues were corrected: Rust fixture float syntax and Clippy
+item ordering. No candidate formula changed to repair them. Required formatting,
+workspace Clippy/tests, Nix packaging and LLP references are checked separately.
+Diagnostic export time includes redundant native parity queries and feature
+collection under concurrent builds; it is not production selector latency.
+
+Final validation passed: formatting, workspace Clippy with warnings denied, all-feature workspace tests, Nix build, LLP references and diff whitespace. The final rebuilt selector reproduces every dev policy response byte-for-byte. Dependency libSQL emits its existing upstream warnings; workspace Clippy succeeds.
+
+
+
+<a id="consolidated-search-record-passage-2026-11-14-md"></a>
+
+### Consolidated report: SEARCH-RECORD-PASSAGE-2026-11-14.md
+
+# Separate record and passage scoring; scope interference — 2026-11-14
+
+## Hypotheses and frozen protocol
+
+Attempt the remaining fixed-budget avenue: use half-strength query-max balanced
+vector contribution to rank records, then choose one source passage independently.
+The eight configurations were declared before any new dev scoring. No gold labels
+enter the selectors. Record score is either the maximum joint block score, or the
+sum of independent lexical+POS and vector maxima from blocks in the same record.
+The latter tests whether lexical and semantic evidence in different blocks should
+combine. It does not sum all blocks or concatenate spans. Vector weight remains
+0.5 times query maximum lexical score divided by positive maximum cosine.
+
+Passage selection is strongest lexical+POS block (ties by span/section), or the
+original native first-page passage for an already returned record, falling back
+to strongest lexical block for a newly selected record. Every card is a single
+existing original-byte passage. The scope ablation crosses both dimensions with
+existing `7/normalizer` and zero. These are ranking-stage scope coefficients in
+the research scorer, not a removal of scope effects from candidate generation.
+The original bounded exported pool already reflects native retrieval decisions.
+This limits any causal statement about the entire product's scope handling.
+
+All policies preserve exact per-query, per-call card counts and untouched later
+calls. Empty pages remain empty. There is no supplementary passage, section,
+card, call, enrichment or new model. Passage sizes may differ; no claim of equal
+byte budget or production latency follows from the card-count check.
+
+## Selection and honest disposition
+
+No dev configuration passes LLP0005: scope7 loses cross-scope-any (31→30);
+scope0 loses overall gold recall and sections. This no-selection decision was
+saved before h2/scale/synthetic runs. Those later measurements are exploratory
+diagnostics, not selection, retuning or independent holdout confirmation.
+No configuration was changed after transfer results. No product change adopted.
+
+## Native grader results
+
+Hit@1 is original wording. Native grader reports any-wording and original-wording
+gold and cross-scope hits, no-gold result, and section hit counts.
+
+### dev
+
+| Policy | Native grader | Hit@1 |
+|---|---|---|
+| baseline | any 412/439 first 354/439 xs 31/42 25/42; empty 35/51 section 55/73 | 199 |
+| joint-lexical-scope7 | any 419/439 first 371/439 xs 30/42 26/42; empty 36/51 section 56/73 | 213 |
+| joint-lexical-scope0 | any 393/439 first 338/439 xs 32/42 28/42; empty 37/51 section 53/73 | 196 |
+| joint-native-scope7 | any 419/439 first 371/439 xs 30/42 26/42; empty 36/51 section 56/73 | 213 |
+| joint-native-scope0 | any 393/439 first 338/439 xs 32/42 28/42; empty 37/51 section 53/73 | 196 |
+| separate-lexical-scope7 | any 418/439 first 370/439 xs 30/42 26/42; empty 36/51 section 56/73 | 211 |
+| separate-lexical-scope0 | any 393/439 first 338/439 xs 32/42 28/42; empty 37/51 section 53/73 | 193 |
+| separate-native-scope7 | any 418/439 first 370/439 xs 30/42 26/42; empty 36/51 section 56/73 | 211 |
+| separate-native-scope0 | any 393/439 first 338/439 xs 32/42 28/42; empty 37/51 section 53/73 | 193 |
+
+### h2
+
+| Policy | Native grader | Hit@1 |
+|---|---|---|
+| baseline | any 341/354 first 298/354 xs 55/62 48/62; empty 54/106 section 237/271 | 230 |
+| joint-lexical-scope7 | any 343/354 first 313/354 xs 52/62 49/62; empty 53/106 section 231/271 | 237 |
+| joint-lexical-scope0 | any 333/354 first 293/354 xs 56/62 52/62; empty 55/106 section 221/271 | 211 |
+| joint-native-scope7 | any 343/354 first 313/354 xs 52/62 49/62; empty 53/106 section 234/271 | 237 |
+| joint-native-scope0 | any 333/354 first 293/354 xs 56/62 52/62; empty 55/106 section 225/271 | 211 |
+| separate-lexical-scope7 | any 343/354 first 312/354 xs 52/62 49/62; empty 53/106 section 231/271 | 238 |
+| separate-lexical-scope0 | any 333/354 first 294/354 xs 55/62 52/62; empty 55/106 section 219/271 | 209 |
+| separate-native-scope7 | any 343/354 first 312/354 xs 52/62 49/62; empty 53/106 section 234/271 | 238 |
+| separate-native-scope0 | any 333/354 first 294/354 xs 55/62 52/62; empty 55/106 section 223/271 | 209 |
+
+### scale
+
+| Policy | Native grader | Hit@1 |
+|---|---|---|
+| baseline | any 388/439 first 316/439 xs 28/42 22/42; empty 31/51 section 51/73 | 180 |
+| joint-lexical-scope7 | any 387/439 first 321/439 xs 29/42 21/42; empty 31/51 section 50/73 | 196 |
+| joint-lexical-scope0 | any 348/439 first 279/439 xs 31/42 23/42; empty 33/51 section 46/73 | 176 |
+| joint-native-scope7 | any 387/439 first 321/439 xs 29/42 21/42; empty 31/51 section 50/73 | 196 |
+| joint-native-scope0 | any 348/439 first 279/439 xs 31/42 23/42; empty 33/51 section 46/73 | 176 |
+| separate-lexical-scope7 | any 386/439 first 321/439 xs 29/42 21/42; empty 31/51 section 51/73 | 194 |
+| separate-lexical-scope0 | any 345/439 first 277/439 xs 31/42 23/42; empty 33/51 section 47/73 | 174 |
+| separate-native-scope7 | any 386/439 first 321/439 xs 29/42 21/42; empty 31/51 section 51/73 | 194 |
+| separate-native-scope0 | any 345/439 first 277/439 xs 31/42 23/42; empty 33/51 section 47/73 | 174 |
+
+### synthetic
+
+| Policy | Native grader | Hit@1 |
+|---|---|---|
+| baseline | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 31 |
+| joint-lexical-scope7 | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34 |
+| joint-lexical-scope0 | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34 |
+| joint-native-scope7 | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34 |
+| joint-native-scope0 | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34 |
+| separate-lexical-scope7 | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34 |
+| separate-lexical-scope0 | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34 |
+| separate-native-scope7 | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34 |
+| separate-native-scope0 | any 35/49 first 35/49 xs 0/0 0/0; empty 0/0 section 0/0 | 34 |
+
+## What the divergences establish
+
+**Independent passage selection helps, but is not sufficient.** Against the
+previous half-vector joint-block selector, strongest lexical passage improves
+section counts dev55→56, h2 227→231, scale48→50. Keeping the existing native
+passage when available further improves h2 to234. Record ranks and all record
+recall metrics remain identical between lexical/native passage variants, verified
+on complete ordered record pages. The remaining h2 section deficit is three versus
+native237. These are genuine replacement improvements under identical card counts.
+
+**Independent record maxima do not fix record selection.** Separate maxima lose
+one dev gold-any and gold-first relative to joint maxima; they recover one scale
+section but lose one scale gold-any. This retains evidence for separating passage
+selection, but gives no reason to adopt independent-max record scoring.
+
+**Scope penalty interferes with cross-scope recall and protects local competition.**
+For joint/native, removing7 raises cross-scope-any dev30→32,h2 52→56,scale29→31;
+cross-scope-first26→28,49→52,21→23. The simultaneous overall gold-any losses are
+419→393,343→333,387→348. Original Hit@1 drops213→196,237→211,196→176. Paired
+scope-only top1 transitions have zero gains and17/26/20 losses on dev/h2/scale.
+Thus the scope effect is measurable, but global removal is clearly harmful here.
+It is not merely a passage-scoring bug: the lexical/native variants have identical
+record rankings. The scope penalty should remain for now; this does not establish
+that7 is optimal or that native within-tier scope handling should become this
+flat research-score subtraction. Full-pool scope-neutral generation is untested.
+
+The next hypothesis would be bounded scope handling within comparable evidence
+levels, rather than a blanket removal or an h2-fitted coefficient. It must protect
+local evidence and pass cross-scope bars; these experiments have not demonstrated
+such a policy. No weight sweep, query-category rule or case-specific route was
+introduced to force a pass. Keep half-vector competition plus native passage
+selection as a research lead, with its explicit cross-scope and section deficits.
+
+## Validation, costs and reproduction
+
+`record_passage_search.py FEATURES NEW_OUTPUT` exports fixed selectors; score
+with `score_search_iteration.py CORPUS NEW_OUTPUT MATCHING_STORE` and `--all` for
+h2/synthetic. Cached features use the existing encoder and native arithmetic;
+Python is only an offline evaluation runner, never a second product runtime.
+All native grading succeeds. All1470/1380/1470/49 dev/h2/scale/synthetic responses
+were checked for exact call counts, per-call card counts, and untouched later
+calls. Passage policies' identical record ordering is also checked. Source hash,
+full scores, paired IDs and frozen no-selection are under ignored
+`evals/output/record-passage-20261114/`. Diff whitespace check passes.
+
+No new index data or embeddings: offline selectors use O(candidate count) work
+and record grouping, with bounded candidate memory. Production latency is not
+measured; cached replay is not an end-to-end benchmark. Original-text store,
+encoder, product confidence gate and accepted retrieval remain unchanged.
+
+
+
+<a id="consolidated-search-suite-2026-11-14-md"></a>
+
+### Consolidated report: SEARCH-SUITE-2026-11-14.md
+
+# Primary evidence and rejection suite — 2026-11-14
+
+**Current disposition:** joint primary competition and combined rejection remain
+research candidates under paired divergence investigation. They are not adopted.
+A failed aggregate is not treated as proof that the approach should be abandoned.
+All measurements, frozen settings and initial dispositions are retained below.
+
+Authorized follow-up: implement and test all research avenues. This suite covers
+the remaining in-constraints architecture hypotheses: independent vector/POS
+candidates, admission, four-way signal ablation, common versus first-success
+routing, inferred-hard-term policy, and combined/card-level rejection. Closed
+S1/B1/P1/P2 and other logged settings are not repeated. Competitor runtimes,
+generated content, RRF, rerankers and additional models remain excluded.
+
+## Frozen protocol (declared before measurements)
+
+One diagnostic export uses current native exact/stem hits, BM25L, pinned POS and
+stored float32 encoder arrays. No alternative selector is added to product
+search. Eval-only selectors see whitelisted query/context and feature rows, never
+relevance labels. Ordinary `agent` calls before and after export must be identical.
+
+Candidates: top 40 distinct records from each original native matcher, top 40
+eligible/filter-allowed vector records, top 40 positive current nominal-relation
+records from at most 160 indexed pair-witness rows, plus all baseline returned
+card rows. This is one fixed budget, not a sweep. Exact vector scanning is
+research work, not a resident performance claim. Explicit filters and lifecycle
+remain mandatory; original bodies, model and numerical kernels are unchanged.
+
+Let B = max(1, 2.2 * sum(query scoring IDFs)). Export L=BM25L/B,
+P=0.75*native POS support/B, V=max(0,stored-vector cosine), and far penalty=7/B.
+Primary scores: L; L+P; L+V; L+P+V, then subtract far penalty. Equal candidate
+pools isolate signal effects; scores use no tier ordering, unless specified.
+The lexical-only arm is a control on a new semantic/POS union, not a re-run of
+old lexical scorer controls. Raw scores and individual missing obligations are
+retained. These are bounded evidence features, not calibrated probabilities.
+
+Arms: baseline; four union score ablations; independent lexical/vector/POS
+candidate controls; joint strict-hard; joint empty-only routing; joint separate
+entry predicates (L>=.25 OR V>=.35 OR P>0); joint lexical-only rejection L>=.25;
+joint cosine-only rejection V>=.35; joint combined rejection at evidence-score
+thresholds 0, .5, 1, 1.5. No threshold is selected for adoption from this curve.
+Ordinary arms retain explicit quoted terms; strict-hard additionally retains all
+inferred hard terms. The relaxed arm explicitly tests inferred-hard obligations
+as fallible rather than claiming to preserve that product contract.
+
+Primary arms replace call 1 only and retain baseline additional-section/navigation
+calls deliberately, as a controlled primary-page intervention. This is a complete
+experimental output policy, not an independent new navigation algorithm. Rejection
+arms filter *every* returned card using the same feature rule, keep fewer than
+five, never refill, and retain clearly separate baseline hints/related pointers.
+Unknown feature rows are rejected, counted and diagnosed. No page-level score
+licenses other cards. Full native scoring and section/no-gold outcomes include
+all retained calls; baseline later calls can still supply gold, as documented.
+
+Selection: q4 dev only. Record all arms, paired changes and actual Hit@1/MRR,
+true silence, native gold/XS/section counts. Rejection curves are exploratory:
+no fresh independently judged/calibration set exists locally. Do not use h2 for
+fitting. Only an unmodified frozen primary arm meeting all native dev selection
+requirements could justify one historical h2 confirmation; no joint threshold
+is qualified without the proposed fresh calibration. Synthetic results, if run,
+are transfer diagnostics after dev, never selection. No benchmark corpus is
+manufactured and no fresh blind validation is claimed.
+
+Additional predeclared offline calibration prototype: two folds assigned by
+SHA256("shadow-cal:" + case id) modulo two; all wordings stay together. Train on
+original wording candidates of the other fold, predict all held-out wordings.
+Only known gold/equivalent records and desired other-scope targets are positive;
+explicit forbidden local targets and candidates on true no-gold cases are
+negative. All other candidate labels are unknown and excluded from fitting.
+These record-level proxies do not certify section relevance. No original-span
+rejudging or project-independent calibration is available, so this cannot select
+a product gate. Fixed logistic features: intercept, L, P, V, coverage fraction,
+missing-hard fraction and far indicator; 500 full-batch gradient steps, step .1,
+L2 .01 on non-intercept weights. Class-balanced loss; probabilities are not
+calibrated deployment posteriors. Report rejection at .25/.5/.75, no selection
+or guarantee. Filter all calls; freeze primary ordering from the joint arm.
+This is an offline decision calibrator, not a new embedding model or reranker.
+
+## Dev selection and freeze
+
+All 17 declared arms and three case-folded rejection classifiers completed on
+1,470 q4-dev wording invocations. Joint primary competition qualifies on the
+native dev criteria: gold 419/439 any and 377/439 first, XS 31/42 and 27/42,
+no-gold 36/51, section 56/73. Actual Hit@1 is 214/439 (51 paired gains, 36 losses).
+It dominates the lexical+vector arm on the aggregate dev table; select **joint**
+only for one reused-h2 confirmation. No coefficients, candidate budgets or hard
+term rules are adjusted. Freeze current selector and feature arithmetic. A
+single-arm export CLI addition limits confirmation to that policy; it changes
+no selector math. Repeat dev collection and require full joint-response parity
+before confirmation. The baseline's full 1,470 responses already exactly match
+the pre-suite accepted export. Feature collection also preserved native output
+before/after every query.
+
+Causal caveat before confirmation: the union deliberately includes baseline
+additional-section/navigation cards as well as independent L/V/P candidates.
+Pure lexical controls on that union improve first-wording recall too. Joint
+versus native gains cannot all be attributed to vectors or POS. Factorial
+comparisons on the identical pool isolate scoring effects, while source-pool
+controls isolate *restricted* pools, not each source's additive marginal value.
+No claim of semantic-only attribution or new navigation correctness is made.
+
+## Rejection ordering clarification and additional controls
+
+Implementation inspection after the first results identified a protocol wording
+mismatch: the initial deterministic rejection arms apply their evidence predicate
+**before** the five-record cut, while retaining primary order among survivors.
+They do not invoke a fallback to refill, but can admit a lower-ranked qualifying
+candidate from the same pool. The original phrase “never refill” did not distinguish
+this from filtering a fixed page. Those initial results are retained as pre-cut
+admission studies, not silently relabeled as post-cut filtering. The OOF classifier
+already filters the fixed joint page after selection.
+
+Add six **post-cut** controls with the exact same evidence thresholds (lexical .25,
+vector .35, combined0/.5/1/1.5). Start from the saved joint calls and remove cards
+from every call; never pull another candidate. No weight or threshold tuning.
+This isolates rejection ordering. Source selection, joint dev freeze and h2 arm
+are unchanged. The user chose to finish exploratory testing before preparing
+fresh blind data; all fitted rejection results remain exploratory.
+
+## Complete exploratory results
+
+All rows below use q4-dev. `first` means original-wording Hit@5, never rank one.
+The suite contains 17 original fixed selectors, three out-of-fold classifier
+cutoffs and six additional post-cut controls. No additional coefficient/budget
+configuration was selected. All later native navigation calls are retained in
+primary arms; all-call rejection arms filter them. Scope/section/no-gold scoring
+uses the unchanged native grader on exported complete calls.
+
+| Arm | Gold any / first (439) | XS any / first (42) | No-gold (51) | Section (73) | Actual Hit@1 (439) |
+|---|---|---|---|---|---|
+| Native baseline | 412 / 354 | 31 / 25 | 35 | 55 | 199 |
+| Union lexical score | 421 / 377 | 29 / 22 | 35 | 57 | 208 |
+| Union lexical + POS score | 422 / 377 | 29 / 23 | 35 | 57 | 209 |
+| Union lexical + vector score | 418 / 376 | 31 / 27 | 36 | 56 | 211 |
+| Union joint score | 419 / 377 | 31 / 27 | 36 | 56 | 214 |
+| Lexical-source pool, joint score | 399 / 315 | 32 / 28 | 36 | 56 | 188 |
+| Vector-source pool, joint score | 407 / 361 | 31 / 29 | 36 | 48 | 207 |
+| POS-source pool, joint score | 119 / 76 | 13 / 9 | 20 | 31 | 50 |
+| Joint, all inferred hard terms mandatory | 413 / 346 | 31 / 28 | 36 | 55 | 200 |
+| Joint only on empty native pages | 414 / 358 | 31 / 25 | 35 | 55 | 203 |
+| Separate entry predicates | 413 / 363 | 31 / 27 | 36 | 55 | 213 |
+| Pre-cut lexical rejection .25 | 405 / 330 | 30 / 25 | 33 | 52 | 198 |
+| Pre-cut cosine rejection .35 | 365 / 314 | 29 / 24 | 33 | 37 | 193 |
+| Pre-cut combined rejection 0 | 418 / 375 | 31 / 27 | 36 | 55 | 212 |
+| Pre-cut combined rejection .5 | 413 / 360 | 31 / 27 | 36 | 50 | 210 |
+| Pre-cut combined rejection 1 | 222 / 155 | 19 / 16 | 24 | 20 | 120 |
+| Pre-cut combined rejection 1.5 | 17 / 11 | 2 / 1 | 13 | 3 | 10 |
+| OOF classifier rejection .25 | 418 / 375 | 29 / 24 | 33 | 55 | 215 |
+| OOF classifier rejection .5 | 418 / 375 | 14 / 10 | 15 | 55 | 217 |
+| OOF classifier rejection .75 | 389 / 313 | 0 / 0 | 3 | 50 | 198 |
+
+Post-cut lexical rejection scores gold 401/439 any,323/439 first, XS30/42 and25/42,
+no-gold33/51, section51/73. Post-cut vector rejection scores 362/439,308/439,
+XS28/42 and23/42, no-gold33/51, section37/73. The four post-cut combined
+thresholds reproduce their pre-cut native aggregate counts; this does not imply
+that arbitrary pre/post gate policies are equivalent. All complete outputs and
+paired top-1 changes are retained in the per-arm JSONL/summary.
+
+### Candidate availability and admission
+
+Among 85 original-query native first-page misses, the fixed export contains:
+59 with a gold vector-source candidate,15 with a gold lexical-source candidate,
+five with a gold POS-source candidate, and67 with any gold union row. These
+sets overlap and are not additive. Forty-seven have a vector-source gold row
+not admitted by either original raw lexical matcher; five have such a POS row.
+Thirty-five have a gold candidate below ordinary lexical coverage. Only 40 of
+these 85 misses have a gold candidate satisfying every inferred hard term;
+all 67 with a union gold row satisfy the quote-only obligation rule. This is
+candidate availability, not a relevance certificate or a maximum *scored* gain.
+The union includes native later-call candidates and original span judgments are
+not exhaustive. Two baseline first-page successes have no export gold row due
+to parse/filter diagnostic coverage; they are not retroactively called misses.
+
+The fixed union score ablation shows that semantic/POS signals can help primary
+ordering, but pooling/navigation promotion and softened inferred obligations
+also contribute. On dev, strict-hard loses first-wording recall and empty-only
+competition gives much smaller gains. POS-only retrieval performs poorly;
+current POS support is useful as complementary evidence, not an independent
+replacement for lexical/semantic retrieval. The NLP score ablation keeps the
+same POS-influenced candidate generation, so it is not a claim about a product
+with all NLP processing removed.
+
+### Rejection outcomes
+
+True silence on the ten dev genuinely absent cases remains0/10 for baseline,
+joint and weak deterministic cutoffs; combined threshold 1 gives3/10 and 1.5 gives
+10/10, at catastrophic answerable recall loss. The OOF classifier at .75 gives
+3/10, while its .25/.5 cutoffs remain0/10. No safe useful silence improvement
+has been demonstrated. The classifier at .5 raises Hit@1 to217 but destroys
+cross-scope recall; its fit is not a validated deployment gate. Unknown labels
+were excluded from fitting, and known labels are record-level proxies rather
+than fresh original-span utility judgments. No claimed precision, calibrated
+probability, conformal guarantee or product threshold follows.
+
+## One frozen historical h2 confirmation — failed adoption; retained for investigation
+
+Before inspecting h2, joint was selected on dev and re-collected with only that
+arm enabled. All 1,470 complete joint dev responses match the measured page exactly.
+The frozen source/binary hashes are saved in frozen-joint-sha256.json. Only joint
+was evaluated as a candidate on h2; native baseline calls collected as part of
+the same export supply the matched reference. No other primary or rejection arm
+was scored on h2 and no h2-driven retuning occurred.
+
+| Metric | Native h2 | Frozen joint |
+|---|---|---|
+| Gold any / first | 341/354, 298/354 | 342/354, 317/354 |
+| Cross-scope any / first | 55/62, 48/62 | 54/62, 52/62 |
+| No-gold | 54/106 | 53/106 |
+| Section | 237/271 | 225/271 |
+| Actual original Hit@1 | 230/354 | 225/354 |
+| Original MRR@5 | .727872 | .743503 |
+
+XS-any, no-gold and section fall; the candidate fails the ordinary LLP 0005 adoption rule. Actual top-1 also falls
+five, despite the large first-wording Hit@5 rise. This is reused-h2 confirmation,
+not fresh blind evidence. Do not repair the joint coefficients, hard policy,
+candidate budgets, scope treatment or navigation strategy against these cases;
+do not try runner-up arms on h2 to select a winner. Product search stays unchanged.
+
+### Frozen external synthetic transfer diagnostic
+
+After freezing, the same joint policy on the unchanged six-document/49-question
+fixture gives Hit@1 **46/49**, Hit@5 **49/49**, MRR@5 **.965986**, versus native
+31/49,35/49,.673469. No alternative weights or thresholds were tried on it.
+This illustrates useful semantic/primary competition with the same fast static
+encoder; it does not establish generalization or erase the h2 divergences. The set
+is public, previously inspected and has no scope/silence/section judgments.
+The old Engrim comparison's45/49 top-1 is historical, not a fresh matched timing
+or architecture ablation, so no general competitor victory is claimed.
+
+### Secondary costs and measurement limits
+
+The feature exporter performs native baseline retrieval, broad vector/lexical/POS
+feature collection and a second native parity query. Its elapsed samples are
+therefore **diagnostic export cost**, not alternative algorithm latency. Runs
+also overlapped builds/tests; no controlled resident speedup or C2 claim is made.
+No product index rows, persistent files or model assets were added by these
+selectors; features/responses/models remain ignored eval output.
+
+Read-only dbstat accounting on the copied dev store attributes 103,202,816 bytes
+to fallback_vectors,25,030,656 to vectors, 18,931,712 to section_means,8,376,320
+to sections,7,856,128 to pos_relations and7,520,256 to records. This confirms
+where storage research would have leverage; it does not reopen closed lossless
+packing trials or justify a new vector model/store/quantization kernel.
+
+## Reproduction and durable artifacts
+
+The ordinary product binary still has no algorithm modes or rejection settings.
+`Store::research_features` is an explicit diagnostic API; alternative selectors
+live only in the eval package. `--arm` and `--all` belong to the research example,
+not ordinary search. Existing original-text ingestion, scoring/model arithmetic,
+lifecycle and confidence gate remain unchanged.
+
+```sh
+nix develop -c cargo build --release -p linn-eval --example search_research --bin linn-eval
+# Use a fresh output directory. A store may be built fresh or copied from the
+# unchanged matching corpus; never reuse a store with a different corpus.
+target/release/examples/search_research --corpus /absolute/path/to/q4 \
+  --store evals/output/new-suite.db --output evals/output/new-suite
+nix develop -c python3 evals/experiments/calibrate_search.py /absolute/path/to/q4 evals/output/new-suite
+nix develop -c python3 evals/experiments/postcut_search.py evals/output/new-suite
+nix develop -c python3 evals/experiments/score_search_suite.py \
+  /absolute/path/to/q4 evals/output/new-suite evals/output/new-suite.db
+nix develop -c python3 evals/experiments/analyze_search_features.py \
+  /absolute/path/to/q4 evals/output/new-suite
+```
+
+For a frozen-policy reproduction only, use `--arm joint`; `--all` permits an
+explicitly supplied external fixture. Do not repeat closed h2 confirmation as
+new research. `--score-responses` validates exact unique case/wording/query keys
+and uses the native scoring loop; it does no search. Replayed baseline scores
+match the ordinary scorer. `compare_search.py` provides paired actual Hit@1,
+MRR and true silence; first-wording native scores remain Hit@5.
+
+Required artifacts are code/ledger only, never corpus or evaluation outputs.
+Private outputs are under evals/output/search-suite-20261114/: dev features and
+all policies, candidate audit, dev-frozen replay, h2-joint confirmation,
+synthetic-joint diagnostic, source hashes and validation logs.
+
+## Coverage of the research avenues
+
+- Independent vector/POS candidates: implemented and measured, including nonempty
+  pages and current native admission failures.
+- Four-way primary evidence scoring, strict versus inferred-hard soft admission,
+  separate versus combined predicates and first-success routing: implemented,
+  measured, paired and recorded.
+- Combined/univariate rejection before/after the page cut and a fitted offline
+  classifier: implemented and tested without activating a product gate.
+- Honest benchmark tooling: exact replay grader, per-query baseline parity,
+  source/manifest hashing, native full-call grading and case-folded fit. Fresh
+  independently judged calibration/blind data remains future work at the user's
+  instruction; no risk-control guarantee is manufactured from reused evals.
+- Storage: read-only structural accounting completed; no numerical/storage
+  optimization repeats closed trials. Product latency benchmarking requires an
+  adopted/viable integrated selector, not timing this diagnostic exporter.
+- New contextual/learned-sparse/multivector models, LLM-generated indexing,
+  competitor databases, RRF and rerankers: not implemented. They were contrasting
+  prior art, not qualified in-constraints candidates; several exact encoder
+  variants are already closed. This suite changes evidence participation using
+  the existing embedded encoder, as the research recommended first.
+
+**Outcome:** a real primary-evidence mechanism improves dev and synthetic results,
+but fails historical confirmation; no search/rejection change is adopted.
+The implementations and aligned evidence are now available for future new-data
+research, with the tested settings frozen for causal investigation rather than silently retuned.
+
+## Research disposition update
+
+After the failed h2 measurement, Phil explicitly directed that candidates which
+improve other scores should be investigated rather than outright abandoned. The
+joint policy is therefore **not adopted, retained for divergence investigation**.
+The earlier rejection language records the initial ordinary-rule disposition,
+not a claim that primary semantic evidence is ineffective. Keep the measured
+numbers and frozen settings intact; investigate paired gains/losses without
+coefficient repair against h2. Historical closed configurations are not silently
+re-run. New causal evidence can justify a distinctly declared future study.
+
+## Paired divergence investigation (no new retrieval or tuning)
+
+A new `search_divergences` example reads the saved native calls and aligned
+features. It shares the *same* original-span predicate with the native scorer
+via `linn_eval::grading`; no independent substitute section grader is used.
+`explain_joint_pairs.py` decomposes the frozen primary score of an original
+winner and its replacement. These are post-hoc explanatory diagnostics, not
+new candidate configurations or causal evidence of an untested fix.
+
+### h2: ordering tradeoffs rather than wholesale failure to find gold
+
+There are 33 original-query Hit@1 gains and 38 losses, giving the net decrease
+of five. **34 of the 38 lost rank-one cases still have gold in the new first
+five.** All 38 have usable gold candidates in the exported pool; none is lost
+solely to missing candidates or quoted obligations. This identifies primary
+competition/order as the main rank-one divergence in this population.
+
+Pairwise score decomposition finds 29 of 38 replacements reverse the old/new
+order when the vector contribution is removed; one reverses when POS support
+is removed; none reverses merely from removing the scope penalty. These
+categories overlap and are not full-page ablations: a third candidate could
+still win. Twenty replacements were not admitted by either original lexical
+matcher, 16 are below ordinary content coverage and 10 miss inferred hard terms.
+This suggests studying semantic strength relative to literal/relational evidence,
+not treating vector candidate generation itself as disproved. It does **not**
+authorize a weight adjustment fitted to these h2 cases.
+
+### h2: section scheduling is distinct from document retrieval
+
+The net section decrease of 12 comprises 18 case losses and six gains. All 18
+lost cases have an original candidate span in the exported pool satisfying the
+native section predicate. In 17, the returned calls still contain a gold record,
+but its supporting span is missing. Baseline supporting spans were not silently
+shortened during feature export in these 18 cases; the audit found no such span
+conversion. This points to source-span competition/scheduling rather than a
+missing-index-row or cutoff-boundary problem.
+
+The experimental selector takes one winning block per record, whereas the
+native interleave permits multiple disjoint spans of the same record. It also
+retains navigation anchored on native lexical seeds rather than the new page.
+Those deliberate simplifications are plausible causes of section divergence;
+we have not established how many losses a legal span-aware scheduler would
+recover, nor tested a replacement. Any next study should preserve source-byte
+witnesses and evaluate actual span capacity, not add a gold-dependent section
+promotion. Earlier repeated-card audits warned that disjoint spans can be
+necessary, which makes this structural distinction particularly important.
+
+### h2: scope and no-gold changes are mixed populations
+
+XS-any has four paired case losses and three gains, rather than a uniform
+cross-scope decline. Losses include h2a1-c-0034 (oxlint warnings),
+h2a2-c-0102 (ripgrep fallback), s7-c-0054 (eslint warning count) and s7-c-0080
+(pnpm lint warnings). No-gold correctness also has four losses and three gains;
+several are target-retrieval tasks rather than true silence. The loss in
+s7-c-0060 instead changes a genuinely absent query from empty to unrelated
+cards under the softened inferred-hard obligation policy. Relevance to a
+library/topic does not prove the requested future change is recorded.
+
+These cases motivate distinct diagnostics for transferable knowledge, requested
+project/version/entity, literal obligations and genuine absence. They do not
+support a single global scope coefficient or a case-specific identifier rule.
+The existing scalar no-gold total conflates those tasks, so it cannot on its
+own decide which semantic path is useful.
+
+### What this changes in the research decision
+
+The broad primary-evidence direction is retained: it supplies real new candidate
+coverage, helps dev, and retrieves every synthetic target with the same static
+encoder. The frozen equal-evidence score and record-level span scheduling are
+not accepted defaults. Further research should isolate general source-span
+scheduling and evidence calibration on open/new data, using these divergences
+as hypotheses and regression examples, not optimization targets. No h2
+parameters were changed and no runner-up was scored there.
+
+Reproduce only the diagnostics, without another search:
+
+```sh
+nix develop -c cargo run --release -p linn-eval --example search_divergences -- \
+  /absolute/path/to/h2 evals/output/search-suite-20261114/h2-joint
+nix develop -c python3 evals/experiments/explain_joint_pairs.py \
+  evals/output/search-suite-20261114/h2-joint \
+  evals/output/search-suite-20261114/h2-divergences.json
+```
+
+### Fitted rejection divergence: a learned scope prior
+
+The two fixed out-of-fold classifiers learn far-indicator coefficients -2.649
+and -1.918 on the balanced record-proxy training task. At cutoff .5, the joint
+original pages contain 21 desired cross-scope target cards across 19 cases which
+the classifier removes. For every one of those 21 cards, subtracting just the
+far coefficient from its logit would reverse its acceptance decision. This is a
+post-hoc contribution diagnostic, **not** a measured or proposed replacement gate:
+it would also change acceptance of unrelated far notes, which needs independent
+negative judgments. Some affected cases retain another target, so card counts
+are not identical to the cross-scope metric decrease.
+
+The classifier's top-1 gain and scope losses therefore have an interpretable
+source: a learned locality prior from the available labels, not proof that
+combined-score rejection is unworkable. Future data must distinguish transferable
+other-project evidence from an irrelevant same-topic project/version. The gate
+family is retained for that investigation; coefficients and thresholds are not
+repaired on these reused cases and no calibration guarantee is claimed.
+
+## Final validation
+
+Formatting, strict workspace/all-target/all-feature Clippy, workspace/all-feature
+tests, Nix build, LLP references and diff whitespace checks passed. Tests cover
+source-filter/lifecycle exclusion, stored-vector bit equality, native page parity,
+primary semantic competition, NLP score ablation, explicit/inferred obligation
+policy, all-call rejection/no fallback refill, and replay scorer key/query
+validation. The original-span grader was shared with the divergence tool rather
+than reimplemented. All 1,470 accepted dev responses and frozen joint responses
+were checked exactly. Frozen selector/export source hashes remained unchanged
+through the divergence investigation. No push, PR, publication or default
+algorithm/gate change; fresh blind work remains deferred at the user's request.
+
+
+
+<a id="consolidated-sentence-scale-2026-11-15-md"></a>
+
+### Consolidated report: SENTENCE-SCALE-2026-11-15.md
+
+# Sentence granularity at fixed retrieval budgets — 2026-11-15
+
+Seven new development configurations test a distinct source-representation and
+candidate-discovery hypothesis, rather than repairing the earlier proof-joint
+H2 loss. Two pool-block configurations qualify on dev; declaration order freezes
+**sentence-pool-block**. Its reused-H2 confirmation still fails cross-scope counts.
+No accepted search, model, ingestion or output budget changes. The positive dev
+results survive a strict total-candidate-row cap; they are not just more cards,
+sections or a larger candidate union. All findings remain exploratory.
+
+Pre-score declarations and subsequent budget controls (historical artifact)
+record every configuration before its outcome was scored.
+
+## Different mechanism and prior art
+
+Linn already persists sentence encodings for an empty-only fallback. That path
+splits a query in half and seeks two different source sentences. The new experiment
+scores the **entire original query** against the **existing sentence encodings**
+during primary candidate competition. This differs from the closed source-word
+assignment, adjacent joins, POS pairs, scalar score transforms and source-neighbor
+density corrections. No closed setting is repeated as a new result.
+
+[Callan, Passage-Level Evidence in Document Retrieval](https://maroo.cs.umass.edu/getpdf.php?id=105)
+studies passage evidence and granularity in document retrieval; it does not
+establish the best Linn granularity or validate our score. The
+[CIIR passage relevance research](https://ciir.cs.umass.edu/research/answer_passages)
+distinguishes topicality and information content across text granularities.
+[PARADE](https://arxiv.org/abs/2008.09093) investigates richer passage aggregation
+than maximum score using a different model/reranking architecture; it is a warning
+against treating a maximum fragment as full relevance, not a permitted component
+to import. No competitor code or product decisions are copied.
+
+Native `sentence_data` has35,690 stored sentence rows on dev. Its existing cutter
+uses line/sentence punctuation boundaries, retains segments with at least four
+words, limits a segment to500 characters, and omits blocks with fewer than two
+retained segments. These are existing numerical projections, not newly created
+source units. Their vectors use the sole accepted encoder and fixed float32
+arithmetic/model/publication guards. No re-embedding, second model, new persistent
+index or changed body bytes. Missing sentence evidence falls back to block cosine.
+This is not contextual late chunking: the static encoder still lacks word order.
+
+Native APIs in fallback.rs collect fixed-pool sentence scores and equal-budget
+alternative vector candidates. `research_features` retains its original route;
+a separate research method substitutes vector candidate ids. Native NLP/POS,
+lexical scores, quote/hard coverage, normalizers and scope flags are unchanged.
+Original queries still produce exactly the cached complete native response before
+and after collection. Ordinary search does not call these experimental methods.
+
+## First batch: identical complete candidate pool
+
+Use the earlier proof-joint mask and fixed half-vector combination. Replace only
+its cosine input, without changing any candidate id or route budget:
+
+1. **sentence-only:** highest stored sentence cosine where available, else block.
+2. **multiscale-max:** maximum of block and highest sentence cosine.
+3. **sentence-top2:** mean of the best two sentence cosines, else block.
+
+Every output preserves native call/card counts, original card spans, native
+multiplicity and later calls. Native retained records keep their original passage;
+strong, unknown, non-primary, addressed and resolved-query proofs stay protected.
+No confidence gate, RRF, reranker or runtime algorithm knob.
+
+| Dev configuration | Gold any / first | XS any / first | No-gold / section | Actual Hit@1 | MRR@5 |
+|---|---|---|---|---:|---:|
+| native |412/354|31/25|35/55|199|.597950|
+| proof-joint control |416/367|31/27|35/56|207|.618793|
+| sentence-only |417/366|29/24|35/56|209|.618413|
+| multiscale-max |417/366|29/25|35/56|209|.619172|
+| sentence-top2 |416/365|29/23|35/56|200|.607137|
+
+Gold population439, XS42, mixed no-gold51, section73. “First” is original-query
+Hit@5, not Hit@1. All three source-granularity arms improve some gold metrics but
+lose XS-any, so no first-batch candidate is selected for H2. Pair-specific maxima
+can rescue useful compact evidence while rewarding a merely topical sentence.
+Neither max nor two-sentence agreement provides a universal relevance test.
+
+## Second batch: replace the semantic route, preserve its budget
+
+Whole-block vectors supply40 distinct records in the previous route. The new
+route chooses **40 total records**, ranked by max(block cosine, available sentence
+cosine); it does not combine40 block records plus40 sentence records. Short notes
+without sentence encodings retain their block score. Candidate eligibility and
+explicit query filters apply before record selection. Lexical/POS route budgets
+and native card candidates remain unchanged. These are alternative candidate ids,
+not extra index sections or output cards.
+
+4. **sentence-pool-block:** new40-record route, original block cosine in the fixed
+   proof-joint scoring. Isolates candidate discovery from sentence-score substitution.
+5. **sentence-pool-max:** same new pool, multiscale cosine in the scoring.
+
+Equal route caps can change overlap with lexical/POS lists. Before viewing these
+pool outcomes, two further controls were declared:
+
+6–7. **matched-pool-block / matched-pool-max:** retain all lexical/POS/native
+candidate rows; fill remaining candidate capacity with highest-multiscale vector-only
+rows, up to the original complete candidate-row count for that query. Never pad a
+smaller pool. The vector route remains at most40 records. No gold/task/category
+input; the original native algorithm defines the query's budget.
+
+| Dev configuration | Gold any / first | XS any / first | No-gold / section | Actual Hit@1 |
+|---|---|---|---|---:|
+| sentence-pool-block |416/368|31/28|35/56|207|
+| sentence-pool-max |417/366|30/24|35/56|209|
+| matched-pool-block |416/368|31/28|35/56|207|
+| matched-pool-max |417/366|30/24|35/56|209|
+
+The block-scoring pool configurations qualify. Max-scoring variants lose XS-any.
+Predeclared counts/top1/declaration order selects **sentence-pool-block**, before
+any H2 scoring. Budget-matched block outputs differ on3 complete dev responses,
+despite equal aggregate outcomes; no response-equivalence claim is made. No
+runner-up is confirmed on H2.
+
+Original/replacement/budget-matched mean candidate rows per wording:
+57.5014/56.9517/56.3327. Replacement is larger on413 wordings, up to19 rows,
+because overlap changes; the strict control never exceeds the original row count
+and retains the same measured gains. All52,662 shared candidate rows have identical
+features except the intentional vector_pool membership flag. Every route has at
+most40 distinct vector records. Thus changes are not evidence of more output
+capacity or better lexical arithmetic.
+
+The budget filter is an offline Python prototype; native replay consumes its
+filtered feature set. Source retrieval, encodings, score computation and selection
+are native Rust. This is not a deployed end-to-end product implementation.
+
+## Availability and paired interpretation
+
+Of85 native original-query gold misses,67 have a gold record in the old bounded
+pool,62 in the replacement pool. Only one newly gains pool availability while
+six lose it. Despite improved aggregate recall after selection, this candidate
+route is **not a general admission-recall improvement**. It changes competitor
+blocks, record representatives, proof masks and combined-score maxima as well as
+record availability; those effects must not be credited solely to new-note recall.
+
+Dev selected top1 has14 gains and6 losses, net+8. MRR rises .597949886 to
+.620007593. Full paired query/card text and source block/sentence scores are kept
+in dev-diagnosis.json, including both positive and negative cases. The statistical
+background and source context still do not certify the requested entity/property.
+Longer blocks also offer more opportunities for a high topical sentence maximum;
+that is a remaining bias hypothesis, not a measured length correction or permission
+to rerun closed density/normalization sweeps.
+
+A median fixed-pool sentence-evidence capture is1.154ms on dev, but it excludes
+ordinary before/after calls and is not an integrated product timing benchmark.
+The pool collector does substantially more work, including candidate generation,
+multiple query replays and proof/term diagnostics. No latency pass is inferred.
+
+## Frozen transfer
+
+H2 is reused, not a fresh independent holdout. Only the selected pool-block
+configuration is evaluated; max or budget-matched runner-ups are not chosen later.
+
+| Suite/configuration | Gold any / first | XS any / first | No-gold / section | Hit@1 | MRR@5 |
+|---|---|---|---|---:|---:|
+| dev native |412/354|31/25|35/55|199|.597950|
+| dev selected |416/368|31/28|35/56|207|.620008|
+| H2 native |341/298|55/48|54/237|230|.727872|
+| H2 selected |343/305|54/44|54/237|227|.730179|
+
+The H2 gain is in gold-any/first and MRR, while section and no-gold hold. XS-any,
+XS-first and actual top1 fall. This does not pass confirmation, and the selected
+algorithm is not repaired from H2. Its primary counts equal the earlier proof
+control, but full responses and MRR can differ; aggregate equality is not parity.
+True silence stays0/10 dev and2/45 H2 by exact output-budget construction.
+
+Scale transfer: gold-any388→387, first316→318; XS28→29 and22→24;
+no-gold31 unchanged; section51→50; actual Hit@1 180→182, MRR .533485→.539028.
+These mixed changes also fail no-fall. Complete native/prototype transfer parity
+is recorded alongside the constrained-fusion transfer checks.
+
+## Implementation, reproduction and validation boundary
+
+- `evals/examples/sentence_evidence.rs`: fixed-pool original stored sentence scores;
+  baseline/cached/before/after complete parity for all1,470 dev wordings.
+- `evals/examples/sentence_pool.rs`: native equal-budget candidate discovery and
+  feature/term/proof collection. Full baseline parity and independent original
+  matcher-coverage count checks on every completed query.
+- `evals/src/sentence_scale.rs` and `evals/examples/sentence_scale.rs`: native
+  representation selectors/replay. `evals/src/query_association.rs` supplies the
+  frozen proof-joint score/mask without using association bonuses for this study.
+- `sentence_scale_search.py`, `sentence_pool_search.py` and
+  `match_sentence_pool_budget.py`: independent offline prototypes and controls.
+- `audit_sentence_scale.py`: post-selection availability/paired label joins;
+  never inputs to retrieval or selection.
+
+Build through the flake. Fixed collection: `sentence_evidence STORE CASES FEATURES
+NEW_OUTPUT`. Pool collection: `sentence_pool STORE CASES FEATURES NEW_OUTPUT`.
+Native pool replay uses `query_association POOL POOL POOL NEW_DIRECTORY proof-joint`;
+new pool rows contain features, term audit and primary proof together. Native
+multiscale replay accepts the same pool file in each witness position, requesting
+only the declared mode. Ordinary scorer unchanged. Complete Python/native replay
+parity holds for all seven dev outputs; selected transfer is checked separately.
+
+An old-binary pool collection was started after a failed rebuild; it was stopped
+before any scoring. Its partial file/log remain explicitly named incomplete-v2;
+only the corrected successful build's complete new file supplies measured outcomes.
+Compilation and visibility fixes did not produce additional scored configurations.
+Source snapshots, selection hashes, full responses and validation logs are under
+ignored `evals/output/sentence-scale-20261115/`. No corpus, model or evaluation
+output is committed. Accepted search and its open confidence gate remain unchanged.
+
+
+
+<a id="consolidated-signal-and-judgment-audit-2026-11-15-md"></a>
+
+### Consolidated report: SIGNAL-AND-JUDGMENT-AUDIT-2026-11-15.md
+
+# Distinguishability, new source signals and judgment defects — 2026-11-15
+
+The wall has at least **two causes**, not a proved identical-signal impossibility:
+current scalar fusion makes unsafe lexical/semantic tradeoffs, while some strict
+record targets fail to credit other records that already support the information
+need. A third useful distinction is **source ownership inside a shared scope**.
+One new provenance probe improves exploratory scale recovery without removing dev
+gains, but has no dev activation and is not adopted. All official labels/scores,
+product code and frozen candidate remain unchanged.
+
+## 1. Are the signals identical?
+
+`audit_signal_judgments.py` joins native→frozen-native-foreign original-wording
+case gains/losses to removed/entered candidate blocks. It compares eleven existing
+scalars: A/B tier, A/B coverage, hard/quoted misses, far/local, lexical, POS, cosine,
+and normalizer. These are actual values, not rounded chart buckets.
+
+- Dev:20 block cross-product pairs from9 changed target-membership cases;
+  zero identical eleven-feature vectors,2 equal first-seven structural vectors.
+- Scale:29 pairs from9 cases; zero identical eleven-feature vectors,5 equal
+  structural vectors. Zero conflicting exact ordered-pair feature groups in either.
+
+These pairs are dependent and selected by target-membership change, not a random
+sample. No exact equality is evidence **against the proposed literal collision**
+in this population, not proof that a transferable classifier exists. Distinct
+floating scores can still encode the wrong semantic preference, and arbitrary
+thresholds could memorize these cases. Earlier coarse feature-bucket collisions
+and exact-query identifiability studies are different measurements, not contradicted.
+
+Concrete archive case: gold EAS inspection blocks have lexical+POS18.74/19.68,
+cosine .352/.376; tar-background competitors have17.59 and .477. Browser-auth:
+the gold note has19.28 and .316; generic browser-method blocks18.54 and .431.
+The signals differ; the joint objective buys semantic proximity at the expense
+of lexical specificity. Earlier lexical/two-signal floors rescue these known
+cases but eliminate useful dev gains. More scalar compromise fitting is not
+established as the missing insight.
+
+## 2. New signal: source ownership versus checkout scope
+
+Two tar README variants are original source paths `node_modules/tar/README.md`,
+yet have the same `expo/expo` original scope as project EAS instructions. Likewise
+`node_modules/@peculiar/utils/README.md` shares `expo/code-signing-certificates`
+scope with migration instructions for a different package. This is not a scope
+comparison bug: scope describes the checkout in this corpus, not necessarily the
+entity described by an imported document. Repo locality does not imply package
+ownership or task authority. The scale construction makes this distinction matter.
+
+`audit_source_ownership.py` derives only a candidate-local source_path component
+proxy, never evaluator `source.type`, gold, ids, labels or distractor markers.
+Of the scale diagnostic block pairs,10 losses replace a nondependency-path target
+with a dependency-path block; no gain pair has a dependency-path entrant. Other
+losses include4 other-path entrants and1 unknown; gains include8 other-path and6
+unknown. Dev has no dependency-path pair in this sample. These are dependent
+block cross products, not10 independent bad queries or a general precision result.
+The source paths themselves are genuine original metadata; their observed label
+association is heavily corpus-dependent and is not a ready-made relevance label.
+
+### Declared diagnostic allocation probe
+
+The hypothesis (historical artifact) was written before
+scoring. Extend frozen local-only assignment with one guard: do not let a known
+nondependency-path native card be replaced by a dependency-path card. Missing paths
+stay unknown. Paths are provenance, not lexical body evidence. No coefficient,
+model, pool, query, original text, section/card budget or score arithmetic changes.
+This explicitly departs from scalar-only source policy **for research only**.
+
+| Suite / policy | Gold any / first | XS any / first | No-gold / section | Hit@1 | MRR@5 |
+|---|---|---|---|---:|---:|
+| dev native |412/354|31/25|35/55|199|.597950|
+| dev frozen local |413/361|31/25|35/55|199|.602126|
+| dev ownership probe |413/361|31/25|35/55|199|.602126|
+| scale native |388/316|28/22|31/51|180|.533485|
+| scale frozen local |388/317|28/22|31/51|180|.536219|
+| scale ownership probe |388/319|28/22|31/51|180|.537547|
+
+Dev full outputs equal the frozen control on all1470 wordings: the new guard has
+**no observed dev effect**, so a dev pass does not validate the feature. Scale
+original-wording gains over frozen local are archive inspection `s3a-c-0004` and
+pre-push typecheck/test `s5-c-0012`; no first-wording gold case is newly lost.
+Other wordings/individual ordering can change. Earlier target recovery becomes4/7,
+not7/7: archive now recovers; browser, signing and Jest strict targets still do not.
+The signing information need was already satisfied by another returned note below.
+No h2 selection or independent confirmation is claimed for this scale-motivated
+probe. It is implemented as an isolated offline prototype, not native product code.
+
+This shows a distinct signal can compensate **some** regressions while retaining
+measured gains. It does not justify a blanket dependency penalty: dependency-API
+questions, transitive behavior and dependency-owned commands are counterexamples.
+A viable feature should identify source entity/owner and requested task, and expose
+unknown ownership, rather than use an eval-conditioned path blacklist. Candidate-
+local metadata can be indexed/read within one native binary; stable upstream
+provenance/version identity may require a source/ingestion design decision. No
+new author evidence, keyword enrichment or parallel store is proposed.
+
+## 3. Are the tests flawed? Source audit of four unresolved targets
+
+### Archive inspection — genuine wrong information need
+
+Gold explains `.easignore` replacing `.gitignore`, re-including ignored files and
+`eas build:inspect --stage archive`. Competitors explain generic tar replacement
+and listing. They share vocabulary, not the requested EAS workflow. Source ownership
+helps this case. The raw query/task omit EAS itself; scope supplies only broad
+`expo/expo`, so intent remains less explicit than the target. This is a legitimate
+hard query, not evidence to relabel tar background as relevant.
+
+### Browser auth callback — incomplete record-level relevance, weak shown span
+
+Gold is a short note saying to use openAuthSessionAsync, not openBrowserAsync.
+Both competing official WebBrowser SDK documents explicitly make the same
+authentication-versus-page distinction in their introductions. Their selected
+openBrowserAsync passages are weaker for the callback request, but the **records**
+contain a directly supporting answer. At record-lead granularity, treating both
+entire documents as irrelevant is unsupported by their content. At displayed-
+passage granularity, the regression may still be real. Judge these separately.
+SDK53/54 documents should also receive version compatibility judgments; no version
+is named in this raw query. Do not infer that either full document is universally
+acceptable in every version-specific question.
+
+### Signing upgrade / PEM — declared alternative already returned
+
+The gold record's migration section says existing PEM credentials remain
+interoperable and need no regeneration. `s4-r-0240`, already on the returned first
+page, says the same explicitly in149 characters. The case has a top-level
+`equivalent` map and `equivalent_targets` span for that note, but not an object-
+level equivalent within gold. LLP0005 deliberately ignores case-level equivalents
+in retrieval scoring while neutral scoring uses them. The scorer follows its
+specification: this is **metric/annotation incompatibility**, not a scorer bug.
+If the objective is a useful lead answering the task, the reported strict-target
+loss is not loss of that information. If exact original-source navigation is the
+objective, it may be an intentional narrower metric. Do not quietly fix either
+labels or code to make the algorithm pass.
+
+### Apps/launch Jest command — genuine target/span selection problem
+
+The gold app guide contains `bun run test` / Run Jest tests. The replacement note
+is about route-file co-location and does not answer the test-command question.
+The original displayed gold block also came from project structure rather than
+Commands, so record retrieval and supporting-span selection must both be checked.
+The case is labeled path-filter and has cwd metadata, but the actual retrieval
+query has no explicit path filter; LLP0005 passes empty cwd, and LLP0002 forbids
+cwd ranking. This category/metadata mismatch should be clarified, not used as
+permission to invent a cwd signal. `acceptable` lists are not gold equivalences
+under the retrieval contract and cannot be credited wholesale.
+
+## 4. How large is the annotation sensitivity?
+
+A read-only original-wording calculation unions **only declared case-level
+maps for each gold record** into its object equivalents. No semantic/manual new
+judgment enters it. This is a sensitivity bound to annotations, not corrected
+truth or official scoring; all mappings still require review under the intended
+retrieval-versus-navigation contract, especially passage targets.
+
+| First-wording gold hits | Strict official | Declared-map union sensitivity |
+|---|---:|---:|
+| dev native |354|392|
+| dev frozen local |361|394|
+| scale native |316|361|
+| scale frozen local |317|361|
+| scale ownership probe |319|362|
+
+Scale has243 selected cases with excluded declared equivalents. The sensitivity
+is large enough to change the apparent improvement: frozen local's +1 strict
+scale hit becomes0 under this alternative; dev +7 becomes+2. This does not prove
+all alternative mappings are correct, but it shows that the relevance contract
+must be settled before optimizing tiny count differences. No official result is
+replaced by these numbers and no adoption is authorized.
+
+TREC likewise distinguishes incomplete judgments from confirmed irrelevance;
+judgment pools require diverse runs and relevance assessment, rather than assuming
+newly retrieved records are all false positives. See
+[NIST TREC overview](https://trec.nist.gov/pubs/trec30/papers/Overview-2021.pdf) and
+[Stanford relevance/evaluation](https://nlp.stanford.edu/IR-book/html/htmledition/information-retrieval-system-evaluation-1.html).
+This is a methodological parallel, not validation of Linn's alternative cases.
+
+## 5. Ranked next signals and decisive checks
+
+1. **Source ownership/entity and version applicability:** best new direct evidence;
+   dependency-path probe has a small positive exploratory effect. Prefer actual
+   source provenance or original-body entity evidence; do not turn paths/labels
+   into lexical query matches. Test legitimate dependency queries and same-scope
+   unrelated packages, including fresh cases where the guard must abstain.
+2. **Answer-supporting span versus useful source record:** maintain independent
+   judgments and inspect indexed supporting spans. Browser documents need their
+   auth-session explanation, Jest needs Commands. No extra output sections/cards;
+   improve which original span is selected. Earlier generic record/passage
+   separation is closed; reopen only with this verified answer-location population
+   and explicit new evidence, not another unmotivated max-score sweep.
+3. **Contrastive API/action compatibility:** compare the queried operation with
+   assertions such as auth-session versus ordinary-browser and migration
+   interoperability versus generic PEM conversion. Existing lexical/POS/cosine
+   do not establish entailment. Previous sparse action/NP studies remain closed;
+   no new rule is claimed successful. First measure reliable extraction coverage
+   and counterexamples on independent source assertions before implementation.
+4. **Duplicate-source redundancy:** two versioned tar/browser sources occupy
+   several leads. Marginal-utility/diversity is relevant prior art
+   ([Carbonell/Goldstein](https://www.cs.cmu.edu/afs/cs/Web/People/jgc/publication/MMR_DiversityBased_Reranking_SIGIR_1998.pdf)),
+   but their MMR reranker is outside Linn's contract and is not adopted. Exact
+   source identity or documented version grouping may support a future native
+   allocation constraint. Do not merge merely similar records or lose version-
+   specific evidence. Original native duplicate spans stay protected.
+
+## Evaluation repair proposal and validation boundary
+
+Keep current gold and all official results immutable. Pool original source records
+from native, frozen local, ownership probe and competitors; independently judge
+record usefulness, exact supporting passage, target entity/version, transferable
+scope and true no-match. Provide query-only and full-task judgments separately
+because the algorithm receives only the query. Resolve object-level versus case-
+level equivalent semantics explicitly and publish a versioned annotation migration
+only after review. Retain strict exact-target scores alongside graded/pooled lead
+relevance; do not pick whichever metric makes a candidate win. Reusing corrected
+cases is development analysis, not fresh blind confirmation.
+
+The audits/prototype are corpus-side research only. No production Rust/index/schema
+or default change, no native implementation/latency pass claimed. Costs for source
+ownership can remain candidate-local; relation extraction and body support need
+separate feasibility measurements. Original bodies/metadata are unchanged. Full
+reports/paired diagnostics remain in ignored `evals/output/signal-judgment-audit-20261115/`.
+
+Validation:50 corpus-free Python experiment tests, LLP reference checks and
+`git diff --check` pass. No native production code changed in this investigation;
+previous Rust/build checks are not reported as newly rerun.
+
+
+### Correction after full-span inspection (2026-11-15)
+
+The earlier qualified `WebBrowser.openAuthSessionAsync` marker probe is too narrow
+to support an absence-of-evidence conclusion. Both versioned browser spans already
+contain an unqualified `openAuthSessionAsync` link and the cookie-sharing caveat.
+The original 180-character preview hides it. The recorded exact-string counts
+remain literal counts, not passage-support judgments. See the
+[passage-proposer report](#consolidated-passage-proposer-2026-11-15-md) for source spans, native
+experiments and a separate source-bound preview prototype. This correction neither
+changes official labels nor proves those pointers fully answer the callback task.
+
+
+
+<a id="consolidated-source-relationships-2026-11-15-md"></a>
+
+### Consolidated report: SOURCE-RELATIONSHIPS-2026-11-15.md
+
+# Source relationships, query obligations and native provenance — 2026-11-15
+
+Eight additional configurations were implemented and measured on all1,470 q4-dev
+wordings. **None meets the current adoption requirements.** Accepted search,
+its confidence gate, model, index and card budgets remain unchanged. These are
+exploratory results on repeatedly used dev material, not blind validation.
+
+The useful finding is more specific than “NLP failed”: current conservative
+surface relationships cover few actual missing targets, and primary-route
+reachability does not preserve the proof that licensed a native card.
+
+## Design and implementation
+
+Read LLP0002/0005 and FINDINGS before implementation. The declarations, including
+all successive configurations and their motivation, are in
+RELATIONSHIP-HYPOTHESES-2026-11-15.md (historical artifact).
+Closed positional P1, cross-unit P2, E1–E4, phrase-vector certificates, pair/window
+POS score sweeps, field weighting and previous rejection thresholds were not
+rerun or represented as new.
+
+- `evals/examples/relationship_witnesses.rs` uses the pinned **native** tokenizer
+  and compiled annotation representation. Annotate raw query text and exact
+  original UTF-8 body spans, never truncated card previews or metadata. Preserve
+  full POS alternatives, lemmas, statistical chunks and original byte offsets.
+  Unique inputs:6,503. No body rewriting, summaries or manufactured keywords.
+- `Store::research_route_witnesses` independently exposes resolved-primary,
+  rewritten, lower-fallback and file-addressing output, plus resolved query text.
+  These are exact reachability witnesses, **not unique causal attribution**.
+  The method is diagnostic-only; ordinary `agent` does not call it. Complete
+  cached/native/before/after parity holds on every one of the1,470 wordings.
+- `evals/experiments/relationship_search.py` extracts conservative surface frames
+  offline and prototypes selection. `evals/src/source_relationship.rs` implements
+  the selectors in native Rust; its replay consumes the audited frame sidecar.
+  **Frame extraction remains an offline Python prototype**, not an implemented
+  product ingestion index or an end-to-end native relationship search path.
+- This pipeline has phrase chunks, not dependency heads, subject/object roles,
+  coreference or entailment. The frame names describe a proposed surface use,
+  never certified semantic roles. Unavailable evidence stays unknown.
+
+Every selector preserves exact native per-call card counts, number of calls,
+original byte spans, record multiplicity and all later calls. At most one
+external replacement, or ordering only within the existing first page. No extra
+cards/sections, concatenation, new encoder, RRF, model reranker, runtime switch or
+network dependency. Selection receives query, candidate evidence and native
+outputs, never gold, task descriptions, categories or model-judge preferences.
+
+## Eight configurations and outcomes
+
+First batch:
+
+1. **frame-swap:** conservative query action/nominal frames; all must have a
+   same-direction exact-lemma source frame in the candidate block. A lexical verb
+   needs one unambiguous verb lemma and VP membership. Its neighboring complete NP
+   preserves all nominal/adjectival atoms; auxiliary/adverb gaps are allowed.
+   Exclude code/structural joins. Replace an unsupported incumbent only when its
+   exact span is primary-reachable and unaddressed, hard witnesses and applicable
+   strong tier survive, quotes are compatible and cosine does not fall. Choose
+   challengers by cosine then adjusted lexical/POS; scope7 unchanged.
+2. **frame-pareto:** additionally require scope-adjusted lexical/POS nonfall.
+3. **frame-order:** stable reorder fully supported cards before unsupported ones,
+   inside native-primary runs. Addressed, missing and fallback cards are barriers.
+4. **provenance-conjunction:** retain the earlier two-rarest-term conjunction
+   comparator, allowing an unknown-original-tier incumbent to participate only
+   when its exact span is demonstrably primary-reachable and unaddressed. The
+   implementation assigns comparison class2 for this test, **not an asserted
+   measured lexical tier**. All other guards remain. This tests new provenance
+   evidence, not another unqualified unknown-tier demotion.
+
+Second batch, declared after observing sparse action-frame support:
+
+5–7. **nominal-swap / nominal-pareto / nominal-order:** the same three selection
+rules, replacing verb frames with every complete multiword query NP. Preserve
+all its nominal/adjectival atoms, their order, and matching source NP membership.
+Exact lemma matching only. Unlike closed two-word pairs/windows or two-IDF-anchor
+conjunctions, the grammatical group may have any length; no cross-unit join or
+semantic expansion. Unsupported queries preserve baseline.
+
+Final control, declared after paired proof-loss inspection:
+
+8. **obligation-order:** complete-NP ordering by stable adjacent insertion, only
+when the promoted card preserves the displaced card's meaningful exact and
+A-or-B query-term identities. Both cards must be primary-reachable, unaddressed,
+exactly aligned and quote-compatible, with no worse missing-hard count. Queries
+changed by qualified-suffix resolution preserve baseline, because their resolved
+obligations are not present in the raw-query audit. No score retuning.
+
+Gold population439, XS42, mixed no-gold51, section73. “First” means original-query
+first-page Hit@5, **not** first-card accuracy. Native baseline:
+any412, first354, XS31/25, no-gold35, section55, actual Hit@1=199, MRR@5=.597949886.
+
+| Configuration | Gold any / first | XS any / first | No-gold / section | Actual Hit@1 | Changed wordings |
+|---|---|---|---|---:|---:|
+| frame-swap |412/354|31/25|35/55|199|5|
+| frame-pareto |412/354|31/25|35/55|199|0|
+| frame-order |412/354|31/25|35/55|198|6|
+| provenance-conjunction |411/349|31/25|35/55|198|310|
+| nominal-swap |412/354|31/25|35/55|199|26|
+| nominal-pareto |412/353|31/25|35/55|199|6|
+| nominal-order |412/354|31/25|35/55|199|54|
+| obligation-order |412/354|31/25|35/55|199|21|
+
+No configuration has the required retrieval rise. No h2 candidate selection,
+transfer confirmation, full neutral replay or product adoption follows. Earlier
+full suites remain in INDEPENDENT-FULL-EVAL-2026-11-14.md; they do not validate
+these different configurations. True silence remains0/10 by fixed-budget design.
+
+## Where the new evidence helps—and where it fails
+
+### Activation versus actual missing-target coverage
+
+| Diagnostic | Action frames | Complete multiword NPs |
+|---|---:|---:|
+| Query wordings with obligations |142/1470|1150/1470|
+| Wordings with any fully matching candidate |11/1470|128/1470|
+| Gold original queries with obligations |59/439|338/439|
+| Gold original queries with any fully matching candidate |8/439|38/439|
+| Gold originals with a fully matching gold candidate |2/439|15/439|
+| Original-query misses with fully matching gold candidate |0/85|1/85|
+
+Of85 native original-query gold misses, **67 have a gold record in the bounded
+cached pool** and18 do not; four have empty native first pages. Pool absence is
+not proof of corpus-wide absence. The action-frame selector cannot recover these
+85 misses through a fully witnessed gold candidate; the NP selector reaches only
+one. Candidate discrimination remains relevant, but these particular additional
+features rarely identify the missing target. A low-activation negative result
+cannot refute a richer relationship representation.
+
+### Actual paired behavior
+
+- **Action ordering loses top1 on `gh stack submit set proper PR titles`.** It
+  promotes a branch-push policy with `stack submit` surface support above the note
+  saying to edit PR titles after submission. This exposes a wrong grammatical
+  reading of a command and loss of the requested property. Topical action support
+  is insufficient.
+- **NP ordering gains top1 on the tunnel-token audience query** by promoting the
+  note saying the `aud` claim is optional. **It loses top1 on `agent account
+  signing identity`** by promoting App Group signing advice above the account's
+  signing-material policy. Both use a real matching NP; the second loses the
+  query's other entity facet. Hit@1 stays199; MRR changes only from.597949886
+  to.598025816. Retain both examples rather than declaring the feature useless.
+- **NP Pareto loses first-page gold on `RACE_CONDITION error code`.** Native query
+  resolution licenses `ERR_REQUIRE_ESM_RACE_CONDITION`; the raw query term audit
+  does not represent that source witness. The replacement instead matches generic
+  `error code`. A known route is not a complete admission-proof description.
+- **Obligation ordering prevents these facet-dropping promotions**, but also
+  suppresses useful moves that lack the incumbent's literal witnesses. Its21
+  changed responses leave Hit@1, MRR and all six primary counts exactly flat.
+  This does not establish that literal dominance is necessary for relevance.
+- **Provenance conjunction retains real gains and losses.** It recovers original
+  EAS workflow validation but loses validity-endpoint testing, hosting setup and
+  one-off-import instructions among others. Revealing primary reachability does
+  not make generic conjunctions reliable relevance decisions.
+
+Full paired card text, original source frames and old/new support flags are in
+ignored `diagnosis.json`. Selection never consumes these outcome joins.
+
+### Provenance is more than identifying the route
+
+Across6,836 native first-call cards, reachability precedence yields6,720 primary,
+70 rewritten,35 lower fallback,4 addressed and7 outer/unresolved. Primary alone
+reaches6,721 before addressed precedence. Of cards whose exact displayed span
+has no original matcher tier,1,160 are nevertheless primary-reachable,64 rewritten,
+35 lower,4 addressed and7 unresolved. Thus unknown tier is not synonymous with
+fallback. Nor does primary reachability establish that the displayed span carries
+all evidence from the resolved query, another source span or a heading fill.
+An improvement here would need to preserve the actual source/admission proof,
+not merely replace unknown with a lower comparison tier.
+
+### Independent judging context and silence
+
+A descriptive join to the existing60 masked pairs finds action frames active
+on3 pairs and differentiating support on none. NPs activate45 pairs but distinguish
+only3; among42 agreed directional preferences, NP support agrees once and opposes
+once. This is a posthoc join on stratified reused dev, with same-model assessor
+limitations; it is neither a new independent judgment nor a validation set.
+
+None of the10 true-silence original queries has an action frame;8 have multiword
+NPs, but no fully matching candidate. That absence is **not a safe rejection rule**:
+only15 of439 gold original queries have a fully NP-matching gold candidate, and
+only2 have a fully action-matching one. Requiring these certificates would discard
+most known relevant records. Prior combined-score/OOF rejection studies remain
+closed; no repeated threshold sweep or active gate was introduced.
+
+## Remaining space and concrete boundaries
+
+1. **Relation-aware source proof remains unexhausted.** Current tags/chunks do
+   not represent semantic role attachment, coreference, paraphrase or requested
+   property support. These experiments expose that gap rather than solve it.
+   A further parser needs separately judged coverage/ambiguity on natural keyword
+   queries; broadening it against named dev losses would invite overfitting.
+2. **Resolved-query and cross-span admission proofs deserve preservation.** The
+   present audit identifies a concrete missing proof type. It does not supply
+   a general relevance scorer or prove that collecting more provenance yields
+   an adoption-worthy improvement. No blanket tier rewrite is justified.
+3. **Project/version applicability is not inferred from a phrase or a far bit.**
+   Prior scope experiments already test that bit's effects. A new applicability
+   mechanism needs source-grounded entity/version judgments; the current labels
+   and small masked packet do not define a reliable automatic relation. Negative
+   answers and transferable advice must remain eligible.
+4. **Admission on empty pages is distinct from ranking.** An exact native zero
+   budget makes recovery impossible in this experimental family. Studying normal
+   fixed maximum page capacity on empty queries would be an explicitly separate
+   admission intervention, not a card-count-preserving win. It was not smuggled
+   into this test. Existing semantic-admission studies remain documented evidence.
+5. **Silence requires its own decision policy.** A topically matching NP is not
+   answerability, and absence of a parse is not no answer. Product confidence
+   gate stays open; a calibrated gate requires an explicit product decision and
+   fresh calibration/confirmation data, not another reused-dev cutoff.
+6. **Objective alignment remains a question for Phil.** Actual Hit@1/MRR deserve
+   first-class evaluation, but no result here provides a clean rank-one gain
+   whose adoption is blocked solely by the current Hit@5 rise requirement.
+
+No demonstrated necessity for a forbidden reranker, second model, RRF, larger
+card budget or network runtime follows. The static encoder's relational limits
+are already documented; these results do not establish that replacing it would
+fix the observed errors or meet native speed constraints.
+
+## Reproduction and validation
+
+Private corpus root used here: reimplement/evals/corpus/q4. Exact cached features:
+search-suite-20261114/dev-frozen/features.jsonl; term witnesses:
+competition-20261115/dev-terms-idf.jsonl. New outputs:
+`evals/output/relations-20261115/`.
+
+Build examples through `nix develop -c cargo build --release -p linn-eval --example
+relationship_witnesses --example source_relationship`. Collect with
+`relationship_witnesses STORE CORPUS FEATURES NEW_DIRECTORY`. Prototype with
+`relationship_search.py CORPUS FEATURES TERMS WITNESSES NEW_DIRECTORY`, adding
+`--nominal` or `--obligation` for the declared subsequent batches. Score with the
+unchanged `score_search_iteration.py CORPUS NEW_DIRECTORY MATCHING_STORE`.
+
+Native selector replay: `source_relationship FEATURES AUDITS TERMS NEW_DIRECTORY
+POLICIES_COMMA_SEPARATED`. The nominal batch uses native frame-policy names with
+the nominal audit; compare them to the corresponding nominal-named prototype.
+The mechanism is defined by both audited obligations and selector, not its label.
+
+Seven adversarial Python fixtures cover role reversal, opposite verbs, negative
+answers, ambiguous tags, code, full NP modifiers and keyword queries. Rust fixtures
+cover addressed/unknown ordering barriers, unavailable frames and resolved-query
+proof retention. These are mechanical guards, not general semantic validation.
+No controlled product latency or index-size claim: no new index is installed,
+ordinary search is unchanged and diagnostic annotation/stage replay is extra work.
+All changes remain uncommitted; no push, PR, publication or corpus modification.
+
+Final validation passes: formatting, strict workspace all-target/all-feature
+Clippy, all-feature workspace tests, seven Python fixtures, LLP references,
+Nix release packaging and diff whitespace. The three new Rust guard tests pass.
+All eight candidate outputs match native replay on1,470 complete responses each
+(11,760 candidate comparisons), plus three baseline replays (4,410 comparisons).
+The six native cards without an aligned feature row also have no audited section
+row and remain ordering barriers; every native card with a row aligns in full
+record/section/span identity. The explicit selection artifact records no eligible
+candidate. Frozen source hashes and validation logs are retained with outputs.
+
+## Search research cleanup, November 15, 2026
+
+Retired 152 one-off research files from the reviewable tree. Consolidated measured
+reports above; frozen source snapshots remain in ignored local output so closed
+configurations are not lost or presented as new experiments. Removed temporary
+neutral capture/replay wiring and superseded selectors. Retained the native
+source-bound exact-pair candidate, its private stable selector, focused diagnostics
+tests, shared source-span grader and complete saved-response scoring. A generic
+fresh-store passage capture and frozen replay replace bespoke orchestration.
+
+The search LLP now directly specifies the experimental guard, source obligations,
+ordering, incumbent preservation and eval-only status. The evaluation LLP states
+measurement/adoption boundaries without depending on reports or outputs. Neither
+LLP references this log, experiment files or local paths. Ordinary search remains
+unchanged and the candidate is not adopted.
+
+After removing the unused unstable selector branch, complete native responses
+remain identical to the frozen candidate on 1,470 dev, 1,380 reused-h2 and 1,470
+scale-dev wordings (4,320 total). This is cleanup parity, not new retrieval evidence
+or independent confirmation. A three-wording fixture also passes fresh native
+capture, saved-feature replay and native baseline-grader parity. Formatting,
+workspace Clippy and tests, Nix packaging and LLP reference checks pass. Existing
+vendored-libSQL lifetime warnings remain; no new workspace warning was introduced.
+
+## Consolidated search design research
+
+The following research report is retained as historical design analysis. Later
+measurements above supersede its early recommendations. Its experimental CLI
+commands and implementations are historical, not currently available tooling.
+
+# Linn search research — 2026-11-14
+
+**Updated conclusion:** the [deeper competitor review](#deeper-competitor-and-architecture-review--2026-11-14) below supersedes the original experiment priorities. Current trace evidence points to candidate admission, first-success routing and limited primary signal competition. NLP already contributes to primary ranking; vectors mostly do not. Combined-score rejection is now a main research track, with a separate calibration and risk/coverage protocol. The two initial scope/overlap experiments were rejected.
+
+Research and design only. No retrieval implementation, thresholds, model, corpus, or card order changed. Rankings below prioritize finding the right note first, cross-scope recall, and honest silence. Expected effects are hypotheses, not measured improvements. No new retrieval run was warranted: saved outputs settle the narrow diagnostic question examined here.
+
+## Evidence and diagnosis
+
+The governing contracts are [LLP 0002](../llp/0002-retrieval-parity.explainer.md), [ingestion/storage LLP 0001](../llp/0001-storage-and-sections.explainer.md), and [evaluation LLP 0005](../llp/0005-evaluation.explainer.md). The historical PLAN was read from `1e34398^:PLAN.md`; it was removed during specification consolidation. The requested IDEAS catalogue was recovered from `9017426:IDEAS.md` (58 entries and completed follow-ups); its former uncommitted file is absent from reimplement. Baseline, query-performance, Astra, POS and expansion reports survive as named consolidated sections of FINDINGS (historical artifact). These are historical measurements, not the active specification. The Engrim evidence below is from `6d58f1f:evals/FINDINGS.md` and its saved private outputs, rather than the older copy of FINDINGS on this branch.
+
+### What the comparison actually measures
+
+| Corpus | Linn / Engrim six-rate mean | Linn / Engrim first-wording Hit@5 | Linn / Engrim cross-scope first-wording Hit@5 |
+|---|---:|---:|---:|
+| Matched, 1,243 notes | 86.34 / 80.97% | 40/48 / 34/48 | 4/4 / 4/4 |
+| q4 dev | 72.71 / 78.15% | 354/439 / 333/439 | 25/42 / 33/42 |
+| h2 | 78.39 / 76.53% | 298/354 / 281/354 | 48/62 / 55/62 |
+| Scale dev | 65.59 / 64.96% | 316/439 / 287/439 | 22/42 / 24/42 |
+| Scale h2 | 70.75 / 67.25% | 275/354 / 239/354 | 41/62 / 47/62 |
+
+**Correction to the starting interpretation:** matched 40/48, 34/48 and historical qmd 40/48 are first-*wording* Hit@5, not top-1. The historical mean averages any-wording recall, first-wording recall, first-wording MRR@5, two cross-scope rates and empty-correct. It is neither answer accuracy nor six independent observations. Actual matched original-query wrong-top counts are 26 Linn and 27 Engrim, with respectively one and zero empty first pages. With 48 gold cases, this implies actual original-query Hit@1 of 21/48 each, assuming the recorded wrong-top and empty counts partition the misses as documented. Do not advertise 40/48 as rank-one accuracy.
+
+On synthetic six-docs, actual Hit@1 is 31/49 versus 45/49, Hit@5 35/49 versus 49/49, and MRR@5 67.35% versus 95.31%. This is a serious transfer warning despite the set's small size. It is externally authored but publicly available, previously measured and partly designed for expansion/reranking; it is now diagnostic material, not a blind test.
+
+Linn wins curated gold-any, first-wording recall and MRR across every compared slice. Its curated lead does not establish generalization: q4 was tuned on, h2 reused (including POS recovery selection), and scale repeats questions with distractors. Engrim wins cross-scope in all larger slices. But all its bodies were placed in one isolated project; native project isolation would hide cross-project targets. The experiment therefore compares shared eligible populations with Linn's original-scope penalty still present, not native scope policies. Model, granularity, candidate pools and ranking differ simultaneously; no fusion-versus-tiers causal inference follows.
+
+Silence is the largest unaddressed quality problem. On h2's 45 genuine no-gold/no-other-scope cases, Linn is silent across all wordings on only 2, Engrim on zero; at scale Linn also falls to zero. The much better-looking 54/106 and 55/106 empty-correct counts mix true silence with cases requiring another-scope target. Report those tasks separately. An empty first page on a gold question is a recall failure, not successful abstention.
+
+### Exploratory saved-output audit
+
+Read-only Python join of `reimplement/evals/corpus/synthetic-six-docs/cases.jsonl` with `eval-engrim-comparison/evals/output/engrim-default-synthetic-six-docs/calls.jsonl`, by case id, comparing each gold record with the first five first-call cards. No search, alternative parameters or model inference ran. All **14** Linn Hit@5 misses have empty first pages; all have gold in Engrim's first five. Thus moving existing cards within those pages cannot fix these misses. The file alone cannot distinguish missing lexical candidates from fallback rejection, or establish whether later hints would help a reader.
+
+The 14 queries are:
+
+- “how to structure REST endpoints”; “working from home guidelines”; “what went wrong with the launch”;
+- “how much runway before running out of money”; “video calls camera async messaging”;
+- “that tradeoff between data correctness and always being up”; “what we learned from the dashboard thing”;
+- “how much we're burning through each month”; “when do I need to be online”;
+- “why we pushed back the release date”; “how to structure URLs for our service”;
+- “how the beta users found problems”; “how much runway before we're out of cash”;
+- “the 47 issues we found before shipping”.
+
+These include paraphrase, vague reference and several-facet requests. They motivate tracing lexical obligations and block boundaries, not declaring that all fourteen require a new model. Conversely, admitting semantic neighbors indiscriminately would worsen the already poor silence results.
+
+Other useful per-case evidence from FINDINGS:
+
+- The historical matched hybrid admission audit identifies admission as a bottleneck; its later distinct-record cut audit found no retention defect. Do not retry deduplication as a solution to absent candidates.
+- `s3a-c-0002`: unchanged original TF/length but actual growth statistics reverse two original-row score orders. This proves a raw-score mechanism, not complete final-page causality; intermediate distractor candidates also matter.
+- `s6-c-0044` (“preview counts zero hits”): secondary-passage bonuses displaced the short gold with another record. More corroborating passages can reward verbose competitors.
+- `s7-c-0060`: identifier-dropping relaxations admitted forbidden `s7-r-0069`; current wordings remain empty. `s7-c-0100` is not uniformly silent: “resume download range request” returns five cards, whereas its two blob-util wordings stay empty.
+- `h2a1-c-0102` previously credited a superseded record. Correct lifecycle filtering reduced apparent cross-scope/no-gold success. Keep this correction even when aggregate scores fall.
+- Disjoint extra spans were sole witnesses for 21 wording/object pairs, with two necessary across all wordings. Duplicate-looking cards cannot safely be removed as a group without section and full-call evaluation.
+
+### Secondary costs
+
+Matched database sizes are approximately 180.61 versus 5.75 MiB; indexing 12.680 versus 0.484 seconds (q4 13.014 versus 0.463). Scale-dev resident median is 85.51 versus 236.93 ms, but p95 307.83 versus 255.94 ms. Scale databases are roughly 3,006 versus 142 MiB. These are whole-system costs: Linn retains envelopes, sections and derived state, while Engrim stores prefiltered eligible bodies. Engrim's roughly 30 MiB model cache and Linn's roughly 101 MiB packaged binary are outside database sizes. Model loading is outside Engrim's index timer; query timing excludes startup/open. November 8's 51-second scale-open observation is historical and superseded by later lazy/indexed loading; do not use it as current startup cost.
+
+## Closed work: boundaries on novelty
+
+Do not spend another sweep on these configurations. Their detailed constants and pages are in FINDINGS.
+
+| Family | Recorded outcome and implication |
+|---|---|
+| P1 positional lexical bonus | Weights 1/.25 lose gold; .05 flat despite 39 changed first pages. Generic proximity is not a new recommendation. |
+| P2 subject-bound joins | Five proofs, three weights output-flat; all five P1/P2 combinations equal P1-only responses. More join weight cannot create evidence. |
+| P3 definitions; E1 source equivalence | No useful source-pair/declaration population under tested grammars; later broader equivalence screen also found no candidate. |
+| E2 anchored embedding alignment | Reciprocal matches accept scalar opposites; cosine is not an equivalence certificate. |
+| E3 typed row fields; E4 validation before stopping | Narrow controlled grammar had zero dev activation. Fixtures prove mechanics, not query usefulness. Later row-cut/bridge trials also closed. |
+| POS/nlprule | Both-side relation selection became accepted at .75 after explicitly authorized recovery using h2. This is tuned evidence, not fresh confirmation; don't propose enabling POS again. |
+| Combined 112-configuration study | Dev gains, frozen h2 cross-scope/empty losses: rejected. Interactions are real, but do not authorize repairing the holdout result. |
+| BM25F and lexical probability alternatives | Three field-normalization controls no gains; four Dirichlet controls lose gold-first; PL2, many BM25 curves, IDF variants, heading presence and repeated-support controls closed. |
+| Embedding-assisted expansion/pooling | Beam/forms/sentences already operate in ordered fallback. Anchored semantic admission, bounded vector features, contextual feasibility, whitening/pooling and replacement studies have extensive negative/flat ledgers. SSE v2 is now accepted; Bekko and MiniLM trials are not new candidates. |
+
+New Engrim evidence changes the *priority of measuring out-of-domain admission*, not the status of these closed trials. A future proposal must name a different mechanism and a new target population before implementation. An inactive grammar does not disprove a family; neither does it justify broadening that grammar until old gold happens to activate.
+
+## Ranked research ideas within the hard constraints
+
+These fit one embedded model, one native runtime, original text, no reranker/RRF and an open confidence gate. They would still need isolated source changes and LLP updates if adopted; compatibility with hard constraints is not permission to change the specified algorithm. No numerical quality uplift is forecast honestly from present evidence.
+
+### 1. Complete causal miss tracing, especially scope and growth
+
+**Mechanism:** an eval-only ledger for each query: parsed hard/content terms; eligible gold spans; exact/stem admissions and tiers; pre/post scope-penalty ranks; each matcher's five-record cut; interleave displacement; each fallback's attempted/intercepted/rejected outcome. Use candidate-local indexed reads; never a new startup corpus map. Compare existing curated/scale pairs and original/null caller contexts diagnostically, preserving production arithmetic.
+
+**Target/effect:** identify whether a recoverable cross-scope gold loses exactly because of the fixed subtraction of 7, is cut before fusion, or never has an admissible span. Also separate growth-induced statistics from new competitors. Expected direct quality gain: zero; expected value is preventing ineffective experiments. This extends IDEAS 35–46 and the incomplete growth audit, rather than claiming them as new retrieval mechanisms.
+
+**Cost:** diagnostic I/O and trace volume only; no product index or ordinary latency increase. **Risk:** gold leakage if traces drive case-specific rules. Freeze reason categories and inspect matched failures and successes. **Test:** reproduce all saved ordered pages first; every classified miss must have a first failing stage, with “unresolved” allowed. New blind results are essential before trusting any subsequent scope/ranking change. Prior art: [Robertson/Zaragoza probabilistic framework](https://doi.org/10.1561/1500000019); Engrim comparison provenance above. Neither supports the particular value 7.
+
+### 2. Scope as a bounded preference inside existing lexical tiers
+
+**Mechanism to investigate, conditional on #1:** a single predeclared bounded scope preference rather than an unbounded absolute score subtraction relative to weak lexical scores. Preserve tiers, shared population, hard terms and lifecycle. Do not add native project isolation or change scope-null storage. First quantify how often the current penalty alone exchanges a relevant far note for an irrelevant near note; if that population is absent, stop.
+
+**Target/effect:** cross-scope top-1 and first-page recall; likely narrower than the full Engrim gap. No gain expected for lexical nonadmission. **Cost:** essentially unchanged latency/storage, modest implementation complexity, substantial selection risk. **Risk:** loss of local precision and more same-topic wrong-project hits; open gate means those cannot be hidden afterward. **Test:** paired same-topic notes with different projects, null scopes, identifiers, local and transferable questions; report local/far rank-one precision separately. Predeclare one alternative after diagnostic evidence, never sweep penalty values against h2. Blind scope judgments required. Prior art: [Engrim pinned source](https://github.com/timgordontg/engrim/tree/e041da05a8de69550998489f8c9231b4c6e11977), whose native project filtering is a contrasting policy, not a design to import.
+
+### 3. Evidence-unit boundaries for prose, with original-byte witnesses
+
+**Mechanism:** investigate a deterministic sentence/paragraph-boundary adjustment only where existing fixed block boundaries split literal query evidence inside one section. Use the original contiguous bytes, bounded size and the same lexical obligations; no ancestor heading or synthetic union text. First inventory boundary-split misses and adverse admissions among no-gold controls. Select no cutter until that inventory identifies a distinct population beyond the closed structural-unit and table-row trials.
+
+**Target/effect:** several-facet prose and correct-section access; possible additional lexical candidates. It cannot solve genuine synonym-only queries. **Cost:** rebuild, changed row statistics, potential overlap/index growth and more candidates; moderate complexity. **Risk:** broader spans falsely join unrelated claims, change BM25 statistics and worsen top-1/silence. **Test:** frozen contiguous gold byte ranges, adjacent unrelated paragraphs, code/list boundaries, long versus short prose; separate admission changes from score/statistics changes. Fresh blind passage judgments required. Prior art: [late chunking](https://arxiv.org/abs/2409.04701) establishes why context boundaries matter, but its contextual transformer mechanism is *not* this proposal. One-structural-unit rows, bounded table rows and original-line hierarchical pooling are already closed; this item advances only if a different boundary population is demonstrated.
+
+### 4. Silence diagnostics using counterexamples, without activating a gate
+
+**Mechanism:** shadow analysis of false admissions: exact identifier mismatch, wrong entity/property binding, incompatible numbers/versions, and fallbacks that fill pages for unrelated requests. Record three states—supported, contradicted, unknown—without suppressing cards. Contrast true no-gold with legitimate negative answers. Study calibration of diagnostic scores only on a separate development population.
+
+**Target/effect:** establish whether silence is fixable through source-obligation correctness rather than a confidence cutoff. No immediate product gain. This is a deliberate continuation of unresolved E4 population questions, not a claim that its inactive grammar passed precision validation. **Cost:** offline judgment and candidate-local source inspection; no required product index cost. **Risk:** treating “unknown” as “false” would delete keyword-query gold; contradictory text may be exactly the answer sought. **Test:** matched positive/negative/absent queries, all return routes and hints, wrong-property tables and identical entities across projects. Freeze the schema before reviewing results; require nonzero activation on naturally written queries. Prior art: [selective prediction under domain shift](https://nlp.stanford.edu/pubs/kamath2020selective.pdf) and [The Art of Abstention](https://aclanthology.org/2021.acl-long.84/). These motivate risk/coverage measurement, not a portable BM25 threshold. Any active abstention gate belongs in the separate constraints discussion.
+
+### 5. Lossless derived-storage accounting and exact execution work
+
+**Mechanism:** inventory bytes by table/index/vector kind and repeated original spans; attribute slow-tail queries by route. Seek exact deduplication/reference sharing only after checking existing sentence dictionary, packed matrices and reuse work. Original bodies and immutable envelopes remain intact; every stored float32 value and arithmetic order remains exact.
+
+**Target/effect:** index size, ingest time and p95, with zero intended ranking effect. **Cost:** accounting first; schema/publication complexity if a real new redundancy remains. **Risk:** lifecycle/secure-forget mistakes or hidden first-use costs, rather than intended silence/top-1 tradeoffs. **Test:** complete calls/ids/spans parity, publication invalidation, external writes and forget, open versus resident latency, peak memory, DB plus WAL/model/binary costs. Existing lossless compression/cache studies are closed; no repeated pager tuning or quantization. Prior art: [SQLite dbstat](https://www.sqlite.org/dbstat.html), alongside repository performance findings. Lower priority than quality.
+
+### Alternatives studied but not ranked for another trial
+
+BM25F combines normalized field frequencies before saturation; it is a reasonable general method but Linn already measured three controls without gains ([primary field-normalization reference](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/optimisation_multiple_parameters.pdf)). Query-likelihood with Dirichlet smoothing is likewise directly closed here ([Zhai/Lafferty](https://timan.cs.illinois.edu/czhai/pub/sigir2001-smooth.pdf)). Neither should be relabeled as new prior art.
+
+Pseudo-relevance feedback estimates a relevance language model from top documents ([Lavrenko/Croft](https://www.inf.ed.ac.uk/publications/report/1190.html)). It needs no extra model, but current wrong top hits would seed query drift, especially cross-project and no-gold requests. It also introduces a new rewrite route beyond the fixed procedure. Rank below the listed work: require evidence that initial relevant seeds are reliable and evaluate false expansions before any retrieval trial. User-confirmed feedback is safer but changes the interaction task and must be measured separately from single-query retrieval.
+
+## Outside the constraints: questions for Phil, not adoption proposals
+
+1. **Permit dense first-stage admission using the sole existing encoder?** This could address the fourteen empty synthetic pages without a second model, reranker or RRF, but violates the settled lexical-evidence/ordered-fallback contract if similarity alone creates cards. Engrim's result makes the opportunity concrete; it does not isolate the encoder from whole-record granularity or fusion. Cost: potentially corpus-wide vector work, more false admissions, changed semantics of a result. Before considering it, ask whether semantic-only leads are acceptable as cards, or must remain hints. Do not retry closed bounded vector admission/expansion controls under a new name.
+2. **Permit active abstention after separate calibration?** The 2/45 h2 true-silence result suggests a real cost to leaving the confidence gate open, but does not establish a safe replacement. Existing caller-only logistic gating deleted relevant rows when the candidate population changed. A new gate would need cross-scope, growth and domain-shift calibration plus explicit acceptable false-abstention cost. It must cover every result route, not merely matcher B. Score cutoff, margin or conformal calibration is still a gate and cannot be silently introduced. Cost: fewer gold answers, held-out calibration data and maintenance; distribution-free guarantees require their assumptions and do not automatically survive corpus change.
+3. **Permit a more expressive sole replacement encoder?** Contextual token models could reduce static bag-of-token ambiguity. Native embedding and comparable speed remain prerequisites, and MiniLM-L3 feasibility and Bekko/SSE studies already limit this path. No specific newly qualified model emerged in this research. [ColBERT](https://arxiv.org/abs/2004.12832) stores contextual token representations and uses late interaction: it is a first-stage retrieval design, not necessarily a reranker, but not a drop-in replacement for pooled float32 embeddings. It changes indexing, scoring and storage substantially. [Late chunking](https://arxiv.org/abs/2409.04701) needs contextual document encoding; applying it to the present static lookup/mean cannot create cross-token context. Cost: larger assets, inference and likely larger indexes; requires a new durable decision beyond an ordinary replacement trial.
+4. **Permit learned sparse derived evidence?** [SPLADE v2](https://arxiv.org/abs/2109.10086) expands into a sparse vocabulary representation using a trained model. It targets lexical mismatch with inverted retrieval, but learned expansion terms are not source-byte lexical witnesses; it also replaces the encoder/index contract or adds an impermissible second model. Cost: native deployment work, inference and expanded postings, potential false semantic matches. Ask only if fresh blind evidence shows synonym nonadmission dominates remaining errors.
+5. **Revisit reranking/expansion stacks?** [qmd's design](https://github.com/tobi/qmd#search-pipeline) searches lexical/vector candidates, expands queries, fuses and reranks. Its matched historical six-rate mean is 87.0% against Linn 86.34%, with roughly 2.5-second median versus millisecond resident queries. This small tuned comparison cannot justify multiple models, RRF and a reranker. Engrim's synthetic win *without* a reranker is especially strong reason not to infer that reranking is necessary. Keep this a low-priority question, not the default experiment.
+
+### Competitor lessons without importing product decisions
+
+Engrim's pinned `_minder_rows` fetches `2*k` lexical and semantic candidates and fuses ranks with constant 60; semantic retrieval uses a 0.30 floor, potion-base-8M and project scopes. The comparison used manual recall's eight results, not the assistant hook's five or substantive-term gate. The earlier five-result diagnostic changed candidate pools and scores and is superseded. The floor did not produce true silence in h2. Its implementation therefore supplies a useful comparison, not a ready-made silence policy.
+
+The local qmd README documents original-query weighting, top-rank bonuses and position-dependent reranker blending to protect exact hits; its diagram and prose differ on the number of expansions. Do not freeze a new baseline from a README alone: record commit, actual command, resolved models and executed candidate pools. Its local `test/eval-harness.ts` is a synthetic expected-filename test; deep-research JSONL includes semantic-expansion-oriented questions. Those tests are useful engineering fixtures, not representative unbiased memory retrieval. Read [qmd source/tests](https://github.com/tobi/qmd/tree/main/test) as prior art; copying implementation or adopting its product decisions is unnecessary.
+
+## Fresh blind benchmark: the main prerequisite
+
+### Population and size
+
+Build **1,200 independent information needs**, one original query each, over 12–20 previously unused project/topic collections, approximately 8,000–20,000 authentic original notes/documents. Include short notes, long prose, code, tables, near-duplicate decisions, versions and lifecycle changes. Obtain permission for private material and keep it out of git. Do not generate keyword lists, summaries or labels to help retrieval. Questions should arise from real tasks before the question writer sees search output; allow natural awkward/vague wording. Synthetic adversarial minimal pairs are a separately reported stress suite, never the whole benchmark.
+
+Use 400 open development needs, 200 sealed confirmation needs and 600 sealed final audit needs. Split by project/topic/document family and information need, not random paraphrases. All versions and near duplicates stay in one partition. Each partition has 70% answerable and 30% genuinely absent needs; oversample rare failure classes and report both stratified and deployment-weighted results rather than hiding them in an unweighted mean. For the final 600: target 420 answerable (at least 120 cross-scope; at least 160 requiring a particular section) and 180 absent. Scope/section categories overlap. These are planning targets, not a power guarantee; with 180 negatives, a few percentage points of change remain uncertain.
+
+A custodian independent of ranker development owns sealed corpus/query/judgment manifests and hashes. Developers see only open development material and benchmark schema. The custodian runs the frozen baseline and single candidate after receiving executable hashes and declared hypotheses. No per-case sealed feedback during development. A failed confirmation closes that candidate; do not repair it against those answers. Once inspected, any sealed set becomes diagnostic and must not be advertised as a holdout again. The final audit is not another tuning chance after confirmation. Phil should explicitly settle how this new protocol supplements LLP 0005's historical one-shot h2 rule; do not silently rewrite the adoption rule or treat old h2 as fresh.
+
+### Judgments
+
+Two independent assessors label original byte spans and acceptable equivalent records, then a third adjudicates disagreement. Hide system identity and order. Use grades: directly sufficient evidence, useful lead but insufficient, irrelevant/contradicted, plus unjudgeable. A useful topical lead is not a gold answer. Preserve valid negative answers as answerable. For long documents, judge the returned span separately from document relevance; record minimal sufficient ranges and multi-span requirements. Do not invent a single union span if an answer genuinely needs two distant passages.
+
+Scope is a relevance dimension, not authorization inferred from repository names: record whether knowledge transfers, needs the caller's exact project/version, or has a valid other-project target. Include plausible but wrong-project competitors with the same terms. Evaluate known explicit filters separately. Since Linn stores scope null and `scope:` does not narrow, do not fabricate a scope-filter guarantee in scoring.
+
+For absence, distinguish: fact absent anywhere; wrong entity/version only; only lifecycle-ineligible evidence; only irrelevant project evidence; ambiguous need. Verify absence through corpus inspection, several lexical/dense retrieval pools and assessor search, not by absence of a single system's top-k. Pool baseline and independently diverse systems' top 20 plus random/lexical near misses; judge unpooled samples to estimate residual missing relevance. Pooling alone is not exhaustive. Keep ambiguous/unjudgeable cases visible and excluded from primary binary claims under a predeclared rule. No-gold cases with valid other-scope answers belong in cross-scope recall, not true silence.
+
+### Metrics and decision rules
+
+Primary reports: original-query Hit@1, MRR@5, Hit@5, cross-scope Hit@1/5, document-plus-correct-span success, and true-silence specificity. Also report answerable false-abstention rate, wrong-top rate, must-not exposures and eligible-only correctness. Inspect all cards in all calls for silence; separately report hints/related pointers as near misses so they do not secretly count as answers or disappear from exposure accounting. Paraphrases, if collected, are secondary repeated measures grouped under their information need. No best-of-three primary score.
+
+Report paired gain/loss counts, per-stratum denominators, clustered bootstrap confidence intervals (project and information need) and paired binary uncertainty. Predeclare primary endpoints, allowable regressions, sample size and the limited candidate count. Do not optimize the six-rate mean. Prefer clear improvement in the target metric with no meaningful regressions in local Hit@1, cross-scope and silence; set tolerances before final evaluation. Existing LLP floors and lifecycle safety remain required independently. A 600-case final set cannot prove tiny gains or tiny regression bounds; use pilot discordance and project variance to calculate whether more cases are needed before freezing, never after seeing final outcomes.
+
+For shadow abstention research, report risk versus coverage and calibration by scope/domain/corpus size, not only a single tuned cutoff or AUROC. The gate stays open in product. Any eventual threshold selection uses only the separate open/calibration partition, never sealed labels.
+
+Secondary measurements: serial repeated resident runs with alternating baseline/candidate order on the same snapshots; median/p95/max with uncertainty, cold process/open and first-use costs separately; write/index wall time, peak RSS, DB/WAL size, model/binary size and projection row counts. Use a second genuinely larger corpus with new questions, plus same-question growth stress tests reported as sensitivity tests. Record machine, pinned dependencies, original-byte hashes and model identity. Correct page identity and span order must match the measured artifact before freezing/scoring; counts alone do not establish parity. Use the flake for tooling, and pnpm if JS becomes necessary.
+
+### Which ideas need blind evidence?
+
+All behavior changes in #2/#3 and any out-of-constraints alternative require the fresh confirmation protocol before a quality claim. #1/#4 are diagnostic and cannot establish a quality improvement by themselves. #5 can establish exact execution/storage improvement through full page parity and lifecycle checks, but must not claim improved relevance. Existing q4/h2/synthetic outputs remain useful for mechanism discovery and regression checks only. No neutral-loop or hybrid comparison authorizes retuning.
+
+## Suggested first five experiments
+
+1. **Freeze benchmark protocol and commission collection/judging.** While sealed material is prepared, publish the open schema and failure taxonomy. This is the highest-value work; avoid spending another holdout on an ill-defined mean.
+2. **Finish stage/scope/growth attribution on saved dev material.** No tuning. Predeclare a bounded sample covering misses, successes, near-project confusions and true negatives; verify exact response replay. Stop with a ranked causal ledger and unresolved counts. The fourteen synthetic empties are already diagnosed at page level; no need to rerun that count.
+3. **Conditional single scope-preference experiment.** Proceed only if #2 demonstrates penalty-caused displacement. Freeze one alternative from open-development evidence, retain full response comparisons and all local/scope/silence gains and losses. Otherwise skip it rather than sweep constants.
+4. **Conditional original-prose boundary experiment.** Require a nonempty new literal-boundary population beyond closed row/structural cuts, including adverse controls. One deterministic cutter, not a grid; reject if gains are explained only by changed global score statistics or unacceptable false admissions. Compare section accuracy as well as document hits.
+5. **Shadow silence/contradiction study.** Use the new open negative population to measure nonzero natural-query activation and separability. Preserve unknown and negative-answer cases; do not enable a gate. If no safe evidence distinction appears, present the quantified recall–silence tradeoff to Phil rather than quietly adding thresholds.
+
+Only a candidate that qualifies on open development should consume one frozen confirmation, under the agreed LLP process. Record every tested configuration, failed setup and selection decision. Stop on a failed/flat confirmation. Do not combine individually failed ideas merely because their dev gains look complementary; a combination needs its own predeclared rationale and selection budget.
+
+## Summary and questions
+
+Prioritize honest evaluation and causal scope/admission diagnosis; then a conditional bounded scope preference and a narrowly evidenced prose-boundary change. Generic BM25 tuning, proximity bonuses, source-join weight changes and semantic expansion are already heavily measured, with no license to reopen failures. Silence needs its own negative benchmark and a clear policy decision; improving recall alone is unlikely to fix it.
+
+New measurement in this pass: **exploratory read-only saved-output audit**, 14/14 synthetic misses have empty first pages and Engrim finds all fourteen. No fresh retrieval, latency, size or holdout measurement; no algorithm changes, push, PR or publication.
+
+Questions for Phil: What false-abstention cost is acceptable relative to a wrong lead? Is transferable cross-project knowledge usually preferred over a weaker local match? Who can custody unseen queries and judgments, and approve a fresh protocol alongside LLP 0005? If blind evidence confirms a semantic-admission/silence tradeoff, are semantic-only cards or a newly calibrated gate discussable, or must both remain outside the product contract?
+
+## Implementation follow-up — 2026-11-14
+
+The subsequent authorized implementation tested one bounded scope preference and
+one original-prose overlap algorithm on q4 dev. Both reduced gold recall and
+actual Hit@1, with no rank-one gains; both were rejected and accepted source
+restored. These exact settings are now closed. See the [experiment ledger](#consolidated-search-2026-11-14-md)
+for implementations, measurements, regressions and validation. The recommendations
+above are the pre-experiment research priorities, not permission to retry these
+failed configurations.
+
+## Deeper competitor and architecture review — 2026-11-14
+
+This second research pass supersedes the earlier emphasis on scope and block
+boundaries as the first algorithm experiments. Those configurations failed.
+The stronger question is now **which evidence is allowed to participate in the
+primary decision**, and whether independent admission rules prevent useful
+signals from combining. No product code or retrieval rule changed in this pass.
+
+### New diagnostic evidence from the current accepted page
+
+A read-only join of the saved q4-dev baseline pages and native raw-rank traces
+covers all 439 gold cases, using the original wording only. Gold means each
+object's record plus its object-level equivalents, exactly as in the scorer.
+Pending raw-rank events are associated with the following record-cut event's
+caller scope; both matchers must be present for the original query. Repeated
+query/scope traces are checked for consistent admitted-record sets. Rewritten
+queries are not substituted for originals. This is an **exploratory trace audit**,
+not another search run, independent benchmark or proposed ranker.
+
+| Original-query outcome | Cases | What it establishes |
+|---|---:|---|
+| Gold at rank 1 | 199 | Existing true top-1 success |
+| Gold at ranks 2–5 | 155 | Page contains gold, but ordering could improve |
+| Gold absent from first five | 85 | Admission, cuts, fusion or fallback failure |
+| Of those 85: no gold row in either original raw matcher ranking | 64 | Primary score-only retuning cannot directly promote a missing row |
+| Of those 85: gold admitted by at least one raw matcher | 20 | Later cuts/page construction or primary ordering remain suspects |
+| Of those 85: incomplete original trace | 1 | Do not classify; `mobile:install iOS dev client` has parser/rewrite complications |
+
+Of the 85 misses, **81 already have a nonempty wrong first page**, and only four
+are empty. Sixty of the 64 original lexical-nonadmission cases are nonempty.
+Conversely, 36 successful cases have no originally admitted gold row, showing
+that later admissions/fills/rewrites do recover useful results. Five successful
+cases lack complete original traces. These categories reconcile to 439 cases
+and the native baseline's 354 first-wording Hit@5 successes. Raw nonadmission
+is not proof that every fallback rejects gold, or that the body contains no
+lexical overlap; it identifies the stage where ordinary primary ranking lacks
+leverage.
+
+Reproducer and detailed case ledger are retained in ignored
+`evals/output/competitor-research-20261114/admission_audit.py` and
+`admission-audit.json`. Inputs are the unchanged private q4 cases and the
+previous pass's baseline pages/rank traces. No gold labels entered retrieval.
+The earlier native matched-hybrid audit independently found only 3 of 21
+original-query slice misses had an admitted gold row. Different populations,
+same directional diagnosis; do not combine their denominators.
+
+**Implication:** candidate admission is a major blocker for missing notes;
+primary ordering is a separate major blocker for putting an already-found note
+first. A single claim that “ranking is the problem” or “ranking cannot help”
+would misread these two populations. Synthetic-six-docs has a different error
+shape—14 empty misses—so empty-only rescue can look promising there while
+missing most current dev failures.
+
+### What Linn actually combines, and what it rejects separately
+
+The current flow is documented by `src/retrieval/lexical.rs` (`matcher`,
+`admit`, `penalized`, `interleave`), `src/retrieval/ordered.rs`,
+`src/retrieval/fallback.rs` and LLP 0002. It is not a three-signal hybrid score.
+
+| Stage | Current decision | Can another signal compensate? |
+|---|---|---|
+| Eligibility/publication/query filters | Lifecycle and explicit constraints before candidate use; final eligibility checks also cover outputs | Correctly no; relevance must never override lifecycle or explicit filters |
+| Lexical candidate generation | Exact/stem postings, nominal-compound witnesses | A purely semantic relevant block may never become a candidate |
+| Ordinary lexical admission | Content coverage reaches `min(c,max(2,ceil(c/2)))`; every hard term must match | High BM25 or POS support cannot buy back a missing hard term or coverage obligation |
+| Primary score | BM25L plus **0.75 times POS-selected ordered occurrence support** | Yes, BM25 and POS already combine numerically within the admissible competition |
+| Tiers and scope | Phrase/all-content/partial tier before score; far penalty 7; independent five-record matcher cuts | Score cannot overcome a worse tier; scope can change within-tier competition |
+| Page construction | A-first interleave, overlap exclusion, heading/one-under fills | No common lexical/vector/POS primary score compares the full page |
+| Short-page vector neighbor | Runs only with 1–4 cards; rare shared word and other route conditions | Cannot replace a full wrong page or supply a missing semantic candidate generally |
+| Vector hints | Near misses on silence; rare shared-word qualification | Hints are not scored cards and do not improve measured card recall |
+| Empty-page vector routes | Fixed form/word rarity, cosine and same-block sentence conditions; stop after first retained result | Failing one route's predicate cannot be offset by strong evidence elsewhere; nonempty pages bypass these rescues |
+| Logistic confidence diagnostic | Gate fixed open | No learned final relevance rejection is operating |
+
+Concrete separate gates: a form-block route requires form similarity at least
+0.70, a retained block cosine at least 0.35, a shared content word with IDF at
+least 5, and rare-form frequency at most eight. The sentence-pair route requires
+two different sentences in one block, both in separate top-15 lists and both
+cosines at least 0.35. Different routes use different predicates. These numbers
+are descriptive source facts, **not suggestions to lower thresholds**.
+
+So the answer to the threshold question is **yes, with an important distinction**:
+BM25 and NLP support already combine, but lexical admissibility, tier priority,
+vector-route thresholds and route stopping usually happen outside that joint
+score. There is no global BM25 cutoff and no active logistic confidence gate.
+The pipeline contains many admission conditions despite the named confidence
+gate being open. Changing the scope penalty did nothing to unify those rules.
+
+NLP is **already primary ranking evidence**, not merely backup. It selects
+query/source nominal relations and contributes before record cuts. A narrow
+source-witnessed nominal compound can also augment term hits. However, this is
+POS/chunk-selected occurrence support—not dependency parsing, entailment,
+general synonymy or unrestricted subject/property binding. A larger POS weight
+cannot admit an otherwise excluded candidate or escape a worse tier. P1,
+P2, E1–E4 and subsequent POS/assignment trials already show why “use more NLP”
+is insufficient as a new experiment definition.
+
+Vector processing is much closer to a backup system. The implementation's
+first-success routing asks whether a route returned cards, not whether those
+cards are the right leads. For 81 nonempty dev misses, adding one more
+empty-only semantic route does not address the observed final-page state.
+Whether an earlier base-page failure or an incorrect fallback supplied those
+cards needs per-route tracing; this audit does not attribute all 81 to the
+same interception point.
+
+### Competitor evidence: mechanisms, measurements and limitations
+
+The following are nine systems or architecture families, not nine independent
+head-to-head wins against Linn. Source code establishes what is implemented;
+documentation establishes supported behavior; a paper establishes its reported
+experiment. Only the existing matched comparisons establish Linn-relative
+numbers. Public source was read through GitHub's connector; local qmd/Engrim
+checkouts were inspected without modification. Competitor code was not copied.
+
+**qmd — independent semantic candidates even when lexical results exist.**
+At local revision `86d2365`, `src/store.ts:6263` performs an FTS probe, conditionally
+skips expensive expansion on a strong lexical signal, but still runs original-query
+vector retrieval when vectors exist. It fuses candidate lists, then optionally
+reranks. Importantly, the source's candidate limit is **40**, despite README
+material describing 30. Expansion suppression is not suppression of the original
+semantic path. This is a useful routing contrast; its multi-model/RRF/reranker
+stack remains outside Linn's contract. The historical saved predictions need not share this exact source/configuration
+and do not isolate which stage helps, and the public six-document tests are not a blind benchmark.
+[Immutable implementation](https://github.com/tobi/qmd/blob/86d2365d17fc682e491c2c53d1e4a884aee8682a/src/store.ts#L6263).
+
+**Engrim — a small static encoder can contribute before the final page.**
+Pinned `_minder_rows` obtains lexical and semantic lists independently, each
+with `2*k` candidates, then combines their ranks; semantic results use a 0.30
+floor. It does not require a completely empty lexical page to consider vectors.
+The existing synthetic win, 49/49 versus 35/49, therefore does not imply that
+Linn needs an expensive contextual encoder or reranker first. It also does not
+prove the fusion formula causes the win: model, granularity and scope differ.
+Both systems' true silence is poor. Its native project isolation is not the
+comparison's shared-project configuration.
+[Immutable implementation](https://github.com/timgordontg/engrim/blob/e041da05a8de69550998489f8c9231b4c6e11977/src/engrim/cli.py#L651).
+
+**Vespa — retrieval and final display budgets are different.**
+Vespa exposes independent weak-AND and nearest-neighbor retrieval operators;
+multiple retrievers can contribute a union to ranking. Ranking phases are
+separate and optional architecture choices. Exported match/rank features make
+path contributions inspectable. The relevant lesson is candidate coverage and
+observability before a display cut, not deploying Vespa or importing its later
+reranking phases. The docs supply no Linn-relative relevance or silence result.
+[Phased-ranking documentation](https://docs.vespa.ai/en/ranking/phased-ranking.html).
+
+**Typesense — coequal paths can still have independent rejection gates.**
+Version 30.2 supports keyword and vector retrieval with configurable fusion,
+while distance thresholds and lexical token-dropping behavior remain separate.
+Its documentation explicitly distinguishes standalone vector exclusion from
+vector distance used in sorting. This prevents a simplistic conclusion that
+“hybrid” means every weak signal can compensate for every other signal. It is
+an example of knobs that need deliberate evaluation, not settings to transplant
+into Linn. Native model embedding and a running search server also change cost.
+[Versioned vector documentation](https://typesense.org/docs/30.2/api/vector-search.html).
+
+**Meilisearch — tiers are not automatically the defect.**
+Its full-text ranking applies ordered rules with bucket sorting: later rules
+cannot reverse earlier separations. Broad matching and ranking priority are
+separate design choices. This is a counterexample to declaring any lexicographic
+tier system intrinsically bad. Linn's specific candidate population, first-page
+cuts and tie priority need evidence; replacing tiers with a sum is not inherently
+an improvement. Typo-tolerant product search also differs from identifier-sensitive
+technical memory. No matched Linn evaluation was found in these docs.
+[Ranking rules](https://www.meilisearch.com/docs/capabilities/full_text_search/relevancy/ranking_rules).
+
+**Mem0 — inspect the gates behind “hybrid memory”.**
+At revision `f1791da`, normal writes default to LLM extraction; raw writes are
+available separately. Its scoring code combines semantic, BM25 and entity
+signals, but first excludes candidates below a semantic threshold. Thus it too
+can lose candidates before combination. Generated compact memories change the
+retrieval task; end-to-end memory scores do not demonstrate better search over
+Linn's original bytes. Useful lessons are explicit scoping, score explanation
+and exposing where cutoffs act, rather than copying extraction or coefficients.
+[Write/search implementation](https://github.com/mem0ai/mem0/blob/f1791daa86d469249c9b002f62644d58a1eb96a0/mem0/memory/main.py),
+[scoring implementation](https://github.com/mem0ai/mem0/blob/f1791daa86d469249c9b002f62644d58a1eb96a0/mem0/utils/scoring.py).
+
+**Graphiti — NLP-derived structure participates in retrieval, at a different cost.**
+At revision `ed23196`, configurable search paths include BM25, semantic similarity
+and graph traversal. Candidate unions can be followed by RRF, MMR, graph-distance
+or cross-encoder processing. Ingestion extracts entities/relations using an LLM;
+the README and implementation make those dependencies explicit. This supports
+studying structure during candidate generation, but does not establish that
+Linn's lightweight POS annotations contain equivalent semantic structure.
+Generated graph facts, graph storage and those rerankers violate current
+boundaries. No claimed Graphiti score is treated as comparable to Linn recall.
+[Search source](https://github.com/getzep/graphiti/blob/ed23196506eba8806fae6da831d73fcd2ad714d8/graphiti_core/search/search.py),
+[ingestion/dependency description](https://github.com/getzep/graphiti/blob/ed23196506eba8806fae6da831d73fcd2ad714d8/README.md).
+
+**Zvec — embedded execution is compatible with semantic-first retrieval.**
+At revision `0c2e67a`, this in-process native engine supports dense/sparse vectors,
+full-text retrieval and filters. That rebuts a supposed technical necessity for
+semantic search to require a remote service or separate Python runtime; it does
+not justify replacing libSQL. Its cited benchmark measures vector-neighbor
+recall, QPS and build time on Cohere vector datasets—not note relevance, scope
+transfer or abstention. Fast accurate nearest neighbors can still be the wrong
+notes. Do not compare its advertised QPS or ANN recall with Linn's Hit@5.
+[Source overview](https://github.com/alibaba/zvec/blob/0c2e67a2ea5227c34278337e6a41b7323455a3dd/README.md),
+[benchmark methodology](https://zvec.org/en/docs/db/benchmarks/).
+
+**LEANN — storage can be traded for query computation.**
+The project moved to `StarTrail-org/LEANN`; revision `07796bd` and the MLSys 2026
+paper describe a pruned proximity graph with selective on-demand embedding
+recomputation. Its storage claim concerns that index design, not Linn's total
+immutable-body/derived-state database. This is a useful counterpoint to treating
+stored dense arrays as the only possible semantic architecture, but it changes
+numerical execution/indexing and resource costs and is not a page-preserving
+optimization. Its wrappers are not evidence of a drop-in freestanding Rust/libSQL
+implementation. Storage research is secondary to identifying retrieval failures.
+[Immutable README](https://github.com/StarTrail-org/LEANN/blob/07796bd7e40f2d5f3a4be9e45adf1f62a68481fd/README.md),
+[MLSys paper](https://proceedings.mlsys.org/paper_files/paper/2026/hash/e27ea0cd50b798ff8942caf9203f0992-Abstract-Conference.html).
+
+### Independent studies: what supports or weakens the architecture hypothesis
+
+**Hybrid combination is not synonymous with RRF.** Bruch, Gai and Ingber compare
+score combination and rank fusion, finding that calibrated convex combinations
+can outperform RRF in their tested settings, with sample-efficient fitting.
+Their study also shows RRF has consequential parameters. This supports separating
+“should independent semantic evidence participate?” from “should Linn use RRF?”
+The answer to the latter remains no under the current contract; the former is a
+substantial research question. Raw BM25, cosine and POS scores cannot simply be
+added without considering scale and candidate-pool effects.
+[Analysis of Fusion Functions](https://arxiv.org/html/2210.11934v2).
+
+**Always adding a path can hurt.** Wang and colleagues' 11-dataset study compares
+lexical, learned-sparse, dense and tensor retrieval combinations. A weak path
+sometimes degrades the stronger one, including after combination. This is
+important contrary evidence: promoting vectors to primary participation is a
+hypothesis to test, not an assumption that more semantic influence must help.
+Measure each path's unique relevant candidates and hard negatives before combining.
+Its tensor/learned reranking alternatives are not proposed Linn implementations.
+[Balancing the Blend](https://arxiv.org/html/2508.01405v2).
+
+**Generalization needs more than a synthetic win.** BEIR tests diverse retrieval
+tasks and finds BM25 a robust baseline, with strong but costly late-interaction
+and reranking results for the evaluated systems. BRIGHT deliberately tests
+reasoning-intensive queries where both lexical and simple semantic matching
+struggle. They argue against extrapolating either “dense always wins” or “BM25
+has reached its limit” from Linn's six-document result. Neither benchmark supplies
+Linn-specific scope or silence judgments.
+[BEIR](https://arxiv.org/html/2104.08663),
+[BRIGHT](https://arxiv.org/html/2407.12883).
+
+**Missing context is a representation problem, not just a cutter problem.**
+Anthropic reports a reduction in top-20 retrieval failure from 5.7% to 2.9% with
+contextual embeddings plus contextual BM25 on its evaluation. It prepends
+LLM-generated chunk context, which Linn explicitly excludes; the metric is not
+Hit@1 or silence. Late chunking instead contextualizes document tokens before
+pooling chunks, requiring a contextual encoder. Neither mechanism is equivalent
+to B1's small overlap of independently indexed original prose. B1's failure does
+not falsify contextual representations, and those studies do not reopen B1.
+[Contextual Retrieval](https://www.anthropic.com/research/contextual-retrieval),
+[Late Chunking](https://arxiv.org/html/2409.04701v3).
+
+**There are alternatives to one pooled vector.** SPLADE learns sparse weighted
+vocabulary representations; ColBERT uses contextual token representations and
+late interaction, including as direct first-stage retrieval. They show that
+“semantic retrieval” need not mean a single cosine or a cross-encoder reranker.
+They are architectural references, not qualified native/similarly-fast replacement
+candidates: learned expansion, model cost, storage and arithmetic depart from
+the accepted contract.
+[SPLADE v2](https://arxiv.org/abs/2109.10086),
+[ColBERT](https://arxiv.org/abs/2004.12832).
+
+**Benchmark answers, retrieved leads and original evidence separately.**
+LongMemEval separates indexing, retrieval and reading, and tests knowledge
+updates, time and abstention across 500 questions. Its decomposition/key-expansion
+methods change stored representations; its answer accuracy is not a card-recall
+number. FreshStack starts from community technical questions and judges
+answer-supporting nuggets; oracle answer-based retrieval is for constructing
+judgment pools, not a permissible production-query input. Those are useful
+benchmark design patterns without permission to index generated surrogates.
+[LongMemEval](https://arxiv.org/html/2410.10813v2),
+[FreshStack](https://arxiv.org/html/2504.13128v1).
+
+**Silence is not solved by a better reader or a missing gold id.** AbstentionBench
+finds persistent unanswerable-question difficulties even in capable language
+models. A recent October 2026 preprint warns that incomplete relevance judgments
+can label useful retrieved contexts as unanswerable; its limitations include
+substantial LLM labeling and incomplete human checks. Treat that as a warning
+about evaluation design, not proof Linn's labels are wrong. Exhaustive/sampled
+negative audits and original-span judgments remain necessary.
+[AbstentionBench](https://arxiv.org/html/2506.09038v1),
+[Better Retrievers, Worse Labels](https://arxiv.org/html/2610.40966v1).
+
+### What is probably holding improvement back
+
+1. **Primary candidate admission is too narrow for some genuine paraphrases.**
+   Evidence is strong at the stage level: current 64/85 missing originals have
+   no raw admitted gold, consistent with the older native audit. Exact causes
+   differ—coverage, inferred hard tokens, source granularity—and need tracing.
+   A primary-score coefficient search cannot directly repair these rows.
+2. **Nonempty is treated as enough reason to stop alternative retrieval.**
+   Source confirms first-success routing; 81/85 failed original first pages are
+   nonempty. This is the clearest reason another empty-only backup has limited
+   reach. Candidate competition must be studied on populated wrong pages too.
+3. **Evidence is combined after several irreversible restrictions.**
+   POS helps a qualified lexical row; vectors usually participate later or as
+   hints. Per-path thresholds, top-k lists, tiers and five-record cuts exclude
+   candidates before a joint relevance decision can consider compensating
+   evidence. Some restrictions are essential; relevance heuristics are not the
+   same category as lifecycle and explicit user constraints.
+4. **Static pooling has limited relational capacity.**
+   `src/language/embedding.rs` averages token lookup rows and then applies a
+   learned coordinate-wise transform. For the same retained token multiset,
+   token permutations produce the same mathematical representation apart from
+   floating-point accumulation order. Tokenization and truncation can differ,
+   so this is not a claim that all paraphrases or role reversals are bit-identical.
+   Closed E2 opposite/negation diagnostics demonstrate why cosine cannot certify
+   meaning. But Engrim's static-model result is evidence against requiring a
+   contextual replacement before testing better use of existing vectors.
+5. **Recall and silence are being asked of different ad hoc predicates.**
+   High topical similarity and literal overlap both occur in irrelevant notes.
+   More candidates without a reliable no-answer decision can worsen exposure.
+   Current open-gate policy restricts the mechanisms available to address that;
+   a joint score that always returns its top five is not an abstention solution.
+6. **Selection metrics do not directly reward the stated top-1 goal.**
+   Gold-first in LLP 0005 is first-*wording* Hit@5, not rank one. A candidate
+   that only fixes ordering inside those five could improve actual Hit@1/MRR
+   while failing the required rise in one of the four adoption numerators.
+   Strict finite-sample no-fall rules also reject explicit tradeoffs. These are
+   policy choices, not implementation bugs. Changing them needs Phil's decision,
+   better power analysis and fresh data; it cannot justify adopting S1/B1.
+7. **The current evidence cannot validate broad progress.**
+   Many correlated trials used q4, h2 has been reused, and scale repeats queries.
+   A larger public paper bibliography does not make those sets independent.
+   New open development tasks plus custodied blind confirmation are prerequisites
+   for trusting a structural change.
+
+The first three blockers have direct implementation/trace evidence. The static
+representation limitation is architectural, but its contribution to particular
+misses is unmeasured. The claim that an alternative architecture will improve
+Linn remains a hypothesis. The native binary, libSQL and original-byte storage
+are **not demonstrated quality blockers**; several external designs show semantic
+retrieval can execute locally. Reranking, generated summaries and a second model
+are likewise not demonstrated necessities.
+
+### Should vectors and NLP become primary evidence?
+
+**Vectors: yes as the next architecture hypothesis, not an adopted change.**
+The question should be whether independent vector candidates and similarity
+features improve primary selection even when lexical cards already exist.
+Use the existing sole encoder first, so model choice does not confound routing.
+This remains a departure from LLP 0002, especially if a semantic-only candidate
+may become a card. Native execution, original-byte evidence, no RRF, no reranker
+and no additional embedding model can all remain unchanged in such research.
+The semantic-admission/source-evidence decision must be explicit.
+
+**NLP: preserve its primary role, broaden only where evidence supports it.**
+Use typed literal recognition, occurrence relations and source-local compatibility
+as features with an explicit “unavailable/ambiguous” state. Do not turn lack of a
+POS relation into an automatic rejection of a compact keyword query. Do not
+reinterpret POS tags as dependency heads or synonyms. Broad row-field grammars,
+semantic assignments and subject joins overlap closed work; any new experiment
+needs a new natural-query population and matched controls, not a new name.
+
+**Combination: distinguish three designs.**
+
+- Current cascade: lexical admission → lexical/POS score → tiers/cuts → conditional
+  vector routes with separate predicates. Useful evidence can be censored early.
+- Parallel independently gated paths: lexical and vector each qualify candidates,
+  then a common ranking decision. This improves path reach but still loses a
+  candidate just below either path's entry rule. Several competitors use variants.
+- Broad eligible candidate union → one primary scoring function using lexical,
+  semantic and linguistic evidence → final card policy. This tests compensation
+  before relevance rejection. It still needs computationally bounded candidate
+  generation; “combine first” cannot mean score every body with every operation.
+
+A conceptual primary score could use normalized BM25 strength, coverage,
+exact-literal compatibility, POS relation support, cosine, scope and source-unit
+features. This is a hypothesis about **one primary ranking calculation**, not a
+second-pass reranker. The sources do not establish its weights, normalization,
+optimal candidate budget, or portability. Duplicate lexical evidence must not be
+counted multiple times as independent confirmation. Two mediocre correlated
+signals should not automatically add up to confidence. Missing POS evidence is
+not the same as a contradictory relation.
+
+Keep lifecycle, secure-forget, publication identity and explicit filters as hard
+constraints. Separately decide whether automatically inferred “hard” query terms
+are true user obligations or fallible parser assumptions. If every current hard
+term remains mandatory, joint scoring cannot fix misses caused by that term.
+Quoted identifiers may merit protection while ordinary natural compounds require
+a different policy; no new exception is introduced here.
+
+A **single final rejection threshold** after combination could allow moderate
+lexical and semantic evidence to compensate where separate thresholds reject.
+It would also be an active confidence gate, currently prohibited. Therefore
+study its risk/coverage curve only in shadow and present the tradeoff to Phil.
+Rank-only combination with the gate open can improve finding/ordering; it must
+not be advertised as solving honest silence. Independent relevance cutoffs are
+not categorically wrong either: they can protect precision, as the weak-path
+literature and Linn's failed relaxations show.
+
+### Research sequence that could distinguish the blockers
+
+These are proposed studies, not a new authorization to implement alternatives
+or rerun closed settings. Use new open development queries, freeze all arms and
+budgets, and reserve blind data as in the benchmark proposal above.
+
+| Study | Controlled comparison | What would settle it |
+|---|---|---|
+| Candidate availability | Same source/encoder; original lexical rows, independent vector rows, and bounded union, collected even on nonempty pages | Unique gold coverage by each path versus no-gold hard negatives; no fusion weight tuning |
+| Admission versus representation | Inspect candidate evidence before current route predicates and after each predicate | Quantify gold lost at coverage, hard-term, rarity, cosine and top-k conditions; separate null/ambiguous NLP |
+| Primary joint scoring | Same fixed union; score lexical alone, lexical+POS, lexical+vector, and all three before first page selection | Hit@1/MRR and cross-scope gains attributable to signals, with all paired losses and silence exposure retained |
+| Routing interference | Same candidates and score, current first-success policy versus explicitly defined common competition | Does populated-page competition recover the 81-miss class without displacing correct top hits? |
+| Calibration in shadow | Compare independent path cutoffs with a combined-score rejection policy on a separate calibration partition | False-abstention versus true-silence tradeoff across scope, domain and corpus growth; no product gate activation |
+
+The union-of-*admitted-lexical*-rows control and bounded lexical vector features
+have already been measured and closed. This proposal is different only if it
+actually gives **independently generated semantic candidates access on populated
+pages**, and scores their evidence before the old route rejection rules. If an
+implementation still preserves those exclusions, it has not tested this hypothesis.
+Do not repeat the 112-configuration combination, S1, B1, P1/P2 or old cosine
+expansions under the table's labels.
+
+Trace first-page gold and actual supporting sections separately. Include local
+and transferable/wrong-project pairs, identifiers and compact noun queries,
+paraphrases and genuinely absent needs. Report the 155 already-found-but-not-first
+population separately from missing-note recovery. Finite candidate budgets and
+primary ranking can be tested without a reranker; candidate-label or answer-based
+oracle scoring is a diagnostic ceiling only. No sealed label, answer, alternative
+wording or manufactured summary may enter a product query/index.
+
+### Source provenance and limits
+
+Public pages were checked on 2026-11-14. Immutable local revisions are qmd
+`86d2365d17fc682e491c2c53d1e4a884aee8682a` and Engrim
+`e041da05a8de69550998489f8c9231b4c6e11977`. Current GitHub source reads were pinned
+to Mem0 `f1791daa86d469249c9b002f62644d58a1eb96a0`, Graphiti
+`ed23196506eba8806fae6da831d73fcd2ad714d8`, Zvec
+`0c2e67a2ea5227c34278337e6a41b7323455a3dd`, and LEANN
+`07796bd7e40f2d5f3a4be9e45adf1f62a68481fd`. Pinned reads verified the same file
+blob hashes as the inspected default-branch content. Typesense docs are version
+30.2; other service documentation is mutable and dated by this access. Papers
+are linked at the inspected versions where available. Web search was used to
+find primary sources; Reddit comments, aggregator summaries and vendor marketing
+were not used as retrieval-quality evidence.
+
+This pass adds one read-only analysis of saved native data; it does not run a
+competitor, download a model, change an algorithm or provide new blind validation.
+The clearest recommendation is to investigate **primary evidence participation
+and decision ordering**, rather than another fallback, score constant, scope
+coefficient or overlap window. The concrete policy questions are whether
+semantic-only original-byte leads may compete, whether inferred hard terms can
+be fallible features, whether actual Hit@1/MRR should enter adoption criteria,
+and what false-abstention cost a calibrated combined-score rejection policy should target. Combined-score rejection is now explicitly included in the requested research scope; product activation remains a separate adoption decision.
+
+### Combined-score rejection: a main research track
+
+Phil explicitly requested this research after the competitor review. This is
+now part of the study, not merely an out-of-constraints question to postpone.
+The current product gate remains open; no threshold, learned calibrator or
+rejection behavior has been activated.
+
+**Hypothesis.** Joint evidence can separate useful original-byte leads from
+irrelevant neighbors more reliably than requiring each path to exceed a
+standalone cutoff. A candidate with moderate literal overlap, strong semantic
+similarity and a supported local relation might be useful despite missing one
+route's lexical/rarity rule. Conversely, high cosine without the requested
+entity/property binding might deserve rejection. This is plausible, not measured.
+Existing opposite/negation controls mean no score should be called an entailment
+certificate. A negative answer can itself be a relevant lead.
+
+#### Define what rejection is supposed to predict
+
+Ranking asks which candidate is better than the others for this query. Rejection
+asks whether a candidate is useful at all, including when every candidate is
+wrong. A rank-one result or large score gap can be confidently wrong; multiple
+equally useful notes can have a tiny gap. Neither rank nor margin alone is a
+portable rejection criterion. BM25/POS/cosine scales and missing features need
+explicit treatment before a shared score means anything across queries.
+
+Keep two outcome labels:
+
+- **Card utility:** does this candidate's actual original span offer a relevant,
+  sufficiently specific lead for this information need and project/version?
+  Grade topical-but-insufficient separately from directly supporting evidence.
+- **Query answerability:** is suitable evidence present anywhere in the eligible
+  corpus? A retrieval miss does not make an answerable question truly absent.
+
+A gate that rejects all candidates on an answerable query whose gold was never
+retrieved has avoided showing irrelevant cards, but has not solved recall.
+Report that separately from rejecting gold that was already available. This
+prevents attributing a candidate-generation failure to the gate or awarding it
+true-silence credit. Judgments must include useful unlisted equivalents rather
+than blindly treating every non-gold id as wrong.
+
+#### Compare admission policies on the same broad candidate pool
+
+Freeze the sole encoder, corpus, candidate budget, features and primary ordering
+before comparing rejection. Extract features even for candidates that the old
+lexical/vector route thresholds would discard; otherwise joint rejection never
+gets a chance to test compensation. Preserve lifecycle and explicit filters.
+Record which candidates cannot be collected under the bounded budget.
+
+| Shadow arm | Decision being tested | Main failure to watch |
+|---|---|---|
+| Existing cascade | Current route predicates and open confidence gate | Missing candidates and irrelevant cards from separate routes |
+| Separate relevance cutoffs | Independent lexical/semantic/POS qualification, then common ordering | Strong combined evidence censored by a single feature's threshold |
+| Joint rank only | Same candidate pool, one combined ranking score, no rejection | More recall but weak candidates still occupy cards |
+| Joint rank plus combined rejection | Same ordering, calibrate a decision score from combined evidence; keep only qualifying cards | False abstention, domain shift and poorly calibrated score magnitudes |
+| Joint rank plus univariate rejection controls | Reject using lexical-only or cosine-only evidence on the same pool | Determine whether combination adds value over a simpler threshold |
+
+These are new shadow study definitions, not a request to rerun old gates or
+cosine settings. The original caller-only logistic gate is a historical failed
+control, not a calibrated default for a broader population. Do not revive its
+weights or repair them on h2. A new combined gate would need new examples and
+explicit registration of every model/feature/threshold configuration.
+
+One low-complexity candidate is a monotone transformation of a fixed combined
+primary score. Another is a small offline-fitted rejection calibrator using
+lexical strength/coverage, cosine, source-relation support, hard-literal
+compatibility, missing/ambiguous NLP indicators and perhaps candidate-set
+features. A calibrator need not be a second embedding model or a reranker:
+it can keep ranking fixed and only accept/reject. It still changes the product
+algorithm and needs review/adoption. Complex features are not justified merely
+because they are available; compare against the simple combined-score control.
+No particular fitted function or coefficient is selected by this report.
+
+**Card-level versus page-level rejection must be separate experiments.** A high
+score on the best card does not license four weaker cards. Card-level filtering
+can return fewer than five cards and stays silent if none pass. A page-level
+confidence test can estimate whether any usable candidate exists but must not
+silently certify every card. Later calls, navigation and fallbacks must not refill
+a rejected page with untested cards. Near-miss hints remain visibly separate and
+are included in exposure accounting. Define this behavior before measurement;
+otherwise an apparent silence improvement may only move bad leads to another
+output channel.
+
+#### Calibration and statistical support
+
+Use the open development partition to choose features and fit any score mapping.
+Use a **separate, untouched calibration partition** for thresholds and a sealed
+partition for confirmation. Split by project/document family and information
+need, keeping paraphrases and sibling spans together. Query groups—not correlated
+candidate rows—are the independent units for risk estimation. Scoring the winner
+after a top-k search must be reflected in calibration: calibrating random
+candidate pairs and then selecting their maximum is a different distribution.
+
+Geifman and El-Yaniv study selective prediction as a coverage-versus-error problem:
+the useful target is low error on accepted outputs while retaining substantial
+coverage. This supplies a framework, not an ImageNet-derived threshold for Linn.
+[Selective Classification](https://arxiv.org/abs/1705.08500).
+
+Learn then Test treats candidate decision policies as hypotheses and supplies
+finite-sample risk control with appropriate testing procedures. It is a better
+starting point than choosing the best-looking threshold on final evals. Predeclare
+the finite policy family and account for policy selection/multiple testing.
+Guarantees require the method's sampling and loss assumptions; they are not
+automatic robustness to a different project or a growing corpus.
+[Learn then Test](https://arxiv.org/abs/2110.01052v5).
+
+Conformal Risk Control controls expected monotone losses under its assumptions.
+Do not relabel that as a per-query correctness guarantee or automatically apply
+it to selective error, a ratio among accepted outputs that need not vary
+monotonically with threshold. First choose the risk functional, confirm whether
+the loss meets the theorem's conditions, and distinguish marginal from subgroup
+and high-probability guarantees. A proof for one objective does not establish all
+of precision, silence and recall.
+[Conformal Risk Control](https://arxiv.org/abs/2208.02814v4).
+
+For this track, extend the earlier 1,200-need benchmark plan with **300 independent
+calibration needs**, provisionally 150 answerable and 150 absent, making 1,500
+in total: 400 open development, 300 calibration, 200 sealed confirmation, 600
+sealed audit. These are design targets, subject to power analysis before
+collection. Balanced calibration enables class-conditional error estimates;
+unconditional probabilities and utility require deployment-prevalence weighting
+or a representative mixture. Do not report a balanced-set precision as production
+precision without that adjustment.
+
+Even observing zero errors among ten negatives gives little assurance. At a
+single fixed policy, 149 independent negative examples with zero false admissions
+are needed for a one-sided 95% exact-binomial upper bound below 2%; 299 are needed
+for 1%. These are illustrative calculations, not recommended error budgets, and
+they ignore clustering and multiple policy selection. Effective project-level
+sample size can be smaller. The existing 10 dev true-silence cases cannot support
+such a claim, and the reused 45 h2 negatives are not a fresh calibration pool.
+
+#### Required measurements and stop rules
+
+Report the full tradeoff curve, not only the chosen cutoff:
+
+- True-silence specificity and false admission on corpus-absent needs.
+- Answerable-query false abstention, distinguishing unavailable gold from gate-caused
+  removal of available useful cards.
+- Actual original Hit@1/MRR/Hit@5 and correct-section success after rejection,
+  with abstentions counted as misses in the full answerable denominator.
+- Accepted-card precision and query-level probability of any irrelevant card;
+  per-card averages must not hide page-level exposure.
+- Coverage and selective risk among nonempty returned pages, with uncertainty,
+  and calibration diagnostics if the score is claimed to be a probability.
+- Every metric by local/cross-scope, identifier/paraphrase, negative answer versus
+  absent fact, query length, source size and corpus-growth stress conditions.
+
+A method that becomes silent by rejecting nearly everything fails the task.
+Prefer the highest coverage satisfying predeclared false-admission and recall-loss
+budgets, with confidence bounds and paired gains/losses. Those budgets should be
+chosen from Phil's costs, not optimized after seeing a curve. If no policy qualifies,
+report that the available signals do not support a safe rejection boundary.
+
+If growth changes maxima, margins or feature scales, evaluate a new untouched
+growth condition; do not silently recalibrate against final labels. Group-specific
+thresholds require sufficient independent data and a declared policy, not a set
+of corpus exceptions. A simple global decision may generalize better; measure
+that instead of assuming per-scope fitting is helpful.
+
+**Available evidence limit:** saved card exports and raw lexical ranks do not
+contain all matched lexical, vector and NLP features for the same broad candidate
+pool, including currently rejected rows. They cannot honestly evaluate a combined
+rejection policy by themselves. The next data-collection step is a shadow feature
+export under one frozen candidate policy plus new original-span judgments. No
+new rejection score has been fitted or evaluated in this research pass, and no
+threshold improvement is claimed.
+
+## Primary evidence implementation outcome — 2026-11-14
+
+The subsequent [complete exploratory suite](#consolidated-search-suite-2026-11-14-md)
+implements independent vector/POS candidates, four-way primary scoring,
+admission/routing controls and combined rejection before/after the page cut,
+plus an offline case-folded rejection classifier. Twenty-six declared policies
+were measured. Joint competition improves dev Hit@1 from 199/439 to 214/439 and
+synthetic Hit@1 from 31/49 to 46/49, using the existing encoder. However, its single
+frozen h2 confirmation loses XS-any, no-gold and section, and Hit@1 falls 230/354
+to 225/354. It is not adopted; following Phil's instruction it is retained for divergence investigation without h2 retuning. Strong rejection cutoffs sacrifice
+recall; no useful safe silence gain or calibrated gate is established. Accepted
+search remains unchanged. The joint settings remain frozen while paired divergences are investigated;
+fresh independently judged data, deferred at the user's request, is still needed.
+
+
+### Divergence investigation update
+
+Following Phil's instruction, the joint candidate is retained rather than
+abandoned on its aggregate h2 failure. Saved-output analysis finds 33 h2 top-1
+gains and 38 losses; gold remains in the first five in 34 of those losses.
+All 18 section-loss cases have a supporting span in the pool, and 17 still
+return the correct record. Primary score balance and one-block-per-record
+scheduling are therefore distinct research targets. The fitted rejection
+classifier's learned locality coefficient explains rejection of desired far
+notes, so the rejection family is also retained for investigation. No parameters
+were retuned on h2. See the suite ledger for the paired evidence and caveats.
+
+## Further iteration: strongest current candidates
+
+The [bounded iteration](#consolidated-search-iteration-2026-11-14-md) finds
+balanced primary lexical/POS/vector scoring plus extra disjoint support spans
+most promising for broader retrieval. Actual top-1 is 218/439 dev, 229/354 reused
+h2 and 186/439 full scale-q4, versus native 199, 230 and 180. Section scheduling
+fixes the earlier large h2 span regression. However, scale any-wording recall
+and h2 scope/silence still regress; no universal ranking/recall/silence gain is
+claimed and the candidate is retained for investigation, not adopted.
+
+The safest isolated change is supplementary spans on the unchanged native page:
+section success rises 55→56/73 dev and 237→246/271 h2, stays 51/73 scale, with
+all first-page/record-level metrics exactly unchanged. Every old card and first
+call is preserved. Extra source passages cost reading/context, and section-only
+gains do not satisfy the current product-adoption rule. Coarse literal routing
+and removal of locality from rejection confidence did not yield a universally
+better alternative. All original/iterated settings and results remain recorded.
+
+## Fixed-card-budget correction, 2026-11-14
+
+Supplementary cards/sections are outside the operator's scope and no longer recommended. Five fixed-budget alternatives were measured; none passes all bars. Half-vector balanced scoring improves Hit@1 on all four inspected sets but loses cross-scope metrics. The dev-selected full balanced variant fails transfer. See [SEARCH-FIXED-BUDGET-2026-11-14.md](#consolidated-search-fixed-budget-2026-11-14-md) for exact native grader results, selection and retained research avenues. No product changes adopted.
+
+## Separate record/passage and scope ablation, 2026-11-14
+
+Eight fixed-card-budget configurations tested; none passes dev, so no candidate selected. Independent passage selection reduces h2 section deficit from227 to234 against native237, but record-level cross-scope deficits remain. Removing the research scope penalty improves cross-scope recall while severely hurting overall recall and top1. See [SEARCH-RECORD-PASSAGE-2026-11-14.md](#consolidated-search-record-passage-2026-11-14-md). All transfer runs are exploratory; no defaults changed.
+
+## Competitor-informed evidence rules, 2026-11-14
+
+Read closed tier/field/superset/partial-replacement findings and reviewed Meilisearch/Vespa primary docs alongside pinned qmd/Engrim evidence. Three broad-pool policies measured at exact native card budget. Protected native strong slots pass dev (418/370 gold,31/26 XS,36 no-gold,56 sections), but reused h2 loses XS-any and section; scale gains one gold-any/first but loses one section and one top1. Broad tier sort also fails. No adoption; no h2 repair. See [SEARCH-EVIDENCE-RULES-2026-11-14.md](#consolidated-search-evidence-rules-2026-11-14-md) for distinctions from closed experiments, references, paired cases and limitations.
+
+## Astra recommendation follow-up, 2026-11-14
+
+All four recommendations investigated. Per-wording gold/XS/source-span diagnostics now distinguish missing provenance and parse-failure feature omissions. Native slot multiplicity preserves the protected candidate's six aggregate scores, but does not cure transfer failures. Exhaustive POS audit on1470 dev wordings: maximum149 indexed matches, none reaches160, full/old top40 identical, complete native parity holds. Query-max counterfactuals change ordering on413 wordings, justifying one frozen monotone saturation study; it passes dev but loses XS/no-gold on transfer. No default adopted. See [ASTRA-FOLLOWUP-2026-11-14.md](#consolidated-astra-followup-2026-11-14-md).
+
+## Fixed-budget boundary and attainability audits, 2026-11-14
+
+Read-only matched-growth attribution reproduces final protected scale pages. Under its fixed-scale, order-dependent decomposition, entrants are the last removal stage for27 of50 lost native target-wording witnesses; maxima for0. Label-access oracle preserves all native case successes and improves retrieval under both free and protected slots: capacity alone does not block dev gains. These are diagnostic assignments, never an eligible algorithm. Prepared60 masked dev displacement pairs; independent judgments pending assessor assignment. See [ASTRA-BOUNDARY-2026-11-14.md](#consolidated-astra-boundary-2026-11-14-md) for exact objectives, unresolved stages, native grader outcomes, rubric and limitations. No defaults changed.
+
+## Independent model judging and complete neutral comparison, 2026-11-14
+
+Two fresh-context masked model assessors judged60 dev pairs each;55/60 preference agreement, kappa0.871. Balanced sample and same-model correlation prevent a global win/fresh-holdout claim. All six retrieval suites compare three frozen policy families with native, complete Python/Rust parity on5908 wordings per policy. All four full neutral captures and four-policy replays completed, including scale-h2; native gate tables match capture exactly. No candidate passes the required primary retrieval bars. Full scaled self-retrieval exposed a one-probe-per-scale distinct-record capacity failure; a recorded v2 completeness guard preserves the entire native response, without changing any primary retrieval response. All code checks/Nix packaging pass. Historical matched40/48 is original-query Hit@5, not Hit@1; actual native first-card count21/48, verified against identical archived calls. See [INDEPENDENT-FULL-EVAL-2026-11-14.md](#consolidated-independent-full-eval-2026-11-14-md) for all results, gate tables, model-judging limitations and preserved pre-repair failure. No product defaults changed.
+
+## Native term-identity record competition, 2026-11-15
+
+Implemented eight new record replacement policies in Rust with a native original-matcher term-witness/IDF collector. No candidate clears dev: strict dominance is flat; rarest-anchor gains XS-first but loses gold; conjunction reduces losses without a rise; semantic ordering adds a section loss. Full native/Python response parity holds on1470 dev wordings for all8 policies. Before/after native response and cached coverage parity pass. No h2 selection, default change or adoption; retain gains and divergence evidence. See [RECORD-COMPETITION-2026-11-15.md](#consolidated-record-competition-2026-11-15-md) for mechanisms, distinctions from closed work, every tested configuration and counterexamples.
+
+### Source relationships and complete admission proofs — 2026-11-15
+
+Eight further dev configurations tested action/nominal surface attachment,
+complete multiword NP identity, native-primary reachability, and obligation-
+preserving native-page order. None qualifies; accepted search unchanged. The
+main constraint is now measured feature support: of85 missing original-query
+gold records,67 are available in the bounded pool but only0/1 have complete
+matching action/NP evidence. Exact phrases sometimes identify the right facet
+(tunnel token audience) and sometimes the wrong entity (App Group signing versus
+agent-account signing). Unknown original tier is often primary-reachable, but a
+route label does not capture a resolved identifier's source license. Preserving
+query-term identities prevents some false promotions and leaves measured quality
+flat. The existing masked pair packet provides little separation for these new
+features; no additional blind judgments were created. See
+[SOURCE-RELATIONSHIPS-2026-11-15.md](#consolidated-source-relationships-2026-11-15-md) for all configurations,
+paired outcomes, admission/silence boundaries and remaining research questions.
+
+
+### Admission boundaries, sentence scale and five-card qualification — 2026-11-15
+
+The operator clarified that five cards is a maximum, not exact native-count parity:
+qualified hits may fill empty results and rejection may reduce counts. Fixed-count
+studies remain ranking controls. Product admission rules are unchanged.
+
+Five association/proof policies, seven sentence/pool controls, twelve constrained
+assignment configurations and four variable-count qualification policies are
+recorded in the linked reports. Proof-joint and sentence-pool controls improve dev
+but lose h2 XS/top1; they are not adopted. Corpus association is mostly topical,
+not discriminative. Native/prototype complete-response parity is required.
+
+Position-aware, source-admission-constrained assignment is the strongest new
+ranking control: dev gold412/357, XS31/28, no-gold35, section55, actual Hit@1 204
+(native412/354,31/25,35,55,199). Frozen h2 gives341/300,55/49,55,237,228
+(native341/298,55/48,54,237,230). It clears the historical six count gates but
+**fails actual rank-one nonfall**. Scale388/315,30/25,32,51,180 versus
+388/316,28/22,31,51,180 also loses one first-wording case. Reused h2 is not blind;
+no default change, adoption, universal improvement or integrated latency pass.
+Unordered assignment's Hit@1 collapse and floating-summation parity corrections
+are recorded before the final selected transfer, not hidden as successful runs.
+
+All four max-five admission/rejection arms fail dev despite XS-first gains;
+true silence stays0/10. All14 synthetic native misses already have hard/quote-
+compatible gold in the bounded pool. More candidate discovery does not explain
+those misses; current qualification/ordering fails to distinguish sparse semantic
+matches from topical competitors. Neither lower thresholds nor a different model
+is thereby authorized. Preserve these divergences for independently judged intent
+and a fresh blind evaluation, rather than tuning from h2.
+
+Reports: [ASSOCIATION-PROOF-2026-11-15.md](#consolidated-association-proof-2026-11-15-md);
+[SENTENCE-SCALE-2026-11-15.md](#consolidated-sentence-scale-2026-11-15-md);
+[CONSTRAINED-FUSION-2026-11-15.md](#consolidated-constrained-fusion-2026-11-15-md);
+[MAX-FIVE-2026-11-15.md](#consolidated-max-five-2026-11-15-md). All output remains ignored/uncommitted.
+
+
+### Display evidence and native-head constrained assignment — 2026-11-15
+
+Two displayed-source alignment arms retain dev six-count/Hit@1 gains; selected
+utility alignment fails exploratory h2 Hit@1 (227 versus230) and scale first
+recall. One new native-head anchor preserves actual rank one exactly and retains
+dev/h2 count improvements, but scale gold-any388→387 and first316→314 regress
+while XS28/22→30/25 improves. Not adopted; no universal gain or fresh holdout.
+This isolates unsafe head changes from lower-page target displacement rather
+than closing all positive fusion evidence. Protocols, paired cases, native
+implementation and reproduction: [DISPLAY-AND-HEAD-2026-11-15.md](#consolidated-display-and-head-2026-11-15-md).
+
+
+### Page evidence, scope cohorts and foreign-provenance control — 2026-11-15
+
+Four declared arms implemented/scored. Page coverage alone and combined with
+scope do not cure transfer. Scope-constrained local/far assignment recovers three
+previous scale targets but loses one h2 XS and one scale no-gold case. New
+`select_foreign` protects native foreign leads and competes only local slots;
+dev413/361 XS31/25 no-gold35 section55; reused h2341/301 XS55/48 no-gold54
+section237; scale388/317 XS28/22 no-gold31 section51. All six native count bars
+nonfall with a retrieval rise on each suite. Hit@1 identical; MRR rises on all
+three. Three of seven earlier scale misses recover; four remain. All4320 native/
+prototype responses match. H2/scale failures informed the fourth hypothesis: these
+are tuning diagnostics, not adoption confirmation or fresh blind validation.
+No product default, model, gate or index change. Full report and limitations:
+[PAGE-CONSERVATION-2026-11-15.md](#consolidated-page-conservation-2026-11-15-md).
+
+
+### Further recovery guards and located masked packet — 2026-11-15
+
+Two local-only non-regret guards (lexical, lexical+cosine) recover all four remaining
+targeted scale misses post-hoc but return dev recall413/361→412/354, equal native;
+no new selected transfer or adoption. Control exactly matches1470 frozen responses.
+The earlier60-pair packet and120 independent model assessments were located and
+integrity-checked. They are explicitly reused dev, not a new blind corpus. On42
+unanimous directional pairs, native-foreign contains only the preferred exact span
+on20 versus native18;4 paired improvements and2 regressions, with3 both/neither
+unclassified. This is partial old-pair coverage, not complete-page judging or a
+global/blind win. Frozen candidate unchanged. Full mechanisms, counterexamples and
+provenance: [LOCAL-NONREGRET-2026-11-15.md](#consolidated-local-nonregret-2026-11-15-md).
+
+
+### Scalar distinguishability, source ownership and judgment audit — 2026-11-15
+
+Eleven-feature exact comparisons on20 dev/29 scale changed-target block pairs
+show0 identical vectors, though2/5 pairs share structural tier/coverage classes.
+No proof of intrinsic indistinguishability or transferable classifier. New
+source_path ownership proxy distinguishes dependency docs inside the same scope:
+nondependency→dependency replacement guard leaves1470 dev responses unchanged
+and improves exploratory scale first317→319 (native316), other count gates hold.
+Recovers archive inspection and pre-push test/typecheck; no dev activation, no
+adoption or blind claim. Source audit also finds browser replacements contain
+the correct answer elsewhere in full official docs; signing target has an already
+returned explicit equivalent excluded by retrieval's object-level-only contract.
+Read-only declared-map sensitivity shrinks local-fusion dev gain+7→+2 and scale
++1→0; this is not revised truth or official scoring. Labels/scorer unchanged.
+Full findings, caveats and ranked signals: [SIGNAL-AND-JUDGMENT-AUDIT-2026-11-15.md](#consolidated-signal-and-judgment-audit-2026-11-15-md).
+
+
+### Query ownership and span-support feasibility — 2026-11-15
+
+Three declared additions to the ownership probe scored on dev/reused h2/scale:
+explicit package exception, exact source-term span dominance, combination. Six
+counts unchanged from ownership control; dev413/361, h2341/301, scale388/319.
+Span refinements change48/84/39 spans without official section gains. Explicit
+package occurrence changes two scale responses only by ordering and falsely
+licenses common-word `diff` for a prompt-injection query; not an intent classifier.
+Known-answer audit: auth-session explanations in both official browser sources
+and app guide Jest command are absent from exported candidate spans. Pure span
+reweighting cannot recover them; no pool expansion performed. Prepared outcome-
+masked pool14topics/90sources/97record ratings/90passages;0new judgments and no
+fresh holdout claim. Report: [OWNERSHIP-AND-SUPPORT-2026-11-15.md](#consolidated-ownership-and-support-2026-11-15-md).
+
+
+### Record-local passage follow-up (2026-11-15)
+
+[Native proposer results](#consolidated-passage-proposer-2026-11-15-md):
+inspect existing blocks within selected records, with no added cards or record
+candidates. Stable coverage improves official section totals on dev/scale and is
+flat on reused h2, but loses the original-query @ref syntax example on dev/scale.
+This is useful experimental infrastructure, not an adopted ranker. Source purpose
+(example versus overview) remains a missing distinction; a one-case keyword rule
+would be overfitting. Record misses still require a separately budgeted experiment.
+
+Correction: earlier qualified browser-method string probes missed an unqualified
+reference already inside the old fetched span. A source-bound preview can expose
+that pointer. This is presentation visibility, not demonstrated new answer recall.
+
+
+### Full passage evaluation follow-up (2026-11-15)
+
+The [full frozen comparison](#consolidated-passage-full-eval-2026-11-15-md)
+separates ordinary search, proposer alone, ownership allocator alone and their
+combination. The six-population retrieval suite finds a new scaled-h2 section
+regression, and adding the proposer loses two section successes relative to the
+allocator. Existing lexical and cosine favor the correct EAS file-cap paragraph;
+coverage priority nevertheless picks service-plan limits. The positive Router
+example has the same coverage-up/score-down directions, so a simple veto is not
+a general solution. Complete feature equality or a need for another model has not
+been established. Query-facet binding/source purpose remain research questions,
+and query-only judgments must be separated from hidden full-task intent. See the
+full report for completion status, paired outcomes and neutral limitations.
+
+
+### Conservative passage certificate (2026-11-15)
+
+[The small-adjustment study](#consolidated-passage-adjustments-2026-11-15-md)
+finds a modest source-support improvement without measured losses across six
+retrieval suites, including every prepared wording. Moving a span requires a new
+consecutive exact query pair literally bound in original source; unchanged source
+keys preserve complete cards. It retains Router's gain, removes the earlier cap/
+current-build/syntax losses and adds direct MCP support on scaled h2. Record
+ranking, scope recall and silence are unchanged by the passage stage. This narrows
+activation and sacrifices other unsafe-proposer gains; it is not a universal
+solution. Neutral quality replay is nonregressive but inherits physical checks and
+leaves costs unmeasured. Fresh independent validation and cost integration remain.
+
+## Research scaffolding retired, November 15, 2026
+
+Removed the remaining unadopted eval selectors, capture/replay commands, shared
+experimental grader, diagnostic-only tests and retrieval APIs from the working
+tree. Restored the ordinary evaluator, manifests, lockfile and retrieval sources
+to their pre-research versions. Consolidated the standalone research report here;
+raw measurements and frozen source snapshots are archived outside the checkout.
+The prior cleanup retained executable eval candidates; this cleanup supersedes
+that arrangement. Historical commands and source references in earlier reports
+describe those measured snapshots, not current commands or deployed behavior.
+
+The self-contained passage algorithm description remains in LLP 0002, explicitly
+marked as an unadopted archived prototype. No experimental selector is enabled or
+retained in the product or active eval package. No retrieval algorithm change is
+adopted by this cleanup, and historical measurements remain unchanged.
+
+## Permanent native passage adoption, November 15, 2026
+
+Phil explicitly instructed adoption into `src` as a permanent search change.
+This supersedes the earlier eval-only and retired-prototype dispositions for the
+standalone source-bound novel exact-pair passage selector. It is now always part
+of ordinary `Store::agent` execution after ordered fallbacks and source-backed
+address placement, within the existing read snapshot. Its complete active
+specification and explicit adoption exception are in LLP 0002 and LLP 0005.
+This operator acceptance does not establish a primary retrieval rise, fresh blind
+confirmation or a general relaxation for future changes.
+
+Native implementation: [qualification and coverage](../src/retrieval/passage.rs),
+[indexed local lookup and numerical ties](../src/retrieval/lexical.rs), and
+[ordinary search integration](../src/retrieval/fallback.rs). Address handlers return
+the records they actually promoted, so the stage protects those cards without
+replaying address resolution. Candidate eligibility and unchanged-span alignment
+are checked before body loading. The native exact/stem predicates and nominal
+compound evidence are reused. Coverage and incumbent preference determine the
+finalists before the unchanged BM25L/POS, float32 cosine and span/ID tie breakers
+are evaluated. Unique coverage winners need no numerical tie work.
+
+The adopted stage preserves record identities, ordering, card counts, later calls,
+hints and related pointers. It selects an existing original source span, requiring
+two newly matched adjacent exact query terms literally bound inside that span,
+nonworse hard obligations and preservation of the incumbent's matched hard IDs.
+Quoted obligations remain mandatory. Unknown alignment, duplicate records,
+addressed records and changed resolved queries remain protected. Unchanged cards
+and first-call rendering remain exact. There are no runtime policy switches,
+additional models, persistent indexes, ingestion changes or required reindexing.
+Adoption covers the standalone passage stage; the accepted record-selection
+algorithm remains unchanged.
+
+### Integrated retrieval verification
+
+Dev was checked before freezing the native source/binary for transfer. All six
+retrieval populations were then executed through the ordinary unmodified native
+evaluator. Complete calls, query bytes and case/wording keys match the frozen
+standalone candidate on all **5,908 wordings**. This verifies the implementation,
+not a new experiment or independent validation. Source and binary hashes and raw
+outputs are retained outside the checkout.
+
+`first` below is original-wording page recall (Hit@5), not actual rank one.
+
+| Suite | Wordings | Gold any / first | Cross-scope any / first | No-gold | Section |
+|---|---:|---|---|---|---|
+| dev | 1470 | 412/439 / 354/439 | 31/42 / 25/42 | 35/51 | 56/73 |
+| h2 | 1380 | 341/354 / 298/354 | 55/62 / 48/62 | 54/106 | 237/271 |
+| scale-dev | 1470 | 388/439 / 316/439 | 28/42 / 22/42 | 31/51 | 52/73 |
+| scale-h2 | 1380 | 325/354 / 275/354 | 48/62 / 41/62 | 47/106 | 225/271 |
+| matched | 159 | 45/48 / 40/48 | 4/4 / 4/4 | 4/5 | 9/10 |
+| synthetic | 49 | 35/49 / 35/49 | 0/0 / 0/0 | 0/0 | 0/0 |
+
+Primary record recall, actual rank one, scope outcomes and true silence remain
+unchanged from ordinary search. Official section successes increase from55 to56
+on dev and51 to52 on scale-dev; the other population totals are unchanged.
+The previous every-wording first-page/all-call source nonregression audit carries
+through by complete frozen-response equality. Reused h2/scale questions and the
+public synthetic population are exploratory, not newly blind evidence. The
+standalone implementation does not inherit the experimental allocator's source
+regression on `s4-c-0040`.
+
+### Full physical neutral verification
+
+All four ordinary native neutral loops were executed serially after the retrieval
+and build jobs completed. These runs performed independent full ingestion,
+rebuild determinism, location checks, self-retrieval, exposure, integrity and
+scratch-store forget; these are actual executions, not quality-only replay.
+Every non-cost gate value/status matches the previous standalone quality replay.
+C1/C2 are newly measured by the ordinary native timer, including the active stage.
+Timing values are point measurements, not matched before/after speedup claims.
+
+| Gate | Dev | H2, reused | Scale dev | Scale h2, reused |
+|---|---|---|---|---|
+| G1 eligibility violations | 0.000 (pass) | 0.000 (pass) | 0.000 (pass) | 0.000 (pass) |
+| G2 must-not rate | 0.014 (pass) | 0.037 (FAIL) | 0.014 (pass) | 0.035 (FAIL) |
+| G3 location invariance | 1.000 (pass) | 1.000 (pass) | 1.000 (pass) | 1.000 (pass) |
+| G4 integrity and forget | 0.000 (FAIL) | 0.000 (FAIL) | 0.000 (FAIL) | 0.000 (FAIL) |
+| G5 determinism after rebuild | 1.000 (pass) | 1.000 (pass) | 1.000 (pass) | 1.000 (pass) |
+| Q1 empty-correct | 0.686 (FAIL) | 0.509 (FAIL) | 0.608 (FAIL) | 0.443 (FAIL) |
+| Q2 core found | 0.985 (pass) | 0.993 (pass) | 0.970 (pass) | 0.971 (pass) |
+| Q3 overall found | 0.980 (pass) | 0.981 (pass) | 0.957 (pass) | 0.959 (pass) |
+| Q4 section hit | 0.836 (pass) | 0.900 (pass) | 0.808 (pass) | 0.867 (pass) |
+| Q5 lateral found | 1.000 (pass) | 1.000 (pass) | 0.949 (pass) | 0.975 (pass) |
+| Q6 paraphrase found | 0.945 (pass) | 0.958 (pass) | 0.891 (pass) | 0.896 (pass) |
+| C1 tokens median | 176.000 (pass) | 180.000 (pass) | 185.000 (pass) | 188.000 (pass) |
+| C1 tokens p95 | 287.000 (pass) | 299.000 (pass) | 310.000 (pass) | 329.000 (pass) |
+| C2 latency p95 ms | 11.270 (pass) | 13.490 (pass) | 127.910 (FAIL) | 143.880 (FAIL) |
+| R1 self-retrieval@5 | 0.987 (pass) | 0.989 (pass) | 0.965 (pass) | 0.964 (pass) |
+| R2 maximum exposure share | 0.229 (FAIL) | 0.429 (FAIL) | 0.103 (FAIL) | 0.332 (FAIL) |
+
+Existing failures remain: integrity/forget, empty-correct and maximum exposure on
+all four populations; must-not rate on h2 and scale-h2; and the50ms per-call p95
+latency gate on both scale populations. Eligibility, location and rebuild
+determinism remain passing. No full neutral all-pass or universal search quality
+improvement is claimed. This adoption does not repair genuine absence detection
+or the synthetic note-retrieval gap.
+
+### Code checks and final cleanup
+
+Four focused native tests cover literal pair binding, stem-only/newline rejection,
+query-index gaps, quoted/hard obligations, incumbent preference and cold-store
+eligibility/filter/address/duplicate protections. Workspace tests and all-target,
+all-feature Clippy pass; formatting, LLP reference checks and Nix packaging pass.
+The Nix package's tests include the active native stage. Corpus-required ignored
+tests are not claimed as executed. Existing vendored libSQL warnings remain.
+
+Eval source, tests, examples, manifest and lockfile are restored to their
+pre-research versions. The only remaining eval change is this durable log.
+Research scripts, standalone temporary reports and raw outputs are outside the
+checkout; no prototype mode, public research API or temporary-path LLP reference
+remains. The active source map and self-contained LLPs describe the native change.
+All edits remain uncommitted; no push, PR or publication was performed.
+
+
+## Post-passage broad competition with score agreement, November 15, 2026
+**Implemented, dev-selected, frozen and transferred; not adopted.** The new
+combination improves primary ranking substantially on dev and reused h2, preserves
+the synthetic improvement, but loses h2 scope/silence and scaled source support;
+scale-h2 actual rank one falls. These are exploratory reused-data measurements,
+not independent holdout confirmation. No further coefficient, constraint or
+admission repair was made after selection. Product retrieval and its newly adopted
+source-bound passage stage remain unchanged.
+
+### Baseline, mechanism and declared hypotheses
+
+The current dirty source, patch, packaged product and eval binaries were preserved
+before trials. Native passage composition of the historical feature baselines
+reproduces every complete current response across all 5,908 wordings. This includes
+cards, spans, text, pointers and later calls; capture-only metadata is excluded.
+Current section baselines are 56/237/52/225/9 across dev/h2/scale-dev/scale-h2/matched,
+not the obsolete 55/51 floors.
+
+The pre-score protocol declares two hypotheses: agreement between the original
+broad-joint and half-vector scores reduces unstable record replacements; retaining
+native source cards and composing the adopted passage selector reduces source
+losses. Three configurations were implemented and measured on dev:
+
+- `joint-source`: the original bounded union, sorted by L+P+V minus 7/B.
+- `half-source`: that union, scored by L+P + .5*M/C*V minus 7/B, with the old
+  query-max M and C definitions and zero-max guards.
+- `agreement-source`: start with native records in order. Stable insertion reorders
+  native neighbors only when **both** scores strictly prefer the incoming record.
+  Visit additional records in descending full-joint order; insert by the same
+  adjacent agreement test. A full page admits a record only when it can overtake
+  its tail; truncate to five. An empty/short page can admit records into spare
+  slots. Ties and unaligned native records are barriers. Entrant order is fixed
+  and this insertion procedure is intentionally order-dependent.
+
+Each record uses one best full-joint candidate row for both agreement scores;
+there are no independent per-signal maxima. The half control picks its best half
+row. Retained native records keep their pre-passage cards, then the **actual native
+source-bound passage implementation** runs once on the selected page. Duplicate
+native pages, address-resolved pages and suffix-rewritten queries retain native
+behavior. Later calls, hints and related pointers remain unchanged. The old
+bounded pool (40 records per lexical matcher, 40 vector, 40 positive POS from at
+most 160 witnesses, plus baseline cards) is unchanged. Quote-only entry retains
+the historical exploratory inferred-hard relaxation; it is not product policy.
+
+This differs from closed lexical/two-signal floors: it permits lexical/semantic
+tradeoffs when both fixed joint objectives agree, does not unconditionally lock
+rank one or foreign records, and allows empty-page admission. It remains a scalar
+agreement experiment, not an independent relevance certificate. Compared with old
+broad fusion it also preserves native source cards and composes the adopted stage;
+its historical differences cannot all be attributed to agreement alone. No new
+encoder, reranker, RRF, body surrogate, index or output section was introduced.
+
+### Dev selection and all configurations
+
+Counts are gold-any/original-page, XS-any/original-page, no-gold, section, then
+actual original Hit@1 and MRR@5. Original-page recall is not rank one.
+
+| Dev configuration | Gold | XS | No-gold | Section | Hit@1 | MRR@5 |
+|---|---|---|---:|---:|---:|---:|
+| Current native |412/354|31/25|35|56|199|.597950|
+| joint-source |419/379|31/27|36|56|216|.638307|
+| half-source |423/384|30/26|36|57|217|.644951|
+| agreement-source |424/388|31/27|36|57|220|.651860|
+
+Agreement passes the six dev count gates and improves actual rank one/MRR; select
+it over the qualifying full-joint control. Half-source fails XS-any. Complete dev
+calls and source/binary identities were frozen before transfer. Independent Rust
+and Python selectors agree on every complete pre-composition response; composition
+executes the native Rust passage stage. Formatting later changed source layout
+only; the measured release binaries and original Python freeze are retained.
+
+### Frozen six-suite transfer
+
+All cells show current adopted baseline → candidate. No transfer retuning.
+
+| Suite | Gold any | Gold original page | XS any | XS original page | No-gold | Section | Hit@1 | MRR@5 |
+|---|---|---|---|---|---|---|---|---|
+|dev|412→424|354→388|31→31|25→27|35→36|56→57|199→220|0.597950→0.651860|
+|h2|341→346|298→323|55→53|48→52|54→52|237→239|230→244|0.727872→0.779991|
+|scale-dev|388→393|316→333|28→28|22→21|31→30|52→51|180→201|0.533485→0.577335|
+|scale-h2|325→328|275→288|48→51|41→51|47→50|225→223|211→207|0.671234→0.676224|
+|matched|45→46|40→44|4→4|4→4|4→4|9→9|21→21|0.609375→0.626389|
+|synthetic|35→49|35→49|0→0|0→0|0→0|0→0|31→46|0.673469→0.965986|
+
+Gold denominators: 439 dev/scale-dev, 354 h2/scale-h2, 48 matched, 49 synthetic.
+XS: 42/62/42/62/4/0; no-gold: 51/106/51/106/5/0; sections: 73/271/73/271/10/0.
+The matched and synthetic populations have no useful genuine-silence validation.
+All are reused. Passing dev cannot restore independence to these transfers.
+
+### Paired divergences and budget attribution
+
+| Suite | Original rank-one gains/losses | Lost target remains first five | Original-page gains/losses | True silence baseline→candidate |
+|---|---|---|---|---|
+|dev|37/16|15/16|41/7|0→0 / 10|
+|h2|29/15|14/15|28/3|2→0 / 45|
+|scale-dev|38/17|16/17|33/16|0→0 / 10|
+|scale-h2|17/21|19/21|20/7|0→0 / 45|
+|matched|2/2|2/2|4/0|0→0 / 1|
+|synthetic|15/0|0/0|14/0|0→0 / 0|
+
+Every lost rank-one target is available in the fixed exported pool. Availability
+and score agreement therefore do not establish relevance. On scale-h2, 9/21 loss
+pairs reverse when the vector contribution is removed; 12 do not. Eight incoming
+loss heads miss inferred hard terms, but eight incoming gain heads do too. These
+are overlapping pairwise diagnostics, not whole-page ablations or a proposed hard
+filter. They do not justify rerunning the closed strict-hard or lexical-floor
+settings as new approaches.
+
+The h2 true-silence failures are `h2a2-c-0032` (storybook snapshot pixel threshold)
+and `s7-c-0060` (blob-util Windows removal). Both previously returned no cards on
+all wordings; the new uncalibrated empty-page admission supplies topical records.
+Its two relative scores cannot establish that any candidate answers the request.
+Foreign-target no-gold is separately 52→52: two gains (`h2a2-c-0100`,
+`h2a1-c-0102`) and two losses (`s7-c-0054`, `h2a2-c-0102`). Thus aggregate no-gold
+54→52 conceals foreign-target churn as well as both true-silence regressions.
+The accepted lifecycle filter is not relaxed; the recovered export target is
+`s2b-r-0033`, not its closed predecessor.
+
+Concrete source inspections:
+
+- Scale-h2 `h2a1-c-0063`: comparable `pnpm test`/CI runs loses to a quansync
+  benchmark block. Old/new normalized lexical+POS is .278111/.302661 and cosine
+  .427053/.420803. Both scores prefer the wrong task despite slightly lower
+  cosine; a blanket vector reduction does not explain or cure this pair. Shared
+  checkout scope does not establish package/task ownership.
+- h2 and scale-h2 `h2a2-c-0037`: `context-events search scoring` loses the original
+  event-context explanation to a historical search-tier note. On scale, new
+  lexical+POS and cosine are both higher (.132540/.340017 versus .064722/.252269).
+  The inferred hard obligation is missing in the selected head. Both objectives
+  agree because they share weak evidence; agreement is not independent support.
+- Scale-h2 `h2a2-c-0058`: the stateless remote-MCP transport recommendation loses
+  to an HTTP evaluation invocation. Matching transport vocabulary does not carry
+  the requested stateless-server decision. These are genuine information-need
+  differences, not grounds to rewrite official labels.
+
+All nine lost section-case occurrences (2 h2, 2 scale-dev, 5 scale-h2) still have
+an officially supporting span in the fixed pool. In every instance the supporting
+first-call record is removed on its witness wording. Some retain that record on
+call 2 with a different, non-supporting span (`h2a2-c-0028`, `h2a2-c-0037`,
+`s7-c-0095`). Retaining native source cards and passage composition protects the
+source of a retained record; it cannot repair eviction. Full section transitions
+and per-wording first-page/all-call source judgments are retained, including dev
+wording losses hidden by its aggregate section gain.
+
+The unchanged candidate pool separates these effects from pool expansion.
+Five is a maximum, not an exact native cardinality constraint. On already-full
+native original pages, gold gains/losses are dev26/7, h2 9/2, scale-dev22/15,
+scale-h2 11/5, matched2/0. Empty-page gains are 4/5/3/0/1 respectively, plus all14
+synthetic misses. Short-page gains/losses are11/0,14/1,8/1,9/2,1/0. These groups
+partition the original-wording changes and show both discrimination gains and
+budget-enabled admission; they are not a cardinality-matched causal ablation.
+
+Alternate-wording first-page gold totals: dev534→599, h2 550→588,
+scale-dev441→471, scale-h2 449→443, matched62→66. Original-wording all-call
+recall: 365→394,303→327,331→345,284→298,41→44, synthetic35→49. Scale-h2's
+alternate-page decline would be hidden by reporting only its any-wording gain.
+Judgment sensitivity using only already-declared case-level equivalent maps
+changes original-page counts to392→409,309→333,361→375,290→301,44→48,35→49.
+These are separate annotation-sensitivity counts, not corrections to official
+object-level gold and not evidence that observed support/silence failures vanish.
+
+### Implementation, validation, cost and disposition
+
+Research code and raw outputs are outside the shared checkout in
+`/Users/agent/git/.archives/linn/post-passage-research-20261115/`:
+`PROTOCOL.md`, `frozen/experiment.py`, `experiment.py`, `test_experiment.py`,
+`audit.py`, `trial/evals/examples/{agreement,compose,support_audit}.rs`, the isolated
+replay grader and `trial/src/retrieval/fallback.rs` composition hook. `baseline/`
+preserves the original dirty state and binaries; `bin/` preserves experiment
+executables; each suite retains complete calls, paired source/pool audits, scores
+and timing logs. `dev-freeze.json` and `native-freeze.json` record selection before
+transfer. Later script changes only relocate executable paths to that archive.
+No research API, mode or selector is added to the shared product source.
+
+All5,908 historical feature baselines reproduce complete adopted native calls.
+All5,908 independent Rust/Python selection outputs agree before executing the
+same native passage composition. Nine corpus-free selector tests, isolated
+workspace/all-feature tests, all-target/all-feature Clippy, formatting, LLP refs
+and diff whitespace checks pass. Existing vendored libSQL warnings remain.
+Corpus-dependent ignored tests are not claimed as run. Shared product source
+hashes still match the initial snapshot; only this findings section is appended.
+
+Agreement selection is O(K log K + 5K) over bounded distinct-record candidates,
+with no new persistent storage or model. Native passage composition alone takes
+approximately7.36s/8.78s/15.82s/16.45s/.82s/.18s for the six full exported suites;
+those totals include process/store setup and output, exclude broad candidate
+collection, and are not product latency or neutral C2 measurements. Broad exact
+vector acquisition still needs an integrated performance measurement. No physical
+neutral loop was run for this failed-quality candidate; baseline G4/Q1/R2, h2 G2
+and scaled C2 failures remain the preexisting measurements, not newly attributed
+regressions. No new Nix packaging claim follows from replay.
+
+**Unresolved discriminator:** candidate/source evidence must distinguish the
+requested operation, entity and obligation from correlated topical matches, and
+empty-page admission needs evidence of support rather than relative rank. The
+current passage selector supplies neither record relevance nor rejection. This
+implementation retains useful broad-primary gains and documents why this exact
+composition fails; it is not an overall six-population improvement, and fresh
+confirmation would still be required even if these exploratory regressions were
+resolved. All work remains uncommitted; no push, PR, publish or external message.
+
+
+## Task discrimination after score agreement, November 15, 2026
+
+**Implemented and tested; no new candidate qualifies as a clearer overall improvement.** A frozen command-binding guard recovers two scale-h2 rank-one failures and one first-page target, but sacrifices one agreement rank-one gain on dev and scale-dev. It leaves the difficult source-support and silence failures intact. The agreement candidate remains the broad-recall control, not an adopted ranker. All datasets are reused exploratory evidence.
+
+### What is new
+
+The new feature distinguishes a literal executable/operation binding in original source code from words merely co-occurring in prose. It does not add a score or change vector weight. Source code boundaries and invocation position are the additional evidence. An untyped literal-binding control tests whether that structure matters. Comparative protection, full-page replacement and empty/short-page admission are isolated; five remains a maximum.
+
+This is distinct from closed P1 positional bonuses, P2 cross-unit joins, POS action/NP frames, typed table fields and E1–E4 source proofs. Those studies were read first: P1 lost recall; P2's five proofs did not change outputs; E1/E3/E4 had no activation under their grammars; E2 accepted opposite meanings; action and complete-NP source frames reached zero and one of 85 original dev misses. Neither a new name nor a larger scalar weight reopens those results. The new experiment tests **code invocation roles**, excluded from the prior shallow-prose frame extraction, on the adopted-passage agreement population. It deliberately includes an untyped control to prevent claiming structural improvement from ordinary adjacency. No strict-hard restoration, scope blacklist, source-superset rule, token minimum, query-max repair or score sweep was retried.
+
+### Literature and architectural implications
+
+Multiple primary sources informed the hypotheses, rather than supplying an imported ranking policy:
+
+- [FollowIR](https://arxiv.org/abs/2403.15246) evaluates changed relevance instructions with pairwise comparisons and finds ordinary retrievers often treat instructions as keywords. The useful design lesson is to evaluate the requested condition separately from topical proximity. Its trained 7B model is outside the native/static-model contract; it is not proposed as an extra component.
+- [BRIGHT](https://arxiv.org/abs/2407.12883) demonstrates a gap between surface similarity and reasoning-intensive relevance, including coding questions. Query reasoning can help its benchmark, but that is not evidence that Linn can infer an omitted task from a short identifier query. LLM expansion, another encoder or a reranker would require separate approval and violates this experiment's constraints.
+- [Fang and Zhai's semantic-term axioms](https://timan.cs.illinois.edu/czhai/pub/sigir06-semantic.pdf) distinguish semantic matching constraints from arbitrary score additions. Their mutual-information expansion is not adopted; a matched topic does not discharge an executable's requested operation or qualifier. Closed PMI/semantic substitution work remains closed.
+- [Towards Trustworthy Reranking](https://arxiv.org/html/2402.12997v5) separates confidence estimation and abstention from ranking, including reference-based approaches. Its relevance labels and reranking setting are not a portable Linn admission certificate. [The Art of Abstention](https://aclanthology.org/2021.acl-long.84/) likewise studies selective prediction and confidence estimation. These motivate reporting coverage and errors separately, not reactivating the product confidence gate or choosing another threshold on inspected h2.
+- [W3C PROV-DM](https://www.w3.org/TR/prov-dm/) distinguishes entities, activities and responsibility. This supports separating a checkout's scope from the entity an instruction describes. It does not authorize inferring package ownership from filenames or dependency paths. Actual source-bound relations could be candidate-local native data; a new provenance schema would need its own durable design and lifecycle work.
+- [TREC's risk-sensitive retrieval protocol](https://www.microsoft.com/en-us/research/project/trec-web-track-2013/) explicitly studies average effectiveness and losses against a baseline. Here paired losses remain visible instead of being averaged away. Risk-sensitive evaluation does not itself produce relevance evidence or justify anchoring all native heads.
+- [pnpm's official run documentation](https://pnpm.io/cli/run) makes clear that script dispatch and shorthand depend on command semantics. The prototype intentionally does **not** normalize aliases or infer that arbitrary commands are equivalent. Commands are never executed. GNU's simple-command manual fetch timed out; no unverified claim depends on it.
+
+### Pre-score hypotheses, parser and evidence screen
+
+The protocol was saved before measurements. H1 predicted command-binding evidence would separate lost heads from useful semantic replacements, retaining at least 90% of beneficial pairs. H2 required incremental separation beyond untyped literal binding. H3 tested the limit of rebalancing the two correlated objectives. H4 treated missing binding as unknown and isolated strict admission as a negative control.
+
+The bounded grammar recognizes raw-query launcher/operation pairs for conventional CLIs, retaining a third script atom for npm/pnpm/yarn/bun `run SCRIPT`. A backtick-delimited generic executable plus long option is also recognized. It does not manufacture an intent, drop a modifier, infer aliases or equate scripts. Query filters are removed before this diagnostic parse. Source witnesses must start an inline-code invocation, an eligible fenced-code line, or a command segment following a shell separator. Byte offsets come from the original full record; only witnesses contained in existing candidate spans count. Multiple parsed bindings all must be present. Other query facets are **not** thereby certified. Missing or ambiguous extraction is not contradiction.
+
+Record evidence is the union over its unchanged pool spans. This does not acquire another record, emit another section, or promise that the displayed span contains the command. It is a record-lead feature. Native source cards remain intact for retained records and the actual adopted passage stage runs once afterward. Original source bytes, POS .75, encoder arithmetic, scope penalty, representative rows, pool budgets, quote compatibility and later calls remain fixed.
+
+| Suite | Wordings | Parsed bindings | Any bound pool witness | Any untyped witness | Old loss pair distinguished | Beneficial pair blocked |
+|---|---:|---:|---:|---:|---:|---:|
+| dev |1470|53|29|31|0/16|1/37|
+| h2 |1380|60|19|22|0/15|0/29|
+| scale-dev |1470|53|30|35|0/17|1/38|
+| scale-h2 |1380|60|21|23|2/21|0/17|
+| matched |159|9|6|7|0/2|0/2|
+| synthetic |49|0|0|0|0/0|0/15|
+
+These are dependent suite occurrences, not independent samples. On dev, only two changed original head pairs have parsed bindings, both gains; all sixteen losses are outside this discriminator. **H1 fails before page scoring.** The grammar was not repaired. Already-declared page arms were measured diagnostically, and combined protection was frozen for six-suite falsification, not chosen as a successful winner. The two scale-h2 distinctions also exist in the untyped literal evidence, so they do not establish H2's structural advantage. Full code-role structure actually introduces a dev conflict.
+
+### Every scored configuration
+
+The two original agreement objectives and their numerical arithmetic stay unchanged. `binding-order` adds the binding guard to adjacent overtakes only; `binding-replace` guards full-page tail eviction only; `binding-combined` does both. `untyped-combined` substitutes untyped source matching. `binding-admit` additionally requires all parsed bindings for new entrants, including spare slots; unparsed queries are unchanged. None rejects existing native records. Later calls remain native, so these are not all-call abstention systems.
+
+| Dev arm | Gold any / original page | XS any / original page | No-gold | Sections | Actual Hit@1 | MRR@5 |
+|---|---|---|---:|---:|---:|---:|
+| Adopted native |412/354|31/25|35|56|199|.597950|
+| Frozen agreement |424/388|31/27|36|57|220|.651860|
+| binding-order |424/388|31/27|36|57|219|.650342|
+| binding-replace |424/388|31/27|36|57|220|.651860|
+| binding-combined |424/388|31/27|36|57|219|.650342|
+| untyped-combined |424/388|31/27|36|57|220|.651481|
+| binding-admit |424/386|31/27|36|57|219|.648747|
+
+Dev complete-response changes against agreement are 10/8/10/8/45 respectively. Equality of counts is not page parity. Replacement protection alone supplies no measured dev gain; admission loses two original-page hits. The ordering conflict is `s6-c-0030`, raw `git send local-only flag`: the promoted correct target describes account-dependent `local_only` and a commit title in prose, while the native record formats `git send` as inline code. Both actually explain the behavior. Formatting is not task relevance. An alias or grammar repair after this observation was not tried.
+
+### Frozen six-suite native scoring
+
+Cells show adopted native → combined diagnostic. Original page means original-query Hit@5, not rank one. Counts include unchanged later calls where the official metric requires them.
+
+| Suite | Gold any | Original page | XS any | XS original | No-gold | Sections | Hit@1 | MRR@5 |
+|---|---|---|---|---|---|---|---|---|
+| dev |412→424|354→388|31→31|25→27|35→36|56→57|199→219|.597950→.650342|
+| h2 |341→346|298→323|55→53|48→52|54→52|237→239|230→244|.727872→.779991|
+| scale-dev |388→393|316→333|28→28|22→21|31→30|52→51|180→200|.533485→.575816|
+| scale-h2 |325→328|275→289|48→51|41→51|47→50|225→223|211→209|.671234→.680461|
+| matched |45→46|40→44|4→4|4→4|4→4|9→9|21→21|.609375→.626389|
+| synthetic |35→49|35→49|0→0|0→0|0→0|0→0|31→46|.673469→.965986|
+
+Against agreement, combined changes only original rank-one totals dev220→219, scale-dev201→200, scale-h2207→209 and scale-h2 original-page288→289; other listed counts are unchanged. Scale-h2 MRR rises .676224→.680461 but remains a different tradeoff, not a universal improvement. Matched and synthetic are included; synthetic's complete outputs equal agreement because the command grammar never activates.
+
+| Suite | Original rank-one gains/losses vs native | Original-page gains/losses | Original all-call recall | Alternate first-page recall | Alternate all-call recall | True silence |
+|---|---|---|---|---|---|---|
+| dev |36/16|41/7|365→394|534→600|570→625|0→0 /10|
+| h2 |29/15|28/3|303→327|550→588|570→606|2→0 /45|
+| scale-dev |37/17|33/16|331→345|441→471|478→504|0→0 /10|
+| scale-h2 |17/19|20/6|284→298|449→443|475→480|0→0 /45|
+| matched |2/2|4/0|41→44|62→67|65→70|0→0 /1|
+| synthetic |15/0|14/0|35→49|not applicable|not applicable|no cases|
+
+No-gold foreign-target correctness is separately35→36,52→52,31→30,47→50,4→4. Both h2 genuine-silence regressions remain: storybook snapshot pixel threshold (`h2a2-c-0032`) and blob-util Windows removal (`s7-c-0060`). A relative ranking or code invocation does not prove the requested answer exists.
+
+### What was recovered, and what was not
+
+- **Comparable test costs, scale-h2 `h2a1-c-0063`:** source `pnpm test` plus fixed worker counts is protected from a quansync `pnpm run build && pnpm run benchmark` competitor. Actual rank one recovers. The literal operation is present in the raw query, so this discrimination does not need its hidden task. Both old agreement objectives favored the wrong operation, even though its cosine was lower.
+- **Node script semantics, scale-h2 `h2a3-c-0009`:** the `node --run` limitation source recovers against node-gyp-build/prebuild material. Actual rank one and the original first-page target recover. This supplies the +1 original-page difference against agreement.
+- **Context-events and stateless MCP:** unchanged failures. Bare `context-events search scoring` does not parse as a command invocation; `remote MCP server streamable HTTP stateless` has no invocation. Their explicit query facets remain visible to a human but are not represented by this grammar. No claimed recovery via the command feature.
+- **Supporting-record eviction:** all nine old section-case losses remain (two h2, two scale-dev, five scale-h2). Their source witnesses remain in the unchanged pool; first-call eviction, not a missing alternative span, is the problem. The adopted passage stage cannot restore a removed record.
+
+Combined versus agreement changes 8/4/7/6/1/0 record sets and 2/3/3/6/0/0 additional order-only pages across the six suites. **No first-call cardinality changes** occur. All later calls match native. Thus the two targeted recoveries are not bought with more cards or sections.
+
+### Source support, task information and annotation sensitivity
+
+The archive includes full, untruncated original spans and complete original record bodies for all209 agreement rank-one transition occurrences, with raw query and task kept only in a separate diagnostic packet. Selectors never read that packet, case outcomes, gold or task descriptions.
+
+A source inspection of **all16 dev loss pairs** finds nine incoming displayed sources directly carry the requested factual content: redacted-row FTS failure, subtree scope, appVersion default, Universe PR-template rule, production development-client recommendation, Node's blank second commit-message line, the await-location flag, both Metro caches, and the stale-instruction finding. This is a factual-support observation, not nine corrected labels: several full tasks explicitly request a particular spec/skill/source, so exact-source navigation can legitimately remain stricter. No official gold or score changed.
+
+The remaining seven are materially different. Six lose an explicit facet or only partially support it: embedded-channel immutability, filesystem versus clipboard installation, the first non-mutating action versus a prohibition, a specific test-stream invocation versus generic zsh quoting, minimatch's requested options versus matcher internals, and `local_only` value versus the location of instructions.nix. The one-token query `prebuiltArtifactPaths` is substantially underspecified relative to its full task's producer-versus-consumer migration question; the target note itself uses general producer/migration prose. It is not evidence that a ranker can infer those missing obligations from that raw query.
+
+Gains also include both true task improvements and same-information source changes. Router-aware hook helpers, private route-component placement, Forge replacement types and Metro's source language are useful discrimination examples. The SDK environment rule and canonical-envelope normalization gains restate facts already in the old displayed source. At scale, the EAS approval loss and local-build environment-variable loss likewise have directly useful new sources; the lowered-syntax fixture replacement may be more directly responsive than the incumbent displayed span. Conversely the context-events and stateless transport losses are genuine facet failures. Full record versus displayed-span utility must remain separate: a `# noxcturnal` preview cannot establish the full record is irrelevant, nor can its record identity establish that the shown bytes answer the visitor question.
+
+These judgments are this researcher's source audit, not new independent masked judgments, and they do not override explicit-source requirements or version applicability. Already-declared-map original-page sensitivity is392→409,309→333,361→375,290→302,44→48,35→49 in suite order; these are separate diagnostic counts, not corrected official results. All per-wording official transitions remain in the paired audit. An exact-record objective and a useful-source objective should not be silently interchanged.
+
+### Why another balance is insufficient
+
+Every prior original rank-one loss is strictly dominated by its incoming head under **both** agreement endpoints:16/16 dev,15/15 h2,17/17 scale-dev,21/21 scale-h2,2/2 matched. For scores A and B with A(new)>A(old) and B(new)>B(old), every nonnegative mixture with positive total weight preserves that preference. That is a pairwise algebraic boundary, not a claim about arbitrary global policies. Changing insertion order or optimizing a monotone aggregate cannot make that pairwise evidence prefer the correct task. A third independent signal or an explicit protection sacrifice is needed.
+
+Native-head protection would sacrifice33/24/35/17/1/3 existing rank-one gains on nonempty pages across dev/h2/scale-dev/scale-h2/matched/synthetic. A native-empty freeze sacrifices4/5/3/0/1/14 original-page recoveries respectively. These are direct counterfactual counts from fixed responses, not newly scored policies. Neither protection establishes discrimination. The tested binding guard supplies a small new constraint but its successful scale pairs are already separated by ordinary literal adjacency, while its structural distinction blocks a useful prose target.
+
+### Validation, cost and preservation
+
+Research lives in `/Users/agent/git/.archives/linn/task-discrimination-20261115/`: `PROTOCOL.md`, `binding.py`, `screen.py`, `run.py`, `audit.py`, `diagnostics.py`, `test_binding.py`, `native/selector.rs`, freeze manifests and six suite directories. They contain every measured configuration, complete pre/post-composition responses, native scorer logs, paired audits, wording-section transitions, source packets and feature sidecars. Prior controls and binaries are retained in the previous post-passage archive.
+
+The independent Rust selector agrees with Python on all7,350 dev arm responses and all5,908 combined transfer responses. The actual adopted native passage composition and native grader process every scored arm. Twelve corpus-free extraction tests pass; they cover code/prose boundaries, shell chains, unknown expansions, aliases, filters, Unicode byte offsets and non-shell fences. **Extraction is an offline Python prototype; Rust selection consumes its audited sidecar.** This is not end-to-end native command extraction or an integrated product search implementation. The pre-format Rust source and measured binary are retained with their frozen hashes; later rustfmt changes layout only. No product workspace test/build rerun is claimed for a findings-only checkout change.
+
+The six evidence exports take approximately1.02/1.10/3.60/3.51/.19/.004 seconds on these archived inputs. Those totals include offline corpus loading and research maps; they are not resident query or production startup latency. No new persistent product index, model or storage bytes are introduced. A production extractor would need candidate-local indexed reads and publication/lifecycle integration, not these full-record research maps. No credible overall quality candidate emerged, so no integrated broad-acquisition latency or physical neutral loop was run. The prior neutral failures remain prior measurements, not a new pass or newly attributed regressions.
+
+The shared dirty baseline is preserved:77 source/build/LLP files match the prior archive byte-for-byte; the current findings prefix and adopted product binary are hash-preserved. Only this durable findings entry is appended in the checkout. No product API/flag, LLP change, commit, push, PR, publish or external message is made.
+
+### Concrete next discriminating experiment
+
+Do not extend the launcher list or tune a support threshold against these failures. The next experiment should test **whether the requested qualifier can be extracted and bound to the correct source entity**, before any retrieval score is measured.
+
+Use the retained209-pair packet with raw queries presented first and outcomes/task descriptions hidden. Annotate three separate items: (1) explicit query entity or operation, (2) requested property/condition, (3) whether those words suffice to prefer one source. Then align each supported item to exact original bytes, marking unknown, related, direct support and source-navigation-only distinctions separately. Reveal the full task only in a second pass and count preferences that require previously absent information. This is reused diagnostic adjudication, not fresh confirmation; all official labels remain intact.
+
+The first executable extraction arm should bind **an exact code identifier/option occurrence to its containing assertion about a property**, with native token offsets and explicit local clause boundaries, retaining ambiguity rather than treating the code occurrence itself as support. The control is the same exact identifier plus unbound property words in the same candidate span. Require an incremental correct preference on dev pairs and no increase in conflicts before implementing page allocation. Test source-order swaps and property-binding swaps as corpus-free parser fixtures, not manufactured retrieval documents. Measure the source-witness population before tuning: the command experiment shows that activation alone and inline-code formatting are inadequate.
+
+The decisive question is whether local assertion binding separates an operation from its requested condition **more reliably than the already-closed lexical/POS/phrase controls**. If the source ledger lacks explicit bindings, or the query omits the condition, stop that extractor rather than inventing entailment. Broader semantic reasoning or task-aware query construction would then require a separately specified input/architecture change; no second model or hidden-task ranking feature is authorized here. This is a concrete extraction/identifiability experiment with a negative control, not another blend of existing scores.
+
+
+## Independent source relevance revision, November 15, 2026
+
+At Phil's direction, a fresh Codex Luna independently assessed all16 masked dev
+source pairs, query-only first and then full-task, without previous judgments,
+ranking identities, gold or results. It confirms factual overlap in the9 highlighted
+pairs. Parent source checks accept6 task-equivalent record alternatives and retain
+strict source-navigation judgments for the other3. The remaining7 audited pairs
+retain their original labels. No original question/task is rewritten.
+
+Only gold-object equivalent lists change in a versioned relevance-v2 corpus,
+propagated to the6 identical scale-dev cases. Original corpora remain untouched;
+the other4 populations remain byte-identical. Each accepted relation is justified
+by exact original UTF-8 bytes and full-task adequacy. Generic inherited JSON fields
+and flattened reviewer citation offsets were not imported blindly; parent verified
+and re-extracted evidence. Raw independent judgments remain intact.
+
+Six supported cases: s4-c-0037 (Universe PR template), s5-c-0080 (await-locations
+flag), s5-c-0110 (Metro caches), s6-c-0084 (stale-instruction finding), s3a-c-0044
+(appVersion default) and s5-c-0073 (Node commit second line). Unattributed notes do
+not replace the explicitly requested dev-client skill, design-spec location or
+scope rule in the spec. Partial/wrong-entity/complementary/unknown cases stay open.
+
+All36 native scorer replays compare adopted native, frozen agreement and frozen
+command-binding on all6 populations under original and revised labels. Every
+system's outputs remain hash-identical. Dev actual Hit@1 becomes199/226/225 instead
+of199/220/219; scale-dev becomes181/205/204 instead of180/201/200. Original-page
+and gold-any totals, cross-scope, no-gold, strict section totals and true silence
+remain unchanged. Other populations' rank metrics are unchanged. The existing
+scope, genuine-silence and source-support regressions still block candidate adoption.
+These are corrected annotations, not new algorithmic gains.
+
+This revision repairs record relevance using the existing gold-object equivalent
+field. The strict original-record section predicate is unchanged; no alternate-span
+credit or physical-neutral/cost validation is claimed. The selected sample consists
+of one candidate's dev losses and is not a population precision estimate. Independent
+review does not make reused data blind. Original-label results remain visible.
+
+Versioned corpora, exact source evidence, acceptance/exclusion ledger, all raw
+judgments, hashes and score tables are retained outside the checkout in
+/Users/agent/git/.archives/linn/entity-property-continuation-20261115/;
+RELEVANCE-REVISION.md is the detailed parent adjudication. Original corpus hashes,
+product source/binaries and LLPs are unchanged. Separate assertion-binding research
+continues against its frozen original labels; this revision is not post-hoc tuning.
+
+### Entity–property assertion-binding screen — 2026-11-15
+
+**Not selected; no page-allocation or product change.** One frozen native
+subject–predicate/property probe (B) was compared with the same exact query
+identifier and property words unbound in the same fixed candidate span (U).
+Unlike the preceding invocation grammar, it accepts unformatted prose and asks
+whether the identifier occupies an explicit assertion subject position. It adds
+no score, cross-unit join, field, alias, source-path inference or model. This is
+a continuation of the unresolved E4 sufficiency/population question, not a
+reopening of P1/P2 or a claim that a new name validates shallow POS relations.
+
+The pre-execution protocol required an incremental correct dev preference over
+U and no increase in conflicts before page allocation. All209 retained original
+agreement head-transition occurrences received a query-first reused diagnostic
+annotation; tasks/outcomes were separated, with prior researcher knowledge
+explicitly acknowledged. They contain159 distinct query/displayed-source pairs,
+not209 independent samples. Visible-source judgments and overlap inspection
+spans are not gold, full-record adjudication or entailment labels. A separate
+full-task audit records missing conditions and source-navigation requirements.
+
+| Suite | Wordings | Parsed | Any U pool witness | Any unqualified B | Qualified witness | Retained transition pairs |
+|---|---:|---:|---:|---:|---:|---:|
+| dev |1470|265|55|1|1|53|
+| h2 |1380|290|38|0|0|44|
+| scale-dev |1470|265|65|1|1|55|
+| scale-h2 |1380|290|47|1|1|38|
+| matched |159|27|10|0|0|4|
+| synthetic |49|1|0|0|0|15|
+
+B gives **zero preferences on all209 transitions**: no protected loss, supported
+gain, blocked gain or reinforced loss. Its lack of conflicts is abstention,
+not discrimination. U protects no loss and would block two beneficial dev
+replacements (fallbackToCacheTimeout launch behavior and canonical-envelope
+macOS label), repeated at scale-dev, plus the GHSA download-path gain in h2 and
+scale-h2. These are counterfactual pair guards, not actual reranked pages.
+Among16 original-label dev loss pairs,10 lack an exact technical anchor, two
+have multiple anchors, one has no requested property, and three parse but lack
+U evidence on either compared head. No weight change fixes that population.
+
+The real dev assertion is `runtimeVersion compatibility`, alternate wording2:
+s3a-r-0042 has subject bytes[1,15), predicate[17,25), property[26,39). Both frozen
+systems already rank it first. At scale-dev it is native rank2/agreement rank3,
+with the same witness displayed; this possible alternate-wording opportunity is
+preserved, not claimed as a scored gain. The cutter prematurely ends its unit
+at `and`, so even this relation is not a complete proposition certificate.
+`--env-file experimental` yields useful **no longer experimental** evidence,
+correctly marked qualified rather than positive/irrelevant, already rank one.
+Scale-h2 also exposes a false-looking direct-local relation: native POS
+alternatives treat `TypeScript tooling`'s `tooling` as a verb, while the query's
+requested `command` is discarded as a kind word. This cannot certify the
+repository's typecheck command. No h2-informed repair was made.
+
+24 corpus-free extraction fixtures pass, including source-order/entity/property
+swaps, negative/modal/conditional claims, other subjects, useful unformatted
+prose, unknowns, structural boundaries and UTF-8 offsets. Four later frozen-code
+stress probes expose the limits: `but only if enabled` and `; only when enabled`
+lose their trailing conditions; reported uncertainty remains unrepresented;
+an entity plus a neighboring predicate noun does not identify the requested
+property. The first two are definite qualifier-preservation failures. Fixture
+activation is therefore not a soundness result or sufficient evidence gate.
+
+Rust and Python extraction decisions agree on1,461 query/record jobs across
+5,908 wordings, using shared native POS annotations and checked original-byte
+witnesses. Full-record and candidate/displayed reachability are distinct; only
+whole witnesses inside existing candidate spans count. Positive full-record
+availability adds no wording beyond reachable availability under this grammar.
+No original/all-call Hit@1/MRR, silence, scope, section or record-eviction gain
+is claimed: the failed dev gate stopped admission/replacement/ordering work.
+No physical neutral or integrated acquisition/selection measurement followed.
+Offline native batch times are38.58/26.43/68.12/43.89/4.11/0.05 seconds; these
+include full-body annotation and serialization, not resident product latency.
+The diagnostic binary is35,158,232 bytes, including27,173,234 bytes of the
+already pinned annotation asset. No additional model/runtime is introduced.
+
+After the experiment freeze and all6 screens, the parent authorized reading its
+independent relevance-v2 summary/manifest. Extraction, configurations, original
+labels and freezes remain unchanged. Applying v2 labels to these same209 pairs
+makes six dev and three retained scale-dev losses both-relevant; every B
+preference is still a tie. No ranked output exists to rescore from this arm.
+The parent's corrected frozen-system metrics are annotation repairs, not gains
+from assertion binding or fresh blind validation. Strict source-span judgments,
+silence/scope failures and support-eviction concerns remain separate.
+
+Primary sources: [ClausIE authors' project](https://www.mpi-inf.mpg.de/departments/databases-and-information-systems/research/ambiverse-nlu/clausie),
+[MinIE](https://aclanthology.org/D17-1278.pdf),
+[Saurí/Pustejovsky factuality](https://aclanthology.org/J12-2002/), and
+[SQuAD2](https://aclanthology.org/P18-2124.pdf).
+They motivate clause roles, qualifier/attribution scope and evidence sufficiency;
+they do not turn Linn's POS alternatives into dependency heads or entailment.
+
+Next decisive experiment: a new naturally authored dev population with explicit
+entity/property/applicability queries, separated from genuinely underspecified
+queries. Require complete source-local scope witnesses that survive trailing
+condition/attribution counterexamples, technical-subject reliability, fixed-pool
+reachability and incremental preferences over U before page allocation. Do not
+patch this grammar against reused h2 or infer omitted tasks. Product source,
+LLPs, accepted arithmetic, native binary and original corpora remain intact.
+The parent's concurrent findings suffix is preserved. Research code, protocol,
+all outputs and detailed report remain in the external continuation archive's
+research directory; everything remains uncommitted.
+
+
+## Qmd-referenced added-error budget, November 15, 2026
+
+Phil explicitly changed this continuation's objective: broad primary competition
+already supplies more added successes than failures; now reduce added false
+positives and broken silences while retaining those gains. Use recorded qmd errors
+as the tolerance reference rather than requiring universal zero new failures or
+a sound entailment certificate before evaluating a useful imperfect feature.
+This is a changed research selection objective, not evidence that old no-fall
+rules passed or permission to relax lifecycle, provenance or security invariants.
+
+Re-read the recorded hybrid comparison around the original plan85/90 entries and
+HYBRID-COMPARISON-2026-11-10. Derived actual first-card and paired error counts
+from the saved qmd predictions, reproducing all recorded aggregate numerators.
+Large-s1 matches the adopted159 native responses exactly in query keys/bytes and
+uses the same1243-record population. One new exploratory273-wording native capture
+supplies the current large-s5 reference on that same population. No qmd model was
+rerun; no product source, original corpus or qmd output changed.
+
+Original-label actual rank-one qmd/native results are24/48 versus21/48 on s1 and
+32/81 versus31/81 on s5. Relative to current native, qmd has11 new correct heads
+and8 added wrong heads among21 previously correct heads on s1;13 gains and12
+losses among31 native-correct on s5. Thus the matched original-label ceilings are
+8/21 and12/31, with pooled20/52 =38.46% paired regression and24 gains (net4) on
+these disjoint slices. By all gold cases the added-error rates are8/48 and12/81.
+Native-correct opportunity denominators and total wrong-first rates are distinct.
+The old40/48 and64/81 counts are original-page Hit@5, not rank one.
+
+Original-page added losses/gains are6/6 on s1 and12/9 on s5; any-wording record
+losses/gains1/2 and2/4. Foreign-target original-page losses/gains0/0 and1/2.
+Mixed no-gold correctness has0 added failures on both matching slices. The
+small90-record s1 control repeats the same cases and is not independent evidence.
+
+Under relevance-v2 labels qmd itself benefits: s1 remains24/48; s5 becomes34/81,
+with13 gains and10 losses versus current native31/81. The revised matched rank-one
+ceilings are8/21 and10/31; pooled18/52 =34.62%, net6. Compare every system using
+the same label version, not a corrected candidate against uncorrected qmd.
+
+Qmd's4/5 and9/10 empty-correct counts do NOT establish80–90% true silence. The
+matched data contain just1 genuine absent case on s1 and0 on s5. Both current
+native and qmd are nonempty on that one case, so there is no native-correct-silence
+opportunity and no measurable paired silence-regression rate. Do not manufacture
+a10–20% true-false-positive threshold from mixed foreign-target counts or infer
+that a100% failure rate on1 absent query is a calibrated allowance. Qmd has no
+recorded matching h2, scale, section-span or six-document comparator outcome here.
+Those broader metrics must be reported, but cannot receive invented qmd bars.
+
+The next Astra continuation starts with frozen agreement plus adopted passage as
+the already useful research control. Predeclare explicit matched error ceilings,
+then optimize retained added successes, reduced added errors/failed silences and
+net useful benefit; present the frontier and per-metric tradeoffs. Outside matched
+populations, normalized qmd rates are only explicitly transferred research targets.
+No universal all-metrics monotonicity or zero-conflict extractor gate is imposed.
+Existing poor silence is still an optimization target, not silently declared fixed.
+Old closed controls may be reconsidered only with this changed objective stated,
+not relabeled as new algorithms. Product defaults remain unchanged for this task.
+
+Raw predictions, exact added-error case lists, original/v2 counts, hashes and
+explicit budget/provenance are outside the checkout in
+/Users/agent/git/.archives/linn/qmd-risk-budget-20261115/{ERROR-BUDGET.md,qmd-error-budget.json}.
+The exploratory s5 capture and input population are retained there. Parent archived
+the incidental rebuilt eval executable and restored target/release/linn-eval to
+its adopted frozen bytes; product source remained unchanged throughout.
+
+## Qmd-budgeted selective page protection, November 15, 2026
+
+**Selected research candidate: agreement with a 10% page-replacement margin; not adopted.** Phil explicitly changed the selection objective to reduce added errors while retaining broad agreement’s useful successes, with saved qmd paired errors as an empirical tolerance reference. The old all-no-fall rejection is not used to dismiss every trial. Product defaults, the adopted passage stage, original corpora and LLPs are unchanged. This does not claim the ordinary adoption rule passed or supply fresh holdout evidence.
+
+Predeclared seven dev arms: frozen agreement; native-head override margins 10% and 20%; page-eviction margin 10%; empty-page full-score gap .05 plus cosine .35; combined head10/eviction10/empty-gap; and a diagnostic native-empty freeze. These revisit uncertainty/protection controls under the changed objective, with their prior recall/scope costs acknowledged. No new assertion grammar, gold-trained locality classifier, model, runtime flag or reranker.
+
+The selected arm first builds the frozen agreement page. Walk omitted native records in original order; compare each with the lowest full-joint-scoring new entrant still selected. Evict the native record only if both existing score endpoints improve by more than 10% of the absolute incumbent endpoint (minimum 1e-12); otherwise remove that entrant and append the native record. Preserve native source cards, then run the adopted passage stage. Existing scoring, spare-slot entry rules, later calls and eligibility remain unchanged. The membership guard may remove an entrant after a short native page fills to five; it is not a universal short-page or head-identity freeze. Addressed/resolved/duplicate pages preserve the native control.
+
+Dev eligibility required positive net original-head/page gains on both label versions, reduction of at least one added-loss count, and at least 75% retention of agreement head/page gains. Selection prioritized v2 net head gain, fewer head losses, page net gain, then MRR. The retention preference is a declared research choice, not a qmd guarantee. Only page-eviction10 qualifies. Freeze source and complete dev calls before transfer; no post-transfer threshold repair or runner-up selection.
+
+| Dev policy | Head G/L original | Head G/L relevance-v2 | Page G/L both labels |
+|---|---:|---:|---:|
+|agreement|37/16|37/10|41/7|
+|head10|23/7|23/5|41/7|
+|head20|19/2|19/2|41/7|
+|evict10|37/16|37/10|38/4|
+|empty-gap05|36/16|36/10|40/7|
+|combined10|22/7|22/5|37/4|
+|empty-freeze|33/16|33/10|37/7|
+
+G/L is paired against current adopted native, not total errors. Head20 reduces original dev added-head errors16→2 but sacrifices 18 of37 gains; under v2 it reduces10→2. This lower-risk option was not selected or transferred. Empty-gap loses one dev gain without an error reduction. The selected page guard retains every agreement original-head gain and loss set on all seven measured populations. Its improvement is reduced record eviction, not a solved head discriminator or silence gate.
+
+| Population | Head native→selected original | Head G/L original / v2 | Agreement page G/L→selected | Selected MRR original / v2 |
+|---|---:|---:|---:|---:|
+|dev|199→220|37/16 · 37/10|41/7→38/4|0.652050 / 0.659263|
+|h2|230→244|29/15 · 29/15|28/3→27/1|0.780556 / 0.780556|
+|scale-dev|180→201|38/17 · 38/14|33/16→32/8|0.581625 / 0.586560|
+|scale-h2|211→207|17/21 · 17/21|20/7→20/1|0.680461 / 0.680461|
+|matched|21→21|2/2 · 2/2|4/0→3/0|0.622222 / 0.622222|
+|synthetic|31→46|15/0 · 15/0|14/0→14/0|0.965986 / 0.965986|
+|matched-s5|31→32|6/5 · 6/2|7/2→6/0|0.597737 / 0.618313|
+
+V2 native scale-dev head is181 rather than180; selected v2 heads are 226 dev,205 scale-dev and35 matched-s5. Other slices are unchanged. All systems use identical frozen responses for both label versions. Unknown/unjudged candidates were not converted into negative training labels. Repeated wordings, matched subsets and scale copies are not independent; no pooled six-suite inference or calibration guarantee is claimed.
+
+| Population | Selected gold any / first | XS any / first | Mixed no-gold | Strict section |
+|---|---:|---:|---:|---:|
+|dev|425/439 · 388/439|31/42 · 26/42|36/51|57/73|
+|h2|347/354 · 324/354|53/62 · 52/62|52/106|239/271|
+|scale-dev|398/439 · 340/439|28/42 · 21/42|31/51|52/73|
+|scale-h2|332/354 · 294/354|50/62 · 50/62|49/106|225/271|
+|matched|46/48 · 43/48|4/4 · 4/4|4/5|9/10|
+|synthetic|49/49 · 49/49|0/0 · 0/0|0/0|0/0|
+|matched-s5|81/81 · 73/81|8/10 · 6/10|9/10|7/8|
+
+Agreement page gains retained are 38/41,27/28,32/33,20/20,3/4,14/14 and6/7 in table order. Added page errors repaired are 3,2,8,6,0,0 and2; no new native-correct original-page failure appears relative to agreement. Scale-h2 still loses four net heads relative to native. Against agreement, dev loses one XS-first gain27→26, and scale-h2 loses one XS-any/first and mixed no-gold success51/51→50/50 and50→49. These harms remain visible rather than averaged away.
+
+Among gold originals, nonempty wrong-head counts are 219/109/238/147/27/3/49; v2 counts213/109/234/147/27/3/46. H2 also has one empty original gold page; other measured gold originals are nonempty. Exact first-page/all-call/alternate transitions, G/L opportunity rates and affected keys are retained in paired summaries.
+
+### Actual qmd-matched risk check
+
+New native collection supplies 273 s5 features on the exact matched 1,243-body store. S1 and s5 record files are byte-identical; s5 feature baselines compose to all 273 current native calls exactly. S1 uses its original matched159 archive. These are not filtered full-q4 pages. Qmd predictions were not rerun.
+
+S1 original/v2 selected head G/L 2/2 is below qmd 11/8, with 21 baseline-correct opportunities. S5 original selected 6/5 is below qmd 13/12; v2 selected 6/2 is below qmd 13/10, with 31 opportunities. Agreement has these same head outcomes and already qualifies under this changed budget. Selected page G/L3/0 and6/0 are below qmd 6/6 and9/12. Both label versions pass their matching head/page ceilings.
+
+Pooled disjoint matched head losses are 7/52 original and4/52 v2, versus qmd 20/52 and18/52. Selected gains are 8 versus qmd 24: selected net1/4 versus qmd 4/6. Thus lower added-error burden does not mean more head successes than qmd: selected total nonempty wrong heads76/73 original/v2 exceed qmd 73/71. Selected s1 MRR .622222 remains below qmd.630903; original s5.597737 exceeds qmd.562140. No qmd result is asserted for h2, scale, strict source spans or synthetic.
+
+### Silence and source-witness costs
+
+Genuine-absence counts dev/h2/scale-dev/scale-h2/matched/synthetic/s5 are 10/45/10/45/1/0/0. Current native correct silences0/2/0/0/0/0/0 become 0 throughout with agreement and selected. The two newly broken h2 cases remain h2a2-c-0032 and s7-c-0060; no old true silence is recovered. The matched qmd/native correct-silence opportunity count is0, so no qmd-derived added-silence rate is estimated.
+
+A saved-response native-empty-freeze counterfactual restores the two h2 silences but loses original-page recoveries4/5/3/0/1/14 on the six suites; all-wording sacrificed hits are 15/15/3/1/5/14. It is a disclosed diagnostic, not a transferred runner-up or successful repair. Selected preserves every native-empty response exactly, including all 14 synthetic recoveries. Initially short wording pages change5/18/11/22 times on dev/h2/scale-dev/scale-h2 after filling to five; all sacrificed original/alternate gold-page gains came from initially full pages, not short/empty ones. Scaled head identities sometimes change without changing the measured original-head correctness sets; original-label alternate-head correctness also matches agreement.
+
+Nine agreement section-loss occurrences fall to six. Restored source witnesses: scale-dev s4-c-0031; scale-h2 h2a2-c-0037 and s7-c-0095. Every agreement case-level section gain remains. At wording level 22 native-correct first-call support losses are repaired without new native-correct losses, but two agreement-only first-call source gains are sacrificed: h2 h2a2-c-0029 wording 2 and scale-dev s5-c-0110 wording 2 (zero-based). No new case-level section loss results because other wordings retain support. Remaining losses are h2 h2a2-c-0028/s7-c-0001, scale-dev s3a-c-0006, and scale-h2 h2a1-c-0042/h2a2-c-0028/s7-c-0098. Aggregate section totals alone would hide these original-record evictions. Strict source grading is unchanged.
+
+### Native execution and physical checks
+
+Independent Rust/Python selector parity and live native complete-call parity cover all 6,181 wordings, including273 matched-s5. Frozen agreement dev calls reproduce their original complete control. The initial native freeze caught an older executable during final-build completion; its first dev capture is retained separately. Dev was repeated with the final binary and all 1,470 calls match; every other capture and physical run began after that build. The final executable manifest and timestamp audit preserve this harness correction; no policy/coefficient was changed. The selected native acquisition/selection runs inside the native read snapshot before adopted passage/final lifecycle filtering, using the same static encoder and original stored vectors. No persistent schema/index/model is added.
+
+All 120 workspace tests pass, two corpus-dependent tests explicitly ignored. Formatting, all-target/all-feature Clippy and LLP-reference checks pass. A Clippy-only impl relocation changes no policy. Nix packaging also passes, including its tests and freestanding-binary checks. The packaged research product executable is 106,160,056 bytes, with no additional model or persistent index. It is retained under nix-result/bin/linn and is not installed as the product default. The measured native eval executable is103,243,824 bytes versus 102,845,904 adopted. No source, LLP or adopted executable in the shared checkout was changed.
+
+Live per-invocation medians/p95: dev 31.358/60.915 ms; h2 38.024/69.691 ms; scale-dev 199.068/687.237 ms; scale-h2 237.312/757.107 ms. Store-open times are separately 2.887/8.999/.751/.735 ms. These include real broad acquisition and selection, not replay or sidecar elapsed time. They are one-pass development diagnostics; scale-h2 overlapped workspace checks, so no clean A/B timing claim. Physical neutral measurements below ran serially afterward.
+
+| Population | G1 | G3 | G5 | G4 | Q1 | G2 | C2 p95 ms | R1 | R2 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+|dev|0.000|1.000|1.000|0.000|0.706|0.014|27.090|0.993|0.226|
+|h2|0.000|1.000|1.000|0.000|0.491|0.041|29.800|0.992|0.411|
+|scale-dev|0.000|1.000|1.000|0.000|0.608|0.014|230.570|0.973|0.102|
+|scale-h2|0.000|1.000|1.000|0.000|0.462|0.035|242.320|0.972|0.289|
+
+Full individual gate tables and sample sizes remain in the external report; no all-neutral-pass claim. H2 G2 worsens.037→.041 and Q1 .509→.491; R2 improves.429→.411 but still fails. Dev Q1 improves.686→.706 and R2 .229→.226, still failing. Preexisting G4/Q1/R2, h2 G2 and scaled C2 failures must not be misrepresented as newly solved. Product adoption still needs Phil’s acceptance of remaining head/scope/silence/source errors and measured cost; passing a permissive qmd ceiling is not sufficient by itself.
+
+Protocol, every tested configuration, dev/native freezes, isolated native source and executables, complete calls, original/v2 paired scores, qmd budget status, source-witness repairs, admission counterfactuals and physical logs are retained outside the shared checkout at `/Users/agent/git/.archives/linn/risk-reduction-20261115/`; `REPORT.md` is the reviewable result. Original corpora and labels are unchanged. All work remains uncommitted; no push, PR, publish or external message.
+
+## Frozen head-margin frontier transfer, November 15, 2026
+
+**Research clarification; no adoption.** Phil explicitly removed the earlier 75% agreement-gain-retention preference and requested the full frozen head10/head20 transfer. That preference selected evict10; it was not a scientific rejection of head20. Six predeclared arms: adopted-native, agreement, evict10, frozen head10, frozen head20, and **evict10 followed by head20**, without the combined10 empty-gap condition. No margin sweep, h2 repair, new acquisition, source stage, model, card/section, runtime option or ranker was added. The composition uses exactly the existing >10% eviction and >20% head endpoint rules, epsilon 1e-12, original native cards and max five cards, then adopted passage. Existing control outputs are byte-identical to their archives.
+
+Head20’s actual dev head gain is 19 added successes and 2 added losses, net +17, native 199→216/439 under both labels. It retains 19/37 gains (51.35%), repairs 14/16 original losses or 8/10 relevance-v2 losses, and sacrifices 18 gains. Original dev head10 is 23/7, net 16; v2 is 23/5, net 18. Thus head20 dominates head10 on **total correct heads versus added losses** only on original dev labels, not v2. Neither dominates on **added gains versus added losses**. Agreement 37/16 original and 37/10 v2 remains the higher-gain/higher-loss choice.
+
+All six arms transfer across seven reused populations, with original/v2 labels applied to identical calls. Head20 and composition have exactly the same original-query head gain/loss identities throughout. Table values are G/L, with net in parentheses; page columns use original labels (v2 page outcomes match).
+
+| Suite | Agreement/evict10 head original | Head10 original | Head20/composition both labels | Head20 page | Composition page |
+|---|---:|---:|---:|---:|---:|
+| dev | 37/16 (+21) | 23/7 (+16) | 19/2 (+17) | 41/7 (+34) | 38/4 (+34) |
+| h2 | 29/15 (+14) | 21/8 (+13) | 21/6 (+15) | 28/3 (+25) | 27/1 (+26) |
+| scale-dev | 38/17 (+21) | 24/7 (+17) | 21/2 (+19) | 33/15 (+18) | 32/7 (+25) |
+| scale-h2 | 17/21 (-4) | 15/11 (+4) | 14/4 (+10) | 20/7 (+13) | 20/1 (+19) |
+| matched | 2/2 (+0) | 1/0 (+1) | 1/0 (+1) | 4/0 (+4) | 3/0 (+3) |
+| synthetic | 15/0 (+15) | 14/0 (+14) | 12/0 (+12) | 14/0 (+14) | 14/0 (+14) |
+| matched-s5 | 6/5 (+1) | 4/4 (+0) | 3/1 (+2) | 7/2 (+5) | 6/0 (+6) |
+
+V2 agreement/evict10 head G/L differs on dev 37/10, scale-dev 38/14, matched-s5 6/2; v2 head10 differs on dev 23/5 and matched-s5 4/2. Head20 G/L is unchanged across labels; v2 native scale-dev has 181 correct heads rather than 180, so head20 has 200 rather than 199 there. No new relabeling was performed. H2 and scale-h2 are reused development evidence, not independent confirmation.
+
+On the total-head/added-loss objective, head20 dominates agreement and head10 on h2 and scale-h2, and original matched-s5; agreement remains a gain/loss tradeoff. On synthetic, agreement/evict10 dominates the guards: head20 sacrifices three correct promotions and repairs no head loss, although all 14 page recoveries remain and page recall stays 49/49. Head10 remains a dev-v2 compromise; it is dominated on total-head/added-loss in scale-dev (both labels), scale-h2 and matched-s5 (both labels), and on both head objectives in h2/synthetic. Head10 remains nondominated on scaled alternate-query total-head/added-loss frontiers under both labels: scale-dev 55/11 (net 44) versus head20 44/5 (net 39), and scale-h2 38/27 (net 11) versus 26/17 (net 9). These weaker-margin correct promotions must not be discarded because original-query head20 improves. Exact original/alternate/all-wording frontiers are recorded separately; no universal scalar preference or cross-population pooling is imposed.
+
+Head20 sacrifices 18/8/17/3/1/3/3 agreement original-head gains and repairs 14/9/15/17/2/0/4 losses in table order (v2 repairs 8/9/12/17/2/0/1). The four extra dev sacrifices relative to head10 are s4-c-0084, s4-c-0095, s4-c-0107 and s5-c-0107. Remaining dev head losses are s2a-c-0007 and s5-c-0067. Scale-h2 repairs 17 of 21 losses, including h2a1-c-0063’s comparable-pnpm-test task, while sacrificing only h2a2-c-0019, h2a2-c-0079 and s7-c-0064. Exact per-case queries, original and alternate keys, remaining losses, sacrifices, repairs, endpoint evidence and source cards are retained; this is useful conservative behavior, not a task-entailment certificate.
+
+Composition shows that head-risk reduction and page/source protection coexist with costs. Relative to head20 it gives up original-page gains 3/1/1/0/1/0/1 and repairs page losses 3/2/8/6/0/0/2. It sacrifices dev XS-first 27→26 and scale-h2 XS-any/first 51/51→50/50 and mixed no-gold50→49. H2 retains XS-any 55→53 and mixed no-gold54→52 versus native. All research policies preserve agreement on native-empty responses: h2a2-c-0032 and s7-c-0060 remain newly broken true silences, with no silence repair. These are separate harms, not averaged into net heads.
+
+Strict sections native→composition: dev 56→57, h2 237→239, scale-dev 52→52, scale-h2 225→225, matched 9→9, synthetic 0→0, s5 7→7. Composition repairs 23 agreement native-correct first-call source-loss wording occurrences across overlapping suites, without new such losses, but sacrifices three agreement-only source gains: h2 h2a2-c-0029 wording 2, scale-dev s5-c-0110 wording 2, and scale-h2 h2a3-c-0009 wording 1. The last is a head-restoration tail eviction: native head is prepended and original supporting s5-r-0025 leaves slot 5. Eviction protection restores that source on wording 0, recovering case-level support while leaving the wording 1 loss. Head20 alone instead falls to 222 scale-h2 sections. This divergence was investigated without changing the frozen policy.
+
+Actual qmd-matched s1/s5 ceilings only: head20/composition head G/L 1/0 and 3/1, versus qmd 11/8 and 13/12 original or 13/10 v2. Composition page G/L 3/0 and 6/0 versus qmd 6/6 and 9/12. All six arms satisfy the matched head/page ceilings; this proves no general superiority. S1 head20 has 22 correct heads versus qmd 24, with 0 versus 8 new losses. S5 original head20 has 33 versus qmd 32, with 1 versus 12 losses; v2 head20 has 33 versus qmd 34 (1 versus 10 losses), while agreement/evict10 has 35 with 2 losses. Matched native-correct-silence opportunities remain 0. No qmd ceiling is asserted for h2, scale, synthetic or source spans.
+
+Independent Rust/Python full selector parity covers 5 × 6,181 policy-wording observations; the native scorer agrees with all 84 policy/label summaries. Composition is integrated in one isolated native Rust binary; head10/head20 standalone are replay with independent native selector parity, not separately timed integrated native policies. All 120 workspace tests pass with two explicit corpus-dependent ignores, formatting/Clippy/LLP references pass, and Nix packaging/tests/freestanding checks pass. Debug linking initially exhausted disk space; only this run’s generated debug artifacts were removed, and the full test suite passed in release profile. After physical timing, all 120 tests also passed in the default test profile with debug symbols disabled to fit disk; debug-assertion behavior was not disabled.
+
+Complete live composition/replay equality covers all 6,181 wordings across all seven populations. Actual candidate timings, store-open costs, fresh serial dev/scale-h2 adopted-native comparisons with complete response parity, and full four-population original-label neutral gates are in the external report. Timing is candidate-then-baseline, not randomized replication; replay time is not reported as latency. Unchanged standalone acquisition benchmarks were not rerun. Head-only variants inherit acquisition structure but have no separately measured integrated cost.
+
+dev failed/insufficient gates: G4 integrity and forget | 0.000 | >= 1 | | FAIL; Q1 empty-correct | 0.706 | >= 0.9 | 51 | FAIL; R2 maximum exposure share | 0.226 | <= 0.1 | | FAIL.
+
+h2 failed/insufficient gates: G2 must-not rate | 0.041 | <= 0.02 | | FAIL; G4 integrity and forget | 0.000 | >= 1 | | FAIL; Q1 empty-correct | 0.491 | >= 0.9 | 106 | FAIL; R2 maximum exposure share | 0.411 | <= 0.1 | | FAIL.
+
+scale-dev failed/insufficient gates: G4 integrity and forget | 0.000 | >= 1 | | FAIL; Q1 empty-correct | 0.608 | >= 0.9 | 51 | FAIL; C2 latency p95 ms | 227.370 | <= 50 | | FAIL; R2 maximum exposure share | 0.102 | <= 0.1 | | FAIL.
+
+scale-h2 failed/insufficient gates: G2 must-not rate | 0.035 | <= 0.02 | | FAIL; G4 integrity and forget | 0.000 | >= 1 | | FAIL; Q1 empty-correct | 0.462 | >= 0.9 | 106 | FAIL; C2 latency p95 ms | 241.890 | <= 50 | | FAIL; R2 maximum exposure share | 0.289 | <= 0.1 | | FAIL.
+
+
+The remaining scope, silence, source and measured physical-cost tradeoffs require the governing acceptance requirements. No fresh blind data were supplied and no ordinary LLP 0005 adoption claim is made. Product source/defaults/LLPs, original labels, the adopted binary and preexisting dirty work remain unchanged. No commit/push/PR. This entry supersedes the earlier “head20 not transferred” limitation only as a historical status update, not as a new holdout claim.
+
+External archive: `/Users/agent/git/.archives/linn/head-frontier-20261115/`. `REPORT.md` is the full result; `PROTOCOL.md` and its physical-validation addendum predeclare the arms/checks; `metrics.json`, `frontiers.json`, `PAIRED-IDENTITIES.md`, `divergences.json`, `budget.json`, per-suite complete outputs and native scores, `selector-parity.json`, `native-freeze.json`, isolated `trial/`, retained `bin/` and `live/` preserve reproduction and every tested configuration. Prior policy/qmd sources remain `/Users/agent/git/.archives/linn/{risk-reduction-20261115,qmd-risk-budget-20261115}/`.
+
+
+## Protected joint competition adopted into native search (2026-11-15)
+
+The operator explicitly directed implementation of the frozen composition:
+10% native membership protection followed by 20% native first-result protection,
+then the already accepted passage selector. It is now the fixed ordinary search
+path in `src/retrieval/competition.rs`, with candidate acquisition in
+`src/retrieval/lexical.rs` and snapshot integration in `fallback.rs`. Alternative
+research policies and offline-only entry points were not imported. LLP 0002 is
+the standalone algorithm specification; LLP 0005 records explicit acceptance of
+the reused-data tradeoffs, remaining silence regressions and physical gate costs.
+This operator decision does not turn reused h2 into independent confirmation.
+
+The port preserves the frozen arithmetic and JSON adapter; it claims no latency
+improvement. Formatting, workspace tests, all-target/all-feature Clippy, LLP
+references and Nix packaging passed. Integrated complete-call comparisons matched
+all 1,470 dev, 1,380 h2 and 1,470 scale-dev wordings (4,320 total, zero differences).
+At the operator's direction the remaining eval repetition was stopped: scale-h2
+was interrupted; matched, synthetic and matched-s5 were not repeated. Existing
+full-suite results remain the frozen candidate's measurements, not new integrated
+physical-neutral validation. No new coefficients or relevance judgments were used.
+
+Integration artifacts and provenance:
+`/Users/agent/git/.archives/linn/protected-competition-adoption-20261115/`.
+Known full candidate outcomes:
+`/Users/agent/git/.archives/linn/head-frontier-20261115/REPORT.md`.
+All code and LLP changes remain unstaged and uncommitted. Existing dirty work was
+preserved; no corpus, eval output or temporary research source was added here.
+
+
+## Fixed-page ordering after protected joint adoption (2026-11-15)
+
+The operator asked whether a further ranking adjustment should be added. A cheap
+saved-response diagnostic holds the adopted composition's first-call membership,
+card bytes, count and later calls fixed, then stably sorts the existing cards by
+one of four frozen representative signals: full joint score, half-vector score,
+lexical+POS with original-scope penalty, or cosine. Broad-pool normalizers remain
+frozen; missing representative evidence preserves the page. This revisits already
+measured objectives on the **newly adopted fixed page**, not a new relevance signal
+or a reopening of old broad-admission studies. No model runs, searches, corpus
+changes, product source/default changes or new labels were involved.
+
+Initial protocol: dev and both actual matched historical qmd slices; original
+and previously audited-v2 labels on identical output. After the initial result,
+the identical controls were extended to saved h2 and scale-h2 to investigate
+transfer divergence, with no arm selection or coefficient changes. All are reused
+exploratory diagnostics, not an independent holdout or physical measurement.
+
+Original-query rank-one gains/losses **against the newly adopted composition**:
+
+| Fixed-page ordering | dev | matched s1 | matched s5 | h2 | scale-h2 |
+|---|---|---|---|---|---|
+| Full combined score | 32/28 | 3/3 | 8/4 | 12/32 | 9/42 |
+| Half-vector score | 25/20 | 2/2 | 5/4 | 10/15 | 7/26 |
+| Lexical+POS | 14/18 | 2/2 | 4/2 | 7/11 | 9/14 |
+| Cosine alone | 43/82 | 4/5 | 12/16 | 18/125 | 15/134 |
+
+Full-score ordering raises original matched correct first results 55→59/129
+versus historical qmd 56/129; with corrected labels, 55→62 versus qmd58. Page
+hits remain116/129 for every ordering versus qmd104. The matched added rank-one
+losses versus the preceding pre-competition native baseline are3/5 on s1/s5,
+below qmd8/12 (corrected3/2 versus qmd8/10). This is a real matched benefit and a
+valid risk-budget point, not overall superiority. Matched slices overlap dev;
+these are descriptive comparisons, not independent evidence of transfer.
+
+H2 correct heads instead fall245→225/354 and scale-h2 221→188/354 with full-score
+ordering; MRR falls .781968→.748870 and .701883→.641196 respectively. Half-vector
+and lexical+POS reduce those losses but still trail the adopted composition.
+Under corrected labels, dev full-score G/L32/22 and half-vector25/14 improve;
+s5 full-score8/1 and half-vector5/1 improve. H2/scale-h2 labels are unchanged.
+Thus the matched/dev improvements are not discarded, but indiscriminate ordering
+mostly removes the protection deliberately introduced for task-confusable results.
+Fixed membership cannot repair true silence or bring missing targets onto a page.
+Any new contextual/learned second-stage model remains outside existing constraints.
+
+Prior art: Elasticsearch explicitly separates candidate retrieval and bounded
+rescoring, including a phrase-query rescorer
+(https://www.elastic.co/docs/reference/elasticsearch/rest-apis/rescore-search-results).
+Qmd documents original-query weighting, top-rank protection and position-aware
+blending around a model reranker
+(https://github.com/tobi/qmd/blob/main/README.md). These motivate an ordering-only
+experiment but do not demonstrate that the model reranker caused qmd's historical
+outcomes. Qmd's additional model/RRF/runtime choices are not adopted. Existing
+assertion-binding and command-support studies remain closed; no successful new
+source/task discriminator was demonstrated in this diagnostic.
+
+Disposition: retain adopted defaults. Full-score fixed-page ordering is a genuine
+higher-risk research alternative on matched/dev; no universal improvement is
+established. Further work needs a discriminating query/source signal rather than
+another unguarded sort, or a separately authorized change to the model constraint.
+All configurations, exact case gain/loss identities, score-boundary diagnostics
+and protocol are retained at
+`/Users/agent/git/.archives/linn/fixed-page-ordering-20261115/`.
+
+
+## Silence investigation after protected joint adoption (2026-11-15)
+
+The operator requested silence improvements without sacrificing adopted retrieval
+gains, then explicitly emphasized **all 45 h2 absence cases**, not only the two
+regressions. No product source, LLP, labels or defaults were changed. These are
+saved-result diagnostics on reused data, not live searches, an independent holdout,
+a physical measurement or reopening of the product logistic confidence gate.
+
+### Initially-empty admission controls
+
+Five predeclared per-record qualifications apply only where all original native
+calls had no cards: zero missing hard terms; ordinary coverage (maximum of exact/
+stem coverage >= query need); both; coverage OR positive source POS OR cosine>=.5;
+and hard AND that union. The .5 cutoff was a fixed exploratory round value, not a
+probability or fitted threshold. All seven saved suites and both existing label
+sets were scored; added gains/losses are relative to adopted protected competition.
+Existing hard/coverage/cosine feature families were closed in earlier broad-ranking
+studies. This explicitly revisits them on the newly adopted admission path, not as
+new source/assertion evidence.
+
+Hard-only restores the Windows-removal h2 absence `s7-c-0060`, preserving synthetic
+49/49, but loses dev4, h2 5 and scale-dev3 original-query gold-page successes (and
+matched1, an overlapping dev case). H2 loses one case's any-wording/all-call recall
+and two original foreign-target hits. Coverage-only restores the snapshot absence
+`h2a2-c-0032`, but loses all14 synthetic page recoveries, dev1 and h2 1 original
+page hits, plus one dev any-wording/all-call success. Both restores both h2 silences
+at those combined costs. The coverage/POS/cosine union still loses all14 synthetic
+recoveries; adding hard requirements restores both silences but retains the hard
+control's curated losses. Original/v2 paired transition counts are identical.
+
+The rejected successes were inspected, not dismissed as noise: “Grok rules per-file
+size cap” correctly finds the 10,000-character rule despite only one matched content
+term; “blob-util Android upload file handle request length” correctly finds the
+`available()`/Content-Length descriptor leak with coverage2/need3. Other hard misses
+include iOS/BiDi spelling, co-access paraphrase and package identifiers absent from
+the particular supporting source. Hard/coverage absence is therefore not an
+irrelevance certificate. Exact lost wording/card evidence is retained.
+
+Two additional controls reject initially-empty admissions when one/two query
+content words lack a normalized nav_lexemes entry, using read-only indexed lookups.
+These are explicitly surface-only offline approximations, not native tokenizer or
+eligibility-aware semantic absence tests. Neither repairs a whole h2 absence case;
+they lose13/8 synthetic pages respectively. “storybook” is absent in its two named
+wordings, but “visual baseline threshold” contains no such unknown word. All three
+blob-util wordings contain only indexed content words.
+No corpus-unknown-word gate was adopted.
+
+### Broader 45-case audit and all-call calibration controls
+
+Every h2 genuine-absence original returns five first-call cards. **28/45 also have
+cards in later calls**; rejecting only the first page cannot establish silence for
+those responses. Their top representatives meet ordinary coverage on24/45, have no
+missing hard term on35/45 (some have no hard query obligation), and cosine>=.5 on
+11/45. For example a missing CLAUDE.md consolidation decision matches root/package
+editing advice at cosine .7495, whereas a missing input-file size limit matches a
+heap-memory size flag. Topical support is not support for the requested condition.
+
+Three further fixed controls score the entire response by maximum S1, S2 or cosine
+across all returned record representatives. Unknown representative evidence preserves
+the response. Each threshold was frozen at the minimum successful **dev wording**
+response maximum before other-suite scoring; gold/equivalent all-call hits and
+required foreign targets counted as successes. Strictly lower scores clear all
+calls' cards while retaining hints/related pointers. This ensures zero successful
+dev-wording loss by construction, not an independent calibration guarantee. No
+threshold was picked from the h2 absences and no coefficient sweep was performed.
+
+Frozen S1/S2/cosine thresholds are .31657264608916225,
+.1915012055268151 and .18221889436244965. On h2 they produce correct silence for
+1/7/0 **original queries**, respectively, but recover zero cases under the strict
+all-wordings silence criterion; other wordings still return cards. They lose
+1/3/2 successful h2 wordings, hidden by unchanged case-level all-call totals.
+Synthetic page losses are7/10/5. S1 additionally loses one scale-h2 original head,
+page and any-wording target; S2 loses one scale-dev original head/page and one
+scale-h2 any-wording/all-call target; cosine loses one scale-h2 original head/page,
+two any-wording and one all-call case. No gain-preserving silence improvement is
+established. These legitimate partial silence improvements remain recorded rather
+than erased because transfers diverge. The 45-case problem predates competition;
+only repairing the two new admissions would leave43 old absence failures untouched.
+
+Disposition: all ten controls remain research-only. Preserve adopted defaults.
+Existing score margins, lexical requirements and corpus word presence do not yet
+supply a sufficiently selective answerability signal. The next investigation must
+account for requested task/property/applicability and all returned calls; it must
+not present the already failed assertion-binding prototype as a solved certificate.
+This does not prove that no such improvement is possible, nor authorize a new model,
+RRF, extra cards or a reranker. Exact protocols, candidate configurations, paired
+loss identities, original/v2 scores, all45 case/card audit and calibration freeze:
+`/Users/agent/git/.archives/linn/silence-admission-20261115/`.
+
+
+## Protected competition execution optimization (2026-11-15)
+
+The operator requested a code/SQL audit and implementation of performance fixes,
+explicitly declining new measurements. No latency benchmark or retrieval eval was
+run. The attempted fresh-CLI setup from the preceding request produced no timing
+sample and was abandoned. Existing uncommitted adoption and research work remains
+preserved. Ranking, candidate limits, float arithmetic, thresholds, models, source
+spans, card scheduling and the open confidence gate are unchanged.
+
+Code inspection identifies both a structural cost and avoidable extra work. The
+accepted broad competition makes exact full-matrix vector scoring part of ordinary
+queries that previously could remain lexical. First use also loads the numerical
+matrix. The implementation additionally reran both matchers/FTS/POS preparation,
+sorted the full eligible numeric population, computed unused research fields
+(including repeated linear tier lookups), copied selected vectors and cloned /
+serialized / deserialized complete responses through JSON. No profile was run;
+these are identified work paths, not measured attribution percentages.
+
+Implemented in native source:
+
+- Reuse the exact original query's existing clock/scope-bound coverage snapshots,
+  raw rankings and scoring Arc (IDFs and source pairs). Fall back to the ordinary
+  two matchers when the original snapshot is missing, including rewritten searches.
+  This avoids duplicate indexed FTS/POS work without adding another corpus map.
+- Heapify eligible `(id, cosine)` rows and pop only the required exact score/id
+  prefix in the original64-row header batches. Continue through filters/duplicate
+  records until40 qualify or exhausted. This replaces full O(B log B) numeric
+  sorting with O(B) heap construction plus O(K log B) prefix selection; broad
+  filters may still require K=B. The exact dense matrix multiply remains.
+- Borrow final candidate vector row slices from the already loaded matrix and
+  retain the original individual dot kernel. Do not substitute global matrix
+  scores, change reductions or copy512-float vectors into a transient map.
+- Replace the internal JSON adapter with typed Candidate/Evidence, precompute both
+  scores once per candidate, move the response rather than clone it, and clone
+  only selected cards when the first page actually changes. Remove unused query,
+  model, parse-error, coverage, hard-count, tier and pool-diagnostic fields from
+  this internal execution data. These were not ranking/admission features.
+
+libSQL use was inspected in the implementation and migrations: FTS term lookups
+and count aggregation, source-pair lookup by `(left_key,right_key,block)`, indexed
+header/body/vector reads and lifecycle joins already use the database. Those
+indexed-key paths are retained; no missing general-purpose SQL index was identified
+as the explanation for this cliff. Replacing exact native vector arithmetic with
+SQL cosine or ANN would be a different numerical/retrieval change, not this fix.
+No persistent index, schema, runtime setting or whole-store header map was added.
+
+Compatibility validation: typed selection matches the frozen test-only JSON
+selector on256 deterministic corpus-free fixtures covering source bytes, duplicates,
+unknown alignment, quote rejection, scope, ties and mixed scores. Heap batches
+match a full total_cmp score/id sort including ties/signed zero/infinite/NaN order;
+a store fixture checks40-record selection with duplicates and query filters.
+Built/reopened-store tests compare cached/recomputed complete minimal evidence
+across clocks, expiry and filters, and compare borrowed/copied dot score bits.
+Workspace tests, all-target/all-feature Clippy, formatting, LLP reference checks
+and Nix packaging passed. The final additional dot-bit assertion was run separately
+on the same production implementation. Tests are not a fresh full-suite quality or
+physical-neutral confirmation. No post-refactor percentage speedup is claimed.
+LLP 0002 describes execution and LLP 0005 distinguishes historical timing from
+this unmeasured refactor. All changes remain unstaged and uncommitted.
