@@ -90,7 +90,7 @@ never commit them. Native membership and CLI tests use `mesh_control` and
 `mesh_pairing` instead of `relay_interop`; skip the offline test when running
 against a real domain, since its runner must own and stop the service.
 
-`GET /healthz` returns the relay protocol marker; `/ping` is the Iroh latency
+`GET /health` returns the relay protocol marker; `/ping` is the Iroh latency
 probe. Logs/observability are disabled and packet/authentication bodies must not
 be logged. Relay payloads are end-to-end encrypted between native endpoints.
 

@@ -364,8 +364,13 @@ between objects or build cross-object packet forwarding. This is one Worker
 deployment, not one Worker for each peer or mesh.
 
 The control API is `GET /v1/service`, `POST /v1/events` and `POST /v1/history`.
-The relay upgrade is `/relay`; `/ping` is a latency probe and `/healthz` is a
-minimal health response. The operator bootstrap secret authorizes genesis
+The relay upgrade is `/relay`; `/ping` is a latency probe and `/health` is a
+minimal health response. Health probes require no version header. Control API
+compatibility is carried by the `/v1/` paths and versioned payloads; no separate
+HTTP version header is required. Relay upgrades must offer
+`Sec-WebSocket-Protocol: iroh-relay-v2`; reject missing or unsupported offers
+before opening a socket and echo the selected subprotocol on success.
+The operator bootstrap secret authorizes genesis
 creation. It grants no native store access and cannot substitute for device
 signatures. Existing members and invitation delegations authorize subsequent
 changes. Relay registration requires current mesh membership. Malformed

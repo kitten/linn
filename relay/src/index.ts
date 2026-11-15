@@ -44,8 +44,8 @@ export class RelayCoordinator extends DurableObject<Env> {
       if (path === "/v1/events" && result.ok) this.ctx.waitUntil(this.refreshEnrollment());
       return result;
     }
-    if (request.method === "GET" && (path === "/healthz" || path === "/ping")) {
-      return new Response(path === "/healthz" ? "linn-relay: v1\n" : "", {
+    if (request.method === "GET" && (path === "/health" || path === "/ping")) {
+      return new Response(path === "/health" ? "linn-relay: v1\n" : "", {
         headers: { "cache-control": "no-store" },
       });
     }

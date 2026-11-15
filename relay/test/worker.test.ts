@@ -15,8 +15,16 @@ after(async () => { await runtime?.dispose(); });
 test("relay rejects setup without credentials and does not expose an unversioned socket", async () => {
   assert.equal((await runtime.dispatchFetch("https://local/v1/interop", { method: "PUT", body: "[]" })).status, 404);
   assert.equal((await runtime.dispatchFetch("https://local/relay")).status, 426);
-  const health = await runtime.dispatchFetch("https://local/healthz");
+  const health = await runtime.dispatchFetch("https://local/health");
   assert.equal(health.status, 200);
+  assert.equal(await health.text(), "linn-relay: v1\n");
+  assert.equal(health.headers.get("cache-control"), "no-store");
+  assert.equal((await runtime.dispatchFetch("https://local/healthz")).status, 404);
+  for (const protocol of [undefined, "iroh-relay-v1", "iroh-relay-v20"]) {
+    const headers: Record<string, string> = { upgrade: "websocket" };
+    if (protocol) headers["sec-websocket-protocol"] = protocol;
+    assert.equal((await runtime.dispatchFetch("https://local/relay", { headers })).status, 400);
+  }
 });
 
 test("real Worker authentication, routing, rejection and duplicate-key isolation", async () => {
@@ -31,6 +39,7 @@ test("real Worker authentication, routing, rejection and duplicate-key isolation
       headers: { upgrade: "websocket", "sec-websocket-protocol": "iroh-relay-v2" },
     });
     assert.equal(response.status, 101);
+    assert.equal(response.headers.get("sec-websocket-protocol"), "iroh-relay-v2");
     const socket = response.webSocket!;
     socket.accept();
     const challengeFrame = await next(socket);
