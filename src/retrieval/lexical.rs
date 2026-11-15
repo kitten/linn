@@ -1733,6 +1733,42 @@ impl Store {
         }
         Ok(ids)
     }
+    // @ref LLP 0002#joint-competition-execution
+    pub(super) async fn compete(
+        &mut self,
+        text: &str,
+        ctx: &Context,
+        baseline: Vec<Call>,
+    ) -> Result<Vec<Call>> {
+        let native: HashSet<_> = baseline
+            .first()
+            .into_iter()
+            .flat_map(|c| &c.cards)
+            .map(|c| c.record.clone())
+            .collect();
+        let evidence = self.competition_evidence(text, ctx, baseline).await?;
+        let mut selected = crate::retrieval::competition::apply(evidence);
+        let Some(first) = selected.first_mut() else {
+            return Ok(selected);
+        };
+        let incoming: Vec<_> = first
+            .cards
+            .iter()
+            .filter(|c| !native.contains(&c.record))
+            .map(|c| c.section)
+            .collect();
+        if !incoming.is_empty() {
+            let q = Query::parse(text).map_err(crate::error::Error::Invalid)?;
+            self.load_blocks(incoming.iter().copied()).await?;
+            for card in &mut first.cards {
+                if !native.contains(&card.record) {
+                    *card = self.card(card.section, Some(&q));
+                }
+            }
+            first.text = card_lines(&first.cards, false);
+        }
+        Ok(selected)
+    }
     // @ref LLP 0002#joint-record-competition
     pub(super) async fn competition_evidence(
         &mut self,
@@ -1818,7 +1854,7 @@ impl Store {
         );
         let mut ids: Vec<_> = ids.into_iter().collect();
         ids.sort_unstable();
-        self.load_blocks(ids.iter().copied()).await?;
+        self.load_block_headers(ids.iter().copied()).await?;
         ids.retain(|id| {
             self.record_eligible(&self.rows[id].record) && self.allowed_query(&self.rows[id], &q)
         });
@@ -1867,7 +1903,14 @@ impl Store {
                 crate::error::Error::Invalid("missing selected block vector".into())
             })?;
             result.candidates.push(Candidate {
-                card: self.card(id, Some(&q)),
+                // Only these keys participate in selection. Source text is loaded
+                // for selected new records by compete(), before passage refinement.
+                card: Card {
+                    record: row.record.clone(),
+                    span: [row.start, row.end],
+                    section: id,
+                    ..Card::default()
+                },
                 lexical: scoring.score(row),
                 pos: 0.75 * bonuses.get(&id).copied().unwrap_or(0.),
                 cosine: crate::language::embedding::dot(
@@ -1894,6 +1937,62 @@ impl Store {
 #[cfg(test)]
 mod indexed_tests {
     use super::*;
+    #[tokio::test]
+    async fn deferred_competition_matches_eager_cards_and_loads_only_incoming_bodies() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("deferred.db");
+        let records = (0..64).map(|i| {
+            let mut r = record(&format!("r{i:02}"), &format!("# Alpha\nalpha beta original source {i}\n## Detail\nOther source for record {i}"), "accepted");
+            if i % 2 == 0 { r.kind = "doc".into(); }
+            r
+        }).collect();
+        Store::build(&path, records).await.unwrap();
+        let mut deferred = Store::open(&path).await.unwrap();
+        let mut eager = Store::open(&path).await.unwrap();
+        let ctx = Context::default();
+        for text in [
+            "alpha beta",
+            "distant meaning",
+            "kind:doc alpha beta",
+            "\"alpha beta\"",
+        ] {
+            let (native, _, _) = deferred.base_search(text, &ctx).await.unwrap();
+            let (eager_native, _, _) = eager.base_search(text, &ctx).await.unwrap();
+            let loaded_before = deferred
+                .rows
+                .values()
+                .filter(|b| !b.text.is_empty())
+                .count();
+            let actual = deferred.compete(text, &ctx, native).await.unwrap();
+            let loaded_after = deferred
+                .rows
+                .values()
+                .filter(|b| !b.text.is_empty())
+                .count();
+            assert!(
+                loaded_after <= loaded_before + 5,
+                "discarded candidate bodies loaded for {text}"
+            );
+            let mut evidence = eager
+                .competition_evidence(text, &ctx, eager_native)
+                .await
+                .unwrap();
+            eager
+                .load_blocks(evidence.candidates.iter().map(|c| c.card.section))
+                .await
+                .unwrap();
+            let q = Query::parse(text).unwrap();
+            for c in &mut evidence.candidates {
+                c.card = eager.card(c.card.section, Some(&q));
+            }
+            let expected = crate::retrieval::competition::apply(evidence);
+            assert_eq!(
+                serde_json::to_value(actual).unwrap(),
+                serde_json::to_value(expected).unwrap(),
+                "{text}"
+            );
+        }
+    }
     #[tokio::test]
     async fn competition_reuses_query_snapshot_without_changing_evidence() {
         let dir = tempfile::tempdir().unwrap();

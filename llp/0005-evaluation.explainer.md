@@ -605,3 +605,21 @@ refactored execution path. No fresh benchmark, full retrieval suite or physical
 neutral pass is claimed for this refactor; compatibility tests are not those
 measurements and do not establish a percentage speedup. Exact global vector work
 and cold numerical-matrix reads remain part of the accepted algorithm's cost.
+
+
+### Exact reuse and deferred-read validation
+
+Performance-only reuse and selective reads preserve the accepted search algorithm.
+Corpus-free checks compare memoized vector outputs with direct kernel float bits,
+require matrix-identity and query-bit cache separation, exercise encoding work
+budgets, and verify invalidation on writes and forget. Compare bulk byte decoding
+with portable little-endian decoding, including unaligned inputs and non-finite
+bit patterns. Candidate bodies loaded lazily must produce identical complete calls
+to eager card construction. Batched FTS reads must preserve per-term counts and
+positions across the batch boundary and retain exact vocabulary-index seeks.
+
+These compatibility tests and normal workspace/package checks are not a new
+retrieval evaluation, physical-neutral pass or latency benchmark. Historical
+latency numbers do not quantify this implementation's improvement. One complete
+exact vector scan and its required cold numerical reads remain when no identical
+complete numerical result is available.

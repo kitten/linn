@@ -1724,3 +1724,12 @@ scope change cannot reuse a previous eligibility decision. A different query or
 matrix recomputes the unchanged full matrix-vector kernel. Never cache padded
 candidate-only results as complete numerical results, replace individual dot
 scores with matrix scores, or substitute a form/sentence matrix for block scores.
+
+Joint competition uses metadata-only representative cards internally. Hydrate
+selected incoming cards from their original source spans before the response
+reaches passage selection or presentation; internal selection metadata must never
+escape as an empty source card. This avoids fetching source bytes and compiling
+centered-excerpt matchers for discarded candidates. Original native cards, order,
+strict score margins and later calls retain their existing semantics. libSQL
+continues to provide source bytes by indexed block id; no generated content,
+approximate candidates, new model or new persistent index is introduced.

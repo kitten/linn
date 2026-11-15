@@ -955,7 +955,7 @@ writer index before loading lexical block metadata. Corpus scoring statistics
 remain global; attribution is never lexical evidence.
 
 
-### Exact numerical loading and indexed term reads
+### Exact numerical loading and selective presentation
 
 Global numerical retrieval retains the original complete matrix, row order and
 512-float layout. Decode persisted little-endian float arrays in bulk on a
@@ -964,6 +964,15 @@ Otherwise retain per-float little-endian decoding. Preserve every bit, including
 signed zero and NaN payloads; validate existing blob lengths and matrix dimensions
 before use. This changes neither storage format nor numerical kernels and adds
 no persistent copy of block vectors.
+
+Competition first loads indexed block metadata, FTS frequencies and persisted POS
+witnesses. These provide all scoring, filtering and selection keys without source
+text. Fetch block bodies and construct centered source cards only for selected
+records absent from the original first page, at most five. Keep original cards
+for retained native records. Complete these bodies before record-local passage
+selection or returning a response. Unselected block bodies and previews never
+supply eligibility, statistics or rank evidence. Original byte-span validation
+continues when a selected body is read.
 
 Batch requested FTS vocabulary terms in sorted groups of at most 128. Keep
 `json_each` outside the vocabulary scan with a cross join and constrain the virtual
