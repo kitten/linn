@@ -1,9 +1,8 @@
 English linguistic data used by the POS selector
 -----------------------------------------------------------
-Linn's focused annotation runtime derives from nlprule 0.6.4 (MIT OR
-Apache-2.0) and uses its official English
-0.6.4 tokenizer resource, derived from LanguageTool 5.2. Upstream identifies
-the language binaries as LGPLv2.1; see src/nlp/LICENSE (installed as NLP-LICENSE).
+Linn embeds the official English tokenizer resource distributed by nlprule
+0.6.4, derived from LanguageTool 5.2. Upstream identifies the language binaries
+as LGPLv2.1; see src/nlp/LICENSE (installed as NLP-LICENSE).
 Resource: https://github.com/bminixhofer/nlprule/releases/download/0.6.4/en_tokenizer.bin.gz
 Uncompressed SHA256: e2b51e506aede495268ee05dee0b97956e768107f5bb5891585144a5ff2fd773
 Source and build materials: https://github.com/bminixhofer/nlprule/tree/ebb54617ea5f3378c0dc63486631724b7e97e13c/build
@@ -11,12 +10,7 @@ LanguageTool source: https://github.com/languagetool-org/languagetool/tree/v5.2
 The resource includes dictionary/disambiguation/sentence and OpenNLP linguistic
 components described by the upstream build materials. Its linguistic data are
 unchanged; the build converts their representation for embedded lookup.
-It is not Linn's semantic embedding model. The crate and linguistic data have
-separate licenses.
-The focused runtime in src/nlp contains source derived from nlprule under its
-MIT license; all applicable license texts and references are retained in src/nlp/LICENSE. Linn changes
-asset preparation, dictionary representation, group-span lookup, exclusion
-lookup and ordered rule execution while preserving linguistic outputs.
+This linguistic resource is separate from Linn's semantic embedding model.
 
 The complete Linn Rust source, Cargo.lock, build.rs and flake are the rebuild
 materials for the embedding executable. To rebuild with modified linguistic
