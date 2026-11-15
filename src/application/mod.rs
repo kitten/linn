@@ -2,6 +2,7 @@
 //! @ref LLP 0007#application-boundary
 pub(crate) mod input;
 pub(crate) mod listing;
+mod mesh;
 use crate::{
     error::{Error, Result},
     retrieval::query::Query,
@@ -73,20 +74,9 @@ pub enum Operation {
     List(ListOptions),
     Export(ExportOptions),
     Import,
-    Sync {
-        environment: Vec<(std::ffi::OsString, std::ffi::OsString)>,
-    },
-    SyncHello {
-        version: u32,
-    },
+    Mesh(crate::mesh::pairing::Command),
     Check,
     Rebuild,
-    Pair(crate::storage::sync::Remote),
-    RemoveRemote {
-        name: String,
-    },
-    Remotes,
-    SyncFrame(crate::sync::protocol::Request),
 }
 impl Operation {
     pub(crate) fn takes_input(&self) -> bool {
@@ -94,31 +84,19 @@ impl Operation {
     }
     pub fn mutates(&self) -> bool {
         match self {
+            Self::Mesh(command) => command.mutates(),
             Self::Add(_)
             | Self::Close { .. }
             | Self::Forget { .. }
-            | Self::Sync { .. }
             | Self::Import
-            | Self::Rebuild
-            | Self::Pair(_)
-            | Self::RemoveRemote { .. } => true,
-            Self::SyncFrame(request) => match request {
-                crate::sync::protocol::Request::Apply { .. }
-                | crate::sync::protocol::Request::Finish => true,
-                crate::sync::protocol::Request::Hello { .. }
-                | crate::sync::protocol::Request::Inventory { .. }
-                | crate::sync::protocol::Request::Get { .. }
-                | crate::sync::protocol::Request::Needs { .. } => false,
-            },
+            | Self::Rebuild => true,
             Self::Search { .. }
             | Self::More { .. }
             | Self::Show { .. }
             | Self::Outline { .. }
             | Self::List(_)
             | Self::Export(_)
-            | Self::SyncHello { .. }
-            | Self::Check
-            | Self::Remotes => false,
+            | Self::Check => false,
         }
     }
 }
@@ -155,6 +133,7 @@ pub struct Shown {
 }
 #[derive(Serialize, Deserialize)]
 pub enum Value {
+    Mesh(crate::mesh::pairing::Output),
     Search(SearchPage),
     Show(Shown),
     Outline(Vec<Card>),
@@ -169,11 +148,6 @@ pub enum Value {
     Rebuilt,
     Exported,
     Imported(crate::storage::bundle::Imported),
-    Synced(crate::sync::Counts),
-    Paired(String),
-    Removed(String),
-    Remotes(Vec<crate::storage::sync::Remote>),
-    SyncFrame(crate::sync::protocol::Response),
 }
 pub struct Reply {
     pub value: Value,
@@ -293,19 +267,7 @@ impl Application {
             ..Context::default()
         };
         match op {
-            SyncHello { version } => {
-                if version != 1 {
-                    return Err(Error::Invalid("incompatible sync protocol".into()));
-                }
-                return Ok(
-                    Value::SyncFrame(crate::sync::protocol::Response::Hello { version: 1 }).into(),
-                );
-            }
-            Sync { environment } => {
-                self.store = None;
-                let replica = self.replica().await?;
-                return Ok(Value::Synced(synchronize(replica, Some(&environment)).await?).into());
-            }
+            Mesh(command) => return Ok(Value::Mesh(self.mesh_command(command).await?).into()),
             Import => {
                 self.store = None;
                 let staged = crate::storage::bundle::stage(&mut BufReader::new(
@@ -318,40 +280,6 @@ impl Application {
                     crate::storage::bundle::import_bundle(replica, staged).await?,
                 )
                 .into());
-            }
-            Pair(_) | RemoveRemote { .. } | Remotes | SyncFrame(_) => {
-                if op.mutates() {
-                    self.store = None;
-                }
-                let replica = self.replica().await?;
-                let value = match op {
-                    Pair(remote) => {
-                        if remote.name.is_empty()
-                            || !remote
-                                .name
-                                .bytes()
-                                .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
-                            || remote.scope.as_ref().is_some_and(|s| s.trim().is_empty())
-                        {
-                            return Err(Error::Invalid(
-                                "invalid remote name or empty scope".into(),
-                            ));
-                        }
-                        crate::sync::ssh::Origin::parse(&remote.origin)?;
-                        replica.pair(&remote).await?;
-                        Value::Paired(remote.name)
-                    }
-                    RemoveRemote { name } => {
-                        replica.remove(&name).await?;
-                        Value::Removed(name)
-                    }
-                    Remotes => Value::Remotes(replica.remotes().await?),
-                    SyncFrame(frame) => {
-                        Value::SyncFrame(crate::sync::protocol::handle(replica, frame).await?)
-                    }
-                    _ => unreachable!(),
-                };
-                return Ok(value.into());
             }
             _ => {}
         }
@@ -797,138 +725,4 @@ fn pointer_allowed(store: &Store, p: &crate::storage::Pointer, q: &Query) -> boo
         .record_blocks(&p.record)
         .find(|b| b.start <= p.span[0] && p.span[0] < b.end)
         .is_some_and(|b| store.allowed(b, &q.filters))
-}
-
-/// Network coordination is independent of the store dispatcher and its transport.
-pub async fn synchronize(
-    replica: &impl crate::sync::LocalReplica,
-    environment: Option<&[(std::ffi::OsString, std::ffi::OsString)]>,
-) -> Result<crate::sync::Counts> {
-    crate::sync::run_with_environment(replica, environment).await
-}
-
-#[cfg(test)]
-mod resident_tests {
-    use super::*;
-    use crate::sync::protocol::{Request, Response};
-
-    fn caller() -> Caller {
-        Caller {
-            scope: None,
-            writer: None,
-            diagnostics: crate::diagnostics::Diagnostics {
-                startup: true,
-                ..Default::default()
-            },
-        }
-    }
-    #[tokio::test]
-    async fn readonly_replica_steps_reuse_the_connection_and_preserve_the_warm_store() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("resident.db");
-        let record: Record = serde_json::from_value(json!({
-            "id":"r", "body":"Original publication routing evidence.", "state":"accepted"
-        }))
-        .unwrap();
-        drop(Store::build(&path, vec![record]).await.unwrap());
-        let mut app = Application::new(path);
-        let first = app
-            .execute(
-                Operation::Search {
-                    query: "publication routing".into(),
-                },
-                caller(),
-                None,
-            )
-            .await
-            .unwrap();
-        let Value::Search(first) = first.value else {
-            panic!("expected search")
-        };
-        let expected = serde_json::to_value(first.call).unwrap();
-        for (index, op) in [
-            Operation::Remotes,
-            Operation::SyncFrame(Request::Inventory {
-                tombstones: false,
-                after: None,
-                scope: None,
-            }),
-            Operation::SyncFrame(Request::Get {
-                id: "r".into(),
-                scope: None,
-            }),
-            Operation::SyncFrame(Request::Needs { entries: vec![] }),
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            let reply = app.execute(op, caller(), None).await.unwrap();
-            assert_eq!(
-                reply.warnings.iter().any(|s| s.contains("replica-open")),
-                index == 0
-            );
-            let reply = app
-                .execute(
-                    Operation::Search {
-                        query: "publication routing".into(),
-                    },
-                    caller(),
-                    None,
-                )
-                .await
-                .unwrap();
-            assert!(!reply.warnings.iter().any(|s| s.contains("store-open")));
-            let Value::Search(page) = reply.value else {
-                panic!("expected search")
-            };
-            assert_eq!(serde_json::to_value(page.call).unwrap(), expected);
-        }
-        let tombstone = crate::storage::sync::Item {
-            id: "r".into(),
-            envelope: None,
-            envelope_hash: None,
-            body_hash: None,
-        };
-        let reply = app
-            .execute(
-                Operation::SyncFrame(Request::Apply {
-                    item: tombstone,
-                    scope: None,
-                }),
-                caller(),
-                None,
-            )
-            .await
-            .unwrap();
-        assert!(matches!(
-            reply.value,
-            Value::SyncFrame(Response::Applied { changed: true })
-        ));
-        app.execute(Operation::SyncFrame(Request::Finish), caller(), None)
-            .await
-            .unwrap();
-        let reply = app
-            .execute(
-                Operation::Search {
-                    query: "publication routing".into(),
-                },
-                caller(),
-                None,
-            )
-            .await
-            .unwrap();
-        assert!(reply.warnings.iter().any(|s| s.contains("store-open")));
-        assert!(
-            app.execute(
-                Operation::Show {
-                    reference: "r".into(),
-                    all: true
-                },
-                caller(),
-                None
-            )
-            .await
-            .is_err()
-        );
-    }
 }

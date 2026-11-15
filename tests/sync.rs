@@ -1,20 +1,9 @@
-use linn::{
-    storage::{
-        Store,
-        record::hash,
-        sync::{Entry, Item, Remote, Replica},
-    },
-    sync::{
-        self,
-        protocol::{self, Request, Response},
-        ssh::Origin,
-    },
+use linn::storage::{
+    Store,
+    record::hash,
+    sync::{Item, Replica},
 };
-use std::{
-    io::{BufReader, Cursor},
-    path::Path,
-    process::{Child, Command, Stdio},
-};
+use std::path::Path;
 fn item(id: &str, body: &str, scope: &str) -> Item {
     // Deliberately noncanonical whitespace and an unknown field must survive.
     let envelope = format!(
@@ -38,41 +27,37 @@ fn tombstone(id: &str) -> Item {
         body_hash: None,
     }
 }
-fn remote() -> Remote {
-    Remote {
-        name: "peer".into(),
-        origin: "ssh://peer".into(),
-        scope: None,
+async fn merge(source: &Replica, target: &Replica, scope: Option<&str>) -> usize {
+    let mut count = 0;
+    for tombstones in [true, false] {
+        let mut after = None;
+        loop {
+            let entries = source
+                .inventory(tombstones, after.as_deref(), scope)
+                .await
+                .unwrap();
+            if entries.is_empty() {
+                break;
+            }
+            after = entries.last().map(|e| e.id.clone());
+            for entry in entries {
+                if target.needs(&entry).await.unwrap() {
+                    let item = source.get(&entry.id, scope).await.unwrap().unwrap();
+                    count += usize::from(target.apply(&item, scope).await.unwrap());
+                }
+            }
+        }
     }
+    count
 }
-fn server(path: &Path) -> Child {
-    Command::new(env!("CARGO_BIN_EXE_linn"))
-        .arg("--store")
-        .arg(path)
-        .args(["sync:serve", "--stdio"])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap()
+async fn pull(local: &Replica, path: &Path, scope: Option<&str>) -> usize {
+    merge(&Replica::open(path).await.unwrap(), local, scope).await
 }
-async fn pull(local: &Replica, path: &Path, r: &Remote) -> usize {
-    let mut child = server(path);
-    let mut w = child.stdin.take().unwrap();
-    let mut reader = BufReader::new(child.stdout.take().unwrap());
-    let n = sync::pull(local, r, &mut reader, &mut w).await.unwrap();
-    drop(w);
-    assert!(child.wait().unwrap().success());
-    n
-}
-async fn push(local: &Replica, path: &Path, r: &Remote) -> usize {
-    let mut child = server(path);
-    let mut w = child.stdin.take().unwrap();
-    let mut reader = BufReader::new(child.stdout.take().unwrap());
-    let n = sync::push(local, r, &mut reader, &mut w).await.unwrap();
-    drop(w);
-    assert!(child.wait().unwrap().success());
-    n
+async fn push(local: &Replica, path: &Path, scope: Option<&str>) -> usize {
+    let target = Replica::open(path).await.unwrap();
+    let count = merge(local, &target, scope).await;
+    target.finish().await.unwrap();
+    count
 }
 #[tokio::test]
 async fn immutable_merge_conflicts_deletion_and_recovery() {
@@ -125,7 +110,7 @@ async fn immutable_merge_conflicts_deletion_and_recovery() {
     );
 }
 #[tokio::test]
-async fn three_replicas_pull_all_then_push_converge_and_retry_without_transfer() {
+async fn three_replica_item_merges_converge_and_retry_without_changes() {
     let dir = tempfile::tempdir().unwrap();
     let a = dir.path().join("a.db");
     let b = dir.path().join("b.db");
@@ -143,21 +128,20 @@ async fn three_replicas_pull_all_then_push_converge_and_retry_without_transfer()
             .unwrap();
     }
     peer_c.apply(&tombstone("gone"), None).await.unwrap();
-    let r = remote();
-    assert_eq!(pull(&local, &b, &r).await, 1);
-    assert_eq!(pull(&local, &c, &r).await, 2);
+    assert_eq!(pull(&local, &b, None).await, 1);
+    assert_eq!(pull(&local, &c, None).await, 2);
     local.finish().await.unwrap();
-    assert_eq!(push(&local, &b, &r).await, 3);
-    assert_eq!(push(&local, &c, &r).await, 2);
+    assert_eq!(push(&local, &b, None).await, 3);
+    assert_eq!(push(&local, &c, None).await, 2);
     for replica in [&local, &peer_b, &peer_c] {
         assert_eq!(replica.inventory(false, None, None).await.unwrap().len(), 3);
         assert_eq!(replica.inventory(true, None, None).await.unwrap().len(), 1);
     }
-    assert_eq!(pull(&local, &b, &r).await, 0);
-    assert_eq!(push(&local, &c, &r).await, 0);
+    assert_eq!(pull(&local, &b, None).await, 0);
+    assert_eq!(push(&local, &c, None).await, 0);
 }
 #[tokio::test]
-async fn scoped_sync_never_transfers_unselected_bodies_and_configuration_is_local() {
+async fn scoped_selection_never_transfers_unselected_bodies() {
     let dir = tempfile::tempdir().unwrap();
     let a = dir.path().join("a.db");
     let b = dir.path().join("b.db");
@@ -169,75 +153,17 @@ async fn scoped_sync_never_transfers_unselected_bodies_and_configuration_is_loca
     peer.apply(&item("private", "Other private project", "other"), None)
         .await
         .unwrap();
-    peer.pair(&remote()).await.unwrap();
-    let mut r = remote();
-    r.scope = Some("org/repo".into());
-    assert_eq!(pull(&local, &b, &r).await, 1);
+    let scope = Some("org/repo");
+    assert_eq!(pull(&local, &b, scope).await, 1);
     local.finish().await.unwrap();
     assert!(local.get("private", None).await.unwrap().is_none());
-    assert!(local.remotes().await.unwrap().is_empty());
     assert!(
         local
-            .apply(
-                &item("outside", "Out of scope", "other"),
-                r.scope.as_deref()
-            )
+            .apply(&item("outside", "Out of scope", "other"), scope)
             .await
             .is_err()
     );
-    assert_eq!(push(&local, &b, &r).await, 0);
-}
-#[test]
-fn origin_is_strict_and_remote_path_is_quoted() {
-    for invalid in [
-        "host:path",
-        "https://host",
-        "ssh://-x",
-        "ssh://user:password@host",
-        "ssh://host:0",
-        "ssh://host:99999",
-        "ssh://host?query",
-        "ssh://host/%20",
-        "ssh://host\ncommand",
-    ] {
-        assert!(Origin::parse(invalid).is_err(), "{invalid}");
-    }
-    let origin = Origin::parse("ssh://user@[::1]:2222/dir/it's $(touch nope).db").unwrap();
-    assert_eq!(origin.destination, "ssh://user@[::1]:2222");
-    assert_eq!(
-        origin.remote_command(),
-        "linn --store '/dir/it'\\''s $(touch nope).db' sync:serve --stdio"
-    );
-    assert_eq!(
-        Origin::parse("ssh://alias").unwrap().remote_command(),
-        "linn sync:serve --stdio"
-    );
-}
-#[test]
-fn protocol_limits_truncation_and_incompatible_version() {
-    assert!(protocol::read::<Request>(&mut Cursor::new(b"{}")).is_err());
-    assert!(
-        protocol::read::<Request>(&mut Cursor::new(vec![b'x'; protocol::MAX_FRAME + 1])).is_err()
-    );
-    let mut stream = Vec::new();
-    protocol::write(&mut stream, &Response::Hello { version: 999 }).unwrap();
-    assert!(protocol::handshake(&mut Cursor::new(stream), &mut Vec::new()).is_err());
-    let mut frame = Vec::new();
-    protocol::write(
-        &mut frame,
-        &Entry {
-            id: "one".into(),
-            hash: None,
-        },
-    )
-    .unwrap();
-    assert_eq!(
-        protocol::read::<Entry>(&mut Cursor::new(frame))
-            .unwrap()
-            .unwrap()
-            .id,
-        "one"
-    );
+    assert_eq!(push(&local, &b, scope).await, 0);
 }
 
 #[tokio::test]
@@ -293,227 +219,6 @@ async fn inventories_are_keyset_paged_and_references_survive_sync() {
             .unwrap(),
         "writer@example.org"
     );
-}
-
-#[tokio::test]
-async fn daemon_orchestrates_all_pulls_before_pushes_and_stops_on_failed_pull() {
-    use std::os::unix::fs::PermissionsExt;
-    let dir = tempfile::tempdir().unwrap();
-    let a = dir.path().join("a.db");
-    let b = dir.path().join("b quoted's.db");
-    let c = dir.path().join("c.db");
-    for (path, id) in [(&b, "from-b"), (&c, "from-c")] {
-        let replica = Replica::open(path).await.unwrap();
-        replica
-            .apply(&item(id, "Original scoped content.", "repo"), None)
-            .await
-            .unwrap();
-    }
-    let executable = Path::new(env!("CARGO_BIN_EXE_linn"));
-    let fake = dir.path().join("ssh");
-    std::fs::write(&fake,r#"#!/bin/sh
-printf '%s\n' "$PPID" >> "$SYNC_TEST_PARENTS"
-for arg do
-  case "$arg" in
-    ssh://*) printf '%s\n' "$arg" >> "$SYNC_TEST_LOG"; case "$arg" in ssh://fail*) exit 255;; esac ;;
-  esac
-  last="$arg"
-done
-exec /bin/sh -c "$last"
-"#).unwrap();
-    std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o700)).unwrap();
-    let log = dir.path().join("ssh.log");
-    let parents = dir.path().join("ssh.parents");
-    let paths = std::env::join_paths(
-        [
-            dir.path().to_owned(),
-            executable.parent().unwrap().to_owned(),
-        ]
-        .into_iter()
-        .chain(std::env::split_paths(
-            &std::env::var_os("PATH").unwrap_or_default(),
-        )),
-    )
-    .unwrap();
-    let cli = |args: &[&str]| {
-        Command::new(executable)
-            .arg("--store")
-            .arg(&a)
-            .args(args)
-            .env("PATH", &paths)
-            .env("SYNC_TEST_LOG", &log)
-            .env("SYNC_TEST_PARENTS", &parents)
-            .output()
-            .unwrap()
-    };
-    for (name, path) in [("b", &b), ("c", &c)] {
-        let origin = format!("ssh://peer{}", path.display());
-        assert!(
-            cli(&["sync:remote", "pair", name, &origin])
-                .status
-                .success()
-        );
-    }
-    let output = cli(&["sync", "--json"]);
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let counts: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(counts["pulled"], 2);
-    assert_eq!(counts["pushed"], 2);
-    let calls = std::fs::read_to_string(&log).unwrap();
-    assert_eq!(calls.lines().count(), 4);
-    let state: serde_json::Value =
-        serde_json::from_slice(&cli(&["daemon:status", "--json"]).stdout).unwrap();
-    let daemon_pid = state["pid"].as_u64().unwrap().to_string();
-    let ssh_parents = std::fs::read_to_string(&parents).unwrap();
-    assert_eq!(ssh_parents.lines().count(), 4);
-    assert!(
-        ssh_parents.lines().all(|pid| pid == daemon_pid),
-        "SSH must be spawned by the daemon, not by its CLI client"
-    );
-    for path in [&a, &b, &c] {
-        assert_eq!(
-            Replica::open(path)
-                .await
-                .unwrap()
-                .inventory(false, None, None)
-                .await
-                .unwrap()
-                .len(),
-            2
-        );
-    }
-    // A failed pull must prevent even a single push to a healthy peer.
-    assert!(
-        cli(&["sync:remote", "pair", "z-failure", "ssh://fail"])
-            .status
-            .success()
-    );
-    let peer = Replica::open(&b).await.unwrap();
-    peer.apply(
-        &item("late", "New bytes before a failed pull.", "repo"),
-        None,
-    )
-    .await
-    .unwrap();
-    std::fs::write(&log, "").unwrap();
-    let failed = cli(&["sync"]);
-    assert!(!failed.status.success());
-    assert!(String::from_utf8_lossy(&failed.stderr).contains("pull from z-failure failed"));
-    Store::open(&a).await.unwrap().integrity().await.unwrap();
-    assert!(
-        Replica::open(&a)
-            .await
-            .unwrap()
-            .get("late", None)
-            .await
-            .unwrap()
-            .is_some()
-    );
-    assert!(
-        Replica::open(&c)
-            .await
-            .unwrap()
-            .get("late", None)
-            .await
-            .unwrap()
-            .is_none()
-    );
-    assert_eq!(std::fs::read_to_string(&log).unwrap().lines().count(), 3);
-    assert!(
-        cli(&["sync:remote", "remove", "z-failure"])
-            .status
-            .success()
-    );
-    assert!(
-        !cli(&["sync:remote", "pair", "b", "ssh://other"])
-            .status
-            .success()
-    );
-    let output = cli(&["sync:remote", "list", "--json"]);
-    assert_eq!(
-        serde_json::from_slice::<serde_json::Value>(&output.stdout).unwrap()["remotes"]
-            .as_array()
-            .unwrap()
-            .len(),
-        2
-    );
-
-    // Self-sync and overlapping coordinators must never occupy the store lane
-    // while their remote stdio clients request work from that same lane.
-    let self_origin = format!("ssh://peer{}", a.display());
-    assert!(
-        cli(&["sync:remote", "pair", "self", &self_origin])
-            .status
-            .success()
-    );
-    assert!(cli(&["sync"]).status.success());
-    std::thread::scope(|scope| {
-        let clients: Vec<_> = (0..2)
-            .map(|_| scope.spawn(|| cli(&["sync", "--json"])))
-            .collect();
-        for client in clients {
-            let output = client.join().unwrap();
-            assert!(
-                output.status.success(),
-                "{}",
-                String::from_utf8_lossy(&output.stderr)
-            );
-            let counts: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-            assert_eq!(counts["pulled"], 0);
-            assert_eq!(counts["pushed"], 0);
-        }
-    });
-}
-
-#[tokio::test]
-async fn stdio_interruption_is_durable_and_sync_without_peers_recovers() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("interrupted.db");
-    let mut child = server(&path);
-    let mut writer = child.stdin.take().unwrap();
-    let mut reader = BufReader::new(child.stdout.take().unwrap());
-    protocol::handshake(&mut reader, &mut writer).unwrap();
-    assert!(matches!(
-        protocol::exchange(
-            &mut reader,
-            &mut writer,
-            &Request::Apply {
-                item: item("one", "Remember this resolver detail.", "repo"),
-                scope: None
-            }
-        )
-        .unwrap(),
-        Response::Applied { changed: true }
-    ));
-    drop(writer);
-    assert!(child.wait().unwrap().success());
-    assert!(Store::open(&path).await.is_err());
-    let output = Command::new(env!("CARGO_BIN_EXE_linn"))
-        .arg("--store")
-        .arg(&path)
-        .args(["sync", "--json"])
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Store::open(&path).await.unwrap().integrity().await.unwrap();
-    let replica = Replica::open(&path).await.unwrap();
-    assert!(replica.get("one", None).await.unwrap().is_some());
-    let mut child = server(&path);
-    let mut writer = child.stdin.take().unwrap();
-    let mut reader = BufReader::new(child.stdout.take().unwrap());
-    assert!(
-        protocol::exchange(&mut reader, &mut writer, &Request::Hello { version: 999 }).is_err()
-    );
-    drop(writer);
-    assert!(!child.wait().unwrap().success());
 }
 
 #[tokio::test]

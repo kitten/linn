@@ -1,4 +1,4 @@
-//! Local RPC schema; independent of CLI parsing and SSH framing.
+//! Local RPC schema; independent of CLI parsing and peer framing.
 //! @ref LLP 0007#local-protocol-and-ownership
 use super::platform;
 use crate::{
@@ -10,7 +10,7 @@ use std::path::PathBuf;
 // Keep lifecycle framing stable across application compatibility changes.
 pub(super) const VERSION: u32 = 1;
 // @ref LLP 0007#automatic-detached-lifecycle
-pub(super) const COMPATIBILITY: u32 = 2;
+pub(super) const COMPATIBILITY: u32 = 3;
 #[derive(Serialize, Deserialize)]
 pub(super) struct Hello {
     pub version: u32,
@@ -40,9 +40,37 @@ pub(super) struct ReplyEnvelope {
     pub output: bool,
 }
 impl Invocation {
+    pub fn validate_progress(&self, progress: &crate::mesh::status::Progress) -> Result<()> {
+        use crate::mesh::{pairing::Command, status::Progress};
+        let valid = matches!(
+            (&self.operation, progress),
+            (
+                Operation::Mesh(Command::Pair {
+                    initial_sync: true,
+                    invitation: Some(_),
+                    ..
+                }),
+                _
+            ) | (Operation::Mesh(Command::Sync), Progress::Sync(_))
+        );
+        let valid = valid
+            && match progress {
+                Progress::Admitted(status) => status.is_admitted(),
+                Progress::Sync(job) => {
+                    job.id == job.report.run
+                        && crate::mesh::membership::unhex::<32>(&job.id).is_ok()
+                }
+            };
+        if valid {
+            Ok(())
+        } else {
+            Err(Error::Invalid("unexpected operation progress".into()))
+        }
+    }
     pub fn validate_reply(&self, reply: &ReplyEnvelope) -> Result<()> {
         use Operation::*;
         let valid = match &self.operation {
+            Mesh(command) => matches!(&reply.value, Value::Mesh(output) if command.accepts(output)),
             Search { .. } | More { .. } => matches!(reply.value, Value::Search(_)),
             Show { .. } => matches!(reply.value, Value::Show(_)),
             Outline { .. } => matches!(reply.value, Value::Outline(_) | Value::OutlineNotCurrent),
@@ -51,17 +79,8 @@ impl Invocation {
             List(_) => matches!(reply.value, Value::List { .. }),
             Export(_) => matches!(reply.value, Value::Exported),
             Import => matches!(reply.value, Value::Imported(_)),
-            Sync { .. } => matches!(reply.value, Value::Synced(_)),
-            SyncHello { version } => matches!(&reply.value,
-                Value::SyncFrame(crate::sync::protocol::Response::Hello { version: actual }) if actual == version),
-            SyncFrame(request) => {
-                matches!(&reply.value, Value::SyncFrame(response) if sync_reply_matches(request, response))
-            }
             Check => matches!(reply.value, Value::Checked),
             Rebuild => matches!(reply.value, Value::Rebuilt),
-            Pair(_) => matches!(reply.value, Value::Paired(_)),
-            RemoveRemote { .. } => matches!(reply.value, Value::Removed(_)),
-            Remotes => matches!(reply.value, Value::Remotes(_)),
         };
         if !valid || reply.output != matches!(self.operation, Export(_)) {
             return Err(Error::Invalid(
@@ -69,22 +88,6 @@ impl Invocation {
             ));
         }
         Ok(())
-    }
-}
-fn sync_reply_matches(
-    request: &crate::sync::protocol::Request,
-    response: &crate::sync::protocol::Response,
-) -> bool {
-    use crate::sync::protocol::{Request, Response};
-    match request {
-        Request::Hello { version } => {
-            matches!(response, Response::Hello { version: actual } if actual == version)
-        }
-        Request::Inventory { .. } => matches!(response, Response::Entries { .. }),
-        Request::Get { .. } => matches!(response, Response::Item { .. }),
-        Request::Needs { .. } => matches!(response, Response::Needed { .. }),
-        Request::Apply { .. } => matches!(response, Response::Applied { .. }),
-        Request::Finish => matches!(response, Response::Done),
     }
 }
 #[derive(Serialize, Deserialize)]
@@ -114,6 +117,7 @@ pub(super) enum Frame {
         id: u64,
     },
     Failure(crate::error::ApplicationError),
+    Progress(crate::mesh::status::Progress),
     Status,
     Stop,
     State(DaemonState),

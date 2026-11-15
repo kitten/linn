@@ -15,7 +15,7 @@ and store-location settings do not select alternative ingestion behavior.
 
 Original bodies and complete serialized envelopes are immutable. Rebuild inserts
 new records but does not delete and reserialize existing envelopes; their exact
-bytes and hashes survive rebuild and sync (LLP 0006). Before generating index
+bytes and hashes survive rebuild and sync (LLP 0008). Before generating index
 rows, rebuild compares resident records with the known fields of persisted
 envelopes and rejects conflicting content or metadata under an existing ID.
 Persisted originals remain authoritative; unknown envelope fields and original
@@ -453,7 +453,7 @@ load the per-block map.
 ## Native persistence
 
 Under LLP 0007, the daemon exclusively opens and closes Store and Replica handles
-for CLI requests, including creating a missing database and executing SSH sync.
+for CLI requests, including creating a missing database and executing replica steps.
 The client resolves routing and transports bytes; it never opens a database file.
 Import validation precedes daemon-side destination creation. Direct library and
 evaluation callers retain the explicit storage API.
@@ -484,9 +484,16 @@ forget then publishes surviving derived state without re-encoding block vectors.
 SQLite `PRAGMA user_version` is the authoritative SQL schema version. Version 0
 means an uninitialized store; version 1 is the original schema, version 2 adds
 the writer column, and version 3 consolidates the formerly unversioned structural
-and catalog DDL. Version 4 adds local sync configuration and publication state
-(LLP 0006). Version 5 adds writer-prefixed creation and expiry indexes on
-original records. The legacy `metadata.version` identifies the original format,
+and catalog DDL. Version 4 introduced remote configuration and the retained
+publication state. Version 5 adds writer-prefixed creation and expiry indexes on
+original records. Version 6 adds account-private mesh identity and control tables
+without enrolling an existing store or changing original-data exports. Version 7
+removes remote configuration under LLP 0008; it preserves publication state and
+original-scope metadata. Version 8 compacts derived membership caches to current
+heads and indexes representative-root history without changing signed receipts.
+Version 9 removes the unused reserved hint table; discovered addresses live only
+in memory.
+The legacy `metadata.version` identifies the original format,
 not migration progress.
 
 Every future SQL schema change must have a numbered forward migration. On open,
@@ -505,7 +512,7 @@ advertised in LLP 0007's local application handshake. Existing connections must
 check exact `user_version` inside each product read snapshot and before persistent
 SQL in every write transaction, after acquiring its write lock. A check before
 BEGIN alone cannot fence a writer waiting behind a migration. Guard startup
-model/structure publication and remote configuration as well as original-data
+model/structure publication and mesh control updates as well as original-data
 writes. Reject a changed version with a typed schema error; never let a resident
 old handle downgrade or rebuild newer storage. An already-pinned old read may
 finish against its old snapshot; SQLite prevents it from upgrading to a write

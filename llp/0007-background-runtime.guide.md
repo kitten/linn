@@ -3,35 +3,40 @@
 **Type:** Guide\
 **Status:** Active\
 **Systems:** API, CLI, Runtime, Store, Sync\
-**Related:** LLP 0000, LLP 0001, LLP 0002, LLP 0004, LLP 0005, LLP 0006
+**Related:** LLP 0000, LLP 0001, LLP 0002, LLP 0004, LLP 0005, LLP 0008
 
 ## Intent and status
 
-Introduce an automatically started, detached local Linn process to retain
-initialized models and reusable store resources across CLI invocations. Use this
-change to establish a typed application API shared by the CLI, runtime and
-library callers. Keep one native Rust product binary and local-file libSQL as
+An automatically started, detached local Linn process retains initialized
+models and reusable store resources across CLI invocations. The CLI, runtime and
+library callers share a typed application API. Keep one native Rust product binary and local-file libSQL as
 the only persistent store.
 
 The Unix implementation follows this contract. Native Windows delivery is
 specified separately below and remains unimplemented; no Windows support is
-claimed. The active LLP 0000/0004/0006 boundaries include this local daemon.
+claimed. LLP 0000 and LLP 0004 include this local daemon; LLP 0008 owns replication
+and mesh synchronization.
 There is no foreground `linn serve` command, manual startup requirement or
 supervisor configuration to install.
 
-Background synchronization is a future consumer of the application API, not
-part of this first implementation. Reads and writes continue to cause no SSH
-traffic. Retrieval algorithms, arithmetic, thresholds, card order, original-text
+Mesh synchronization extends this runtime under LLP 0008. The owner maintains
+passive peer transport and schedules no automatic record exchange.
+Mesh synchronization uses explicit `linn sync` jobs and `linn sync:pair`
+enrollment. Owners may maintain passive transport readiness and serve those jobs;
+local writes, timers and reconnects do not start record synchronization.
+Pairing succeeds after verified admission is stored locally; passive transport
+startup is scheduled independently and cannot turn that admission into an error.
+It waits for neither peer acknowledgements nor a sync job (LLP 0008).
+Automatic record propagation is not enabled. Retrieval algorithms, arithmetic, thresholds, card order, original-text
 ingest and accepted model identities remain unchanged under LLP 0001, LLP 0002
-and LLP 0005. This work does not reopen closed retrieval studies.
+and LLP 0005. Runtime changes do not reopen closed retrieval studies.
 
 ## Application boundary
 
-Extract application operations from [CLI execution](../src/cli/mod.rs),
+The library application layer owns reference resolution, cursors, lifecycle
+clocks, input provenance and partial-commit errors. [CLI execution](../src/cli/mod.rs),
 [bundles](../src/cli/bundle.rs), [listing](../src/cli/listing.rs) and
-[sync commands](../src/cli/sync.rs) into a library application layer. Inventory
-all commands before extraction, including reference resolution, cursors,
-lifecycle clocks, input provenance and partial-commit errors.
+[mesh commands](../src/cli/mesh.rs) prepare typed requests and present results.
 
 The application layer accepts typed requests and explicit caller context, and
 returns typed results or errors. It owns operation semantics and uses storage,
@@ -60,10 +65,24 @@ moving them to a resident process would require recreating caller cwd/environmen
 semantics. Never mutate process-global Git search paths or environment to do so.
 Store/config paths, local input/output I/O and presentation remain client tasks.
 
-The [shared reference encoder](../src/reference.rs) constructs canonical fetch identifiers
-for cards and pointers. Search references retain the 12-character hash prefix
-and exact byte spans. CLI adapters render these identifiers without rebuilding
-their syntax.
+Mesh request validation is shared application behavior: check credential content
+and size, IDs and incompatible pairing modes before store/network mutation,
+including requests from non-CLI callers. The CLI owns descriptor/privacy checks
+for bootstrap files; it sends validated bytes rather than a file path.
+
+The daemon allocates sync run IDs and sends typed admission/progress events on
+the existing request connection. Use a two-event queue, dropping intermediate
+sync snapshots when full; admission is queued before snapshots and drained before
+the final result. Event writes have the ordinary response deadline. A slow or
+closed client cannot create an unbounded queue or block the store lane on progress.
+Clients render events and do not poll status to follow their own command.
+Mesh metadata replies drain outside the store lane, retaining bounded delivery
+waits for shutdown. Original-data replies and peer chunks retain their existing
+serialized delivery barriers.
+
+The [shared reference encoder](../src/reference.rs) constructs canonical fetch identifiers for cards and pointers;
+search references retain the 12-character hash prefix and exact byte spans.
+CLI adapters render these identifiers without reconstructing their syntax.
 
 Results carry data, not preformatted terminal text. Text and JSON adapters
 preserve existing output, diagnostics and exit codes. Structured errors retain
@@ -101,7 +120,7 @@ Do not use daemonizable: its same-binary double-fork and typed parent/child chan
 are Unix-only, and its documented descriptor/macOS caveats do not eliminate
 Linn's reconnectable listener and platform adapter requirements. Do not use
 running-process or processkit: their detached spawn APIs abstract Windows flags
-and stdio, but their documented Unix contracts use setsid without this plan's
+and stdio, but their documented Unix contracts use setsid without Linn's
 second-fork guarantee, and neither supplies Linn's ownership/readiness contract.
 A general process-management framework adds surface without removing that work.
 
@@ -127,12 +146,12 @@ Use windows-sys for account-restricted creation and validation of directories,
 lock files and store files. Pipe security descriptors do not secure those files.
 
 These dependencies cover mechanisms, not application ownership, publication,
-mutation retry or SSH-shell semantics. Those remain explicit Linn decisions below.
+mutation retry or peer authorization. Those remain explicit Linn decisions below.
 
 ## Local protocol and ownership
 
 Use pathname Unix-domain sockets on Unix and local named pipes on Windows; no
-TCP listener. Keep this protocol separate from LLP 0006's SSH protocol. Encode
+TCP listener. Keep local IPC separate from the peer protocol in LLP 0008. Encode
 versioned typed request/reply envelopes as length-prefixed JSON, with a 32-bit
 big-endian length and a maximum 16 MiB frame. Each connection carries one operation with request ID 1. Transfer invocation and
 reply JSON and large inputs/outputs as bounded chunks with explicit completion,
@@ -153,7 +172,7 @@ Only Add/Import carry input bytes; ordinary queries, controls and internal repli
 steps pass no input handle and create no empty temporary input files.
 
 Keep the local schema in [runtime protocol](../src/runtime/protocol.rs), separate
-from byte framing and from the SSH schema. A connection progresses through
+from byte framing and from the peer exchange schema. A connection progresses through
 Hello/Accepted, Invoke(1), streamed Invocation JSON, streamed input bytes, then
 Reply(1) with streamed reply JSON and optional output, or a typed Failure.
 Each stream ends explicitly with End. Unexpected frames, IDs, malformed JSON,
@@ -207,9 +226,8 @@ sidecars, like SQLite's own lock/journal sidecars, not another persistent store.
 They contain no originals, embeddings or corpus indexes. Keep sockets elsewhere
 as specified below. Do not apply cache/temp cleanup to the ownership directory.
 
-This supersedes the account-home anchor selected during planning: native Nix
-sandbox tests cannot write to the passwd account home, and service accounts can
-lack a writable home entirely. The canonical store parent is already the required
+Native Nix sandbox tests cannot write to the passwd account home, and service
+accounts can lack a writable home entirely. The canonical store parent is already the required
 location for writable SQLite sidecars. Store-local ownership remains independent
 of HOME, XDG_RUNTIME_DIR and executable version, and different stores remain
 isolated without global writable account state. Reject hard-linked stores: SQLite
@@ -224,7 +242,7 @@ account-restricted DACL on Windows. Directories use mode 0700 or the correspondi
 Windows ACL. Open without following symlinks/reparse points and validate opened
 handles. Never unlink or replace lock files during normal cleanup. Unlocked files
 are reusable, regardless of recorded PID. Daemon ownership lasts until its handle
-closes; do not inherit it into SSH subprocesses.
+closes; do not inherit it into child processes.
 
 Before a daemon has bound a physical database file, hold the parent ownership
 directory's shared `create.lock` around routing validation and the first
@@ -398,13 +416,9 @@ with these fixed requirements:
   native file identity checks for drive casing, junctions, symlinks and
   extended-length paths. Unicode and space-containing paths remain supported;
   unsafe runtime reparse points fail rather than being followed.
-- Discover the OpenSSH executable and invoke it directly with argument arrays.
-  Git provenance uses bundled git2; there is no Git CLI runtime dependency.
-  Windows clients may sync to Unix SSH destinations using the existing
-  [POSIX remote command](../src/sync/ssh.rs). Native Windows SSH destinations
-  are outside this delivery: the current shell-quoting contract does not support
-  their default shells. Document this restriction; do not guess a remote shell
-  or change LLP 0006's wire format to hide it.
+- Git provenance uses bundled git2; there is no Git CLI runtime dependency.
+  Peer transport is governed by LLP 0008. Do not add an OpenSSH installation or
+  remote-shell requirement to native Windows delivery.
 - Add native Windows MSVC build/test/release coverage beside the existing
   [CI](../.github/workflows/ci.yml) and
   [release workflow](../.github/workflows/release.yml). Package the same embedded
@@ -417,7 +431,7 @@ with these fixed requirements:
 
 Cross-compilation or crate platform support alone does not satisfy these release
 requirements. No foreground server workflow, administrator rights, service
-installation or Windows SSH destination support is required for local Windows use.
+installation is required for local Windows use.
 
 ## Concurrency and scheduling
 
@@ -438,10 +452,10 @@ this is scheduling isolation, not a hard real-time responsiveness guarantee.
 | Work | Current concurrency decision |
 |---|---|
 | Different stores | Independent owners and dispatchers; may execute in parallel. |
-| Handshakes, input transfer, status | Overlap store execution within the connection/admission bounds. Status never touches the database. |
+| Handshakes, input transfer, daemon lifecycle status | Overlap store execution within connection/admission bounds. Lifecycle status does not touch the database. |
 | Search and search:more | One at a time per store, including other reads. They mutate query clocks, candidate caches and temporary SQL workspaces. |
 | Show, outline, list and export | Execute in the same serialized store lane. Complete original-data response transmission before the next store operation. |
-| Add, close, forget, import, rebuild and remote configuration | Exclusive store execution through publication and response completion. No partially executed mutation is replayed. |
+| Add, close, forget, import and rebuild | Exclusive store execution through publication and response completion. No partially executed mutation is replayed. |
 | Integrity check | Serialized; its implementation takes an immediate transaction, so a nonmutating API label does not make it a parallel reader. |
 | Sync | Network workers may overlap each other and ordinary requests. Each local replica step is serialized. A whole exchange is not one atomic store transaction. |
 | Stop | Stops admission, drains accepted store work and network workers, then closes handles and releases ownership. |
@@ -456,25 +470,27 @@ between a sync apply and finish; they must not observe partial derived state.
 
 The response-delivery acknowledgement belongs to the transport task. That task
 has one 30-second response-write timeout and resolves or drops its acknowledgement
-only after the response future finishes or is cancelled. The dispatcher waits
-for that acknowledgement without a second competing timer: otherwise its timer
+only after the response future finishes or is cancelled. For ordinary application
+replies the dispatcher waits for that acknowledgement without a second competing timer: otherwise its timer
 could release a later forget while the earlier transport is still writing.
-A stalled response therefore delays subsequent store operations until completion,
-transport cancellation or disconnect, while status remains available.
+A stalled ordinary response therefore delays subsequent store operations until
+completion, transport cancellation or disconnect, while status remains available.
+Mesh metadata/progress delivery drains separately as described above.
 
-Daemon-owned sync Get replies carry the same delivery lease through the outbound
-SSH Apply write and flush. Drop the lease on completed transmission or write
-failure, before waiting for the peer acknowledgement; the acknowledgement may
-need the same dispatcher during self-sync. Use an unbuffered SSH input handle so
-no deferred buffer flush can transmit original bytes after a failed write releases
-its lease. A stalled original-data write delays store operations, including forget,
-but network acknowledgement waits do not occupy the store lane.
+Mesh Get steps read original bytes on the store lane. Before each outbound
+chunk of at most 64 KiB, a separate step revalidates identity/hash, tombstone and
+peer authority and grants a delivery lease. Hold it through that write attempt,
+then release on progress or cancellation before reacquiring for another chunk
+or waiting for a peer acknowledgement. Cancel/reset partial frames before lease
+release on failure. A stalled chunk can delay forget until the idle-write
+deadline; peer acknowledgement waits do not occupy the lane. LLP 0008 defines
+the exact transfer and cancellation contract. Mesh status reads store metadata
+through the dispatcher; it contacts no peer and starts no record job.
 
-Do not enable a parallel read pool in this delivery. A future pool must give
-each worker its own database connection, temporary tables, mutable candidate and
-ranking caches, and per-request clock/scope/diagnostics. Cloning the existing
-Connection shares its underlying connection and cannot create independent
-transactions or workspaces. Only immutable model resources may be shared as now.
+Each store uses one serialized execution lane. Cloning a libSQL Connection
+shares its underlying connection and does not create independent transactions,
+query workspaces or mutable caches. Immutable model resources can be shared.
+
 Reader initialization must not race migration or derived-state publication.
 Every read must pin and validate the publication/pending state in its own
 snapshot, preserve live-versus-reopened lifecycle behavior, and invalidate all
@@ -498,7 +514,7 @@ callers also validate exact schema, pending publication and source data version
 inside their own snapshots. Acquire and verify the Store once, then hold that
 snapshot around the store operation; snapshot ownership does not reacquire the
 Store through a second application layer. External writers remain possible,
-including older binaries and SSH sessions.
+including older binaries and independently initiated replica sessions.
 
 Retain only the active query and caller scope's query memos. A query/scope change
 clears coverage, ranking and confidence memos, plus stemming and
@@ -531,12 +547,11 @@ Enforce LLP 0001's exact-schema fence inside SQLite read snapshots and write
 transactions, including replica operations and startup publication writes.
 A schema failure closes cached application handles. The daemon finishes the
 failure response, closes admission, rejects queued application/internal work
-without touching the store, drains coordinators and releases ownership. It must
+without touching the store, drains mesh workers and releases ownership. It must
 not reopen or rebuild a newer schema. SQLite transaction locking orders a
 migration against an in-flight write; a waiting writer checks the schema only
 after acquiring its write lock. A prior read snapshot cannot upgrade to a writer
-after a conflicting WAL migration. No extra schema sidecar or schema migration
-is required for these guards.
+after a conflicting WAL migration. These guards use the database's schema version, without a schema sidecar.
 
 This fencing applies to binaries that implement it. It cannot retrofit an
 already-running older binary that lacks transaction guards or ownership locks;
@@ -546,45 +561,43 @@ Keep current live-instance versus reopened-store lifecycle/link behavior exactly
 as specified in LLP 0001. Test both: residency must not accidentally change the
 existing forget-until-rebuild rules. Clear the specified forgotten-record caches;
 never serve stale bodies or queued results after a forget has completed. Acknowledge successful mutations only after publication completes. Serialize
-reply delivery before the next operation, so a completed forget cannot be
+ordinary reply delivery before the next operation, so a completed forget cannot be
 followed by transmission of an earlier queued response. A disconnected client
 is skipped before execution when detected; executing mutations still complete
 their durable publication or preserve the pending marker. Preserve transactional secure deletion and tombstone precedence;
-this plan adds no stronger memory-erasure guarantee than the existing contract.
+Residency adds no stronger memory-erasure guarantee than the existing contract.
 
-Route explicit sync and remote configuration through the same application API.
-Network coordination runs outside the store dispatcher, using one internal
-LocalReplica adapter. Keep the public runtime API at typed operations and lifecycle
-control; do not add a second public replica-over-IPC convenience adapter solely
-for tests. Integration tests use whole Sync requests through real daemon workers. Daemon workers own SSH coordination and send typed inventory/get/needs/apply/finish
-operations through an internal channel to the store dispatcher. The CLI sends
-one Sync operation and performs no SSH exchange. The same
-coordinator works with an in-process Replica for library callers. Keep SSH
-handshakes, inventory exchanges and peer acknowledgement waits outside the
-store lane; only outgoing original-data writes retain a delivery lease.
-Simultaneous peer sync and self-sync must not wait on requests queued behind
-their own network acknowledgement. Shutdown drains
-accepted coordinators and their internal store steps before closing the owner.
+Route peer synchronization and membership operations through the same typed
+application API. Network coordination runs outside the store dispatcher, using
+the typed internal mesh-store queue. Keep the public runtime API at typed
+operations and lifecycle control; do not add a second public replica-over-IPC
+convenience adapter solely for tests. The CLI requests work from the owner;
+it performs no peer exchange. Network workers send inventory/get/needs/apply/
+finish steps through the internal channel, keeping handshakes and peer response
+waits outside the store lane. Only outgoing original-data writes retain a
+delivery lease. Simultaneous peer exchanges must not wait on requests queued
+behind their own network acknowledgement. Shutdown drains accepted mesh workers
+and their internal store steps before closing the owner.
+
 Keep one lazily opened Replica in the application alongside its resident Store.
-Read-only remote/configuration, inventory/get/needs steps reuse it without
-discarding the Store; mutating replica requests invalidate the Store before
-execution. Errors discard both handles. Every replica step retains its exact
-in-transaction schema checks, and runtime physical-identity checks remain around
-every operation. Both handles execute only on the serialized store lane; this is
-not a reader pool. Move an owned incoming Item through LocalReplica::apply into
-the dispatcher rather than cloning its envelope. Preserve the outbound delivery
-lease through completed/failed write and release before acknowledgement waits.
-Keep `sync:serve --stdio` as the SSH protocol adapter, not a local daemon command;
-bridge its typed operations, including version negotiation, into the store dispatcher without recursive CLI
-invocation or a second writable resident handle. Preserve wire compatibility,
-pull-before-push order, bounded transfer and pending-publication recovery in
-LLP 0006. Imports, local writes and synced writes use one mutation/publication
-boundary. Do not retain every transferred body in daemon memory.
+Read-only replica steps reuse it without discarding the Store; mutating replica
+requests invalidate the Store before execution. Errors discard both handles.
+Every replica step retains its exact in-transaction schema checks, and runtime
+physical-identity checks remain around every operation. Both handles execute
+only on the serialized store lane; this is not a reader pool. Move an owned
+incoming Item through the authenticated mesh Apply step rather than cloning its envelope.
+Preserve outbound delivery leases through completed/failed writes and release
+before acknowledgement waits. Imports, local writes and synced writes use one
+mutation/publication boundary. Do not retain every transferred body in memory.
 
-A later background-sync proposal must define explicit enablement, scheduling,
-retries/backoff, SSH authentication failures, overlap with manual sync, shutdown,
-and publication availability. It must update LLP 0000, LLP 0004 and LLP 0006
-before enabling automatic exchanges. No scheduling state is added in this plan.
+LLP 0008 owns explicit sync-job admission, bounded retries, peer authorization
+failures, shutdown and publication availability. Persistent enrollment and
+transport readiness never schedule record
+exchange on a local write, timer or reconnect. The existing owner remains the
+only store owner while serving authenticated jobs initiated by another member.
+The obsolete subprocess coordinator, stdio adapter and remote configuration are
+removed. Local ownership, serialization, compatibility, mutation and publication
+contracts in this guide remain required.
 
 ## Implementation layout
 
@@ -594,7 +607,7 @@ before enabling automatic exchanges. No scheduling state is added in this plan.
 [CLI parsing/presentation](../src/cli/mod.rs) prepares caller context and bytes.
 [Runtime coordination](../src/runtime/mod.rs),
 [store dispatcher](../src/runtime/dispatcher.rs),
-[daemon sync workers](../src/runtime/coordinator.rs),
+[mesh network workers](../src/runtime/mesh.rs),
 [Unix platform operations](../src/runtime/platform.rs) and
 [local RPC schema](../src/runtime/protocol.rs) with
 [bounded framing](../src/runtime/wire.rs) provide transport and lifecycle.
@@ -602,14 +615,12 @@ before enabling automatic exchanges. No scheduling state is added in this plan.
 controls without inheriting a previous client's flags or changing algorithms.
 Storage numerical-array, candidate-vector and block-matrix timings use this same
 transport rather than the detached process's null stderr.
-Explicit sync uses the invoking client’s environment for the coordinator’s SSH
-subprocesses. Only Sync carries an explicit subprocess environment snapshot
-over private IPC; apply it only to child processes, never daemon-global
-state or persisted records. Capture SSH stderr in a temporary
-file and return up to 64 KiB as diagnostics, including on failure; this avoids
-pipe deadlocks and losing errors to the detached process’s null stderr. Ordinary
-reads and writes transmit no subprocess environment. File source references
-reuse the original body hash and require no subprocess or fallback chain.
+Mesh workers use explicit enrolled service/identity state, never a previous
+CLI caller's environment. The application API carries no subprocess environment
+snapshot or SSH stderr stream. Ordinary reads and writes transmit no subprocess
+environment. File source
+references reuse the original body hash and require no subprocess or fallback
+chain.
 Direct library callers use Application or the existing storage/retrieval API;
 evaluations continue to use the shared library without starting a daemon.
 
@@ -641,7 +652,7 @@ ACLs/remote rejection, SID separation, busy-pipe startup, parent/job lifetime,
 handle leaks and process death releasing locks; do not infer these from Unix tests.
 Cover mixed simultaneous writes/queries/readback, overload before input upload,
 control during native SQLite lock waits, stalled output delivery and disconnect,
-and overlapping coordinators that sync to their own owner.
+and overlapping mesh jobs using the same owner.
 On case-insensitive macOS volumes, cover native spelling of existing paths and
 concurrent first operations through differently cased missing basenames. Test
 mismatched reply types/IDs, unexpected or truncated output, malformed reply JSON
@@ -653,8 +664,8 @@ Compare direct and IPC operations for text/JSON output, stderr and exit status,
 original-byte ingest/export, reference and cursor handling, caller scope from
 different repositories, per-request expiry, writes, import, sync, rebuild and
 forget. Exercise external mutations, failed publication, stale caches and
-same-process versus reopened lifecycle behavior. Exercise remote stdio sessions
-against compatible existing clients without exposing local IPC framing on SSH.
+same-process versus reopened lifecycle behavior. Exercise replica sessions
+against compatible peers without exposing local IPC framing on the network.
 
 On representative curated and scale stores, compare ordered first-page IDs and
 full page content with the accepted dev baseline. Counts alone are insufficient.
@@ -677,4 +688,4 @@ nix build, and scripts/check_llp_refs.py, as prescribed by AGENTS.md. Completion
 requires automatic background operation with unchanged ordinary CLI contracts,
 verified publication/forget correctness, documented protocol/lifecycle behavior,
 and measured latency and memory tradeoffs. No foreground service workflow or
-automatic SSH synchronization is a prerequisite or part of this delivery.
+automatic mesh synchronization is a prerequisite or part of this runtime baseline.

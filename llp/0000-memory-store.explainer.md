@@ -3,7 +3,7 @@
 **Type:** Explainer\
 **Status:** Active\
 **Systems:** Store, Retrieval, CLI\
-**Related:** LLP 0000, LLP 0001, LLP 0002, LLP 0003, LLP 0004, LLP 0005, LLP 0006, LLP 0007
+**Related:** LLP 0000, LLP 0001, LLP 0002, LLP 0003, LLP 0004, LLP 0005, LLP 0007, LLP 0008
 
 ## Boundaries
 
@@ -11,14 +11,18 @@ The LLP corpus is the specification. Linn is a private local memory store, read 
 
 Ordinary CLI operations use an automatically started private local background
 process, specified in LLP 0007. There is no GitHub or session acquisition or
-reciprocal rank fusion. See LLP 0001 for data, LLP 0002 for search, LLP 0004 for operation, LLP 0005 for scoring, and LLP 0006 for synchronization.
+reciprocal rank fusion. See LLP 0001 for data, LLP 0002 for search, LLP 0004 for operation, LLP 0005 for scoring, and LLP 0008 for replication, bundles and mesh synchronization.
 
-Each account owns a local store file. Explicit SSH sync exchanges immutable
-records and permanent tombstones between trusted accounts; it never shares the
-live database or runs automatically during reads and writes. Optional repository
-selection controls exchange, not SSH authorization. Writer email is unverified
-attribution, not authentication. Tombstones prevent resurrection on every replica
-that receives them; removing a remote does not erase copies already shared.
+Each account owns a local store file. Replication exchanges immutable records
+and permanent tombstones, never the live database or derived indexes. LLP 0008
+retains these data guarantees and implements device-signed whole-store
+meshes with explicit `linn sync:pair` enrollment and `linn sync` exchanges.
+The resident owner serves explicit jobs; local writes do not start replication.
+The obsolete transport and remote configuration are retired. Admission and
+optional first sync follow LLP 0008.
+Writer email is unverified attribution, not authentication. Tombstones prevent
+resurrection on every replica that receives them; removing a peer cannot erase
+copies already shared.
 
 The POS relation selector additionally embeds the pinned linguistic
 resource described in LLP 0004. It adds no semantic embedding model or product
@@ -30,7 +34,8 @@ the fixed ranking algorithm and adoption of source changes remain governed by LL
 Code is grouped by domain under `src/`: `storage` owns persistence and original
 byte spans, `retrieval` owns query execution and ranking, `language` owns embedded
 resources and retrieval-specific annotations, `nlp` owns linguistic analysis,
-`sync` owns SSH exchange,
+`sync` owns the shared original-item protocol, `mesh` owns signed membership,
+peer transport and discovery,
 `application` owns typed execution, `runtime` owns detached lifecycle and local
 IPC, and `cli` owns argument parsing, caller input and presentation.
 The [source map](../src/README.md) locates their modules. The library root retains

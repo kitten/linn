@@ -2,7 +2,9 @@
 
 `mod.rs` owns authenticated IPC, bounded admission, launch/readiness and reply
 transport. `dispatcher.rs` owns the dedicated serialized store thread;
-`coordinator.rs` runs SSH workers and sends local replica steps to that thread.
+`mesh.rs` coordinates mesh commands and requested first sync, allocates run IDs,
+and publishes typed progress outside that thread; typed store steps and
+per-chunk delivery leases preserve serialized writes and deletion ordering.
 `platform.rs` implements Unix paths, private coordination files and detachment.
 The private dispatcher retains ownership checks and its bound socket path;
 endpoint metadata is read by clients for discovery, not by each store operation.

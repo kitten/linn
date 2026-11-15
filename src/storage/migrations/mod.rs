@@ -8,6 +8,10 @@ const MIGRATIONS: &[&str] = &[
     include_str!("0003-derived-schema.sql"),
     include_str!("0004-sync.sql"),
     include_str!("0005-writer-filters.sql"),
+    include_str!("0006-mesh.sql"),
+    include_str!("0007-retire-remotes.sql"),
+    include_str!("0008-membership-cache.sql"),
+    include_str!("0009-retire-hints.sql"),
 ];
 pub(super) const VERSION: usize = MIGRATIONS.len();
 
@@ -127,7 +131,7 @@ mod tests {
 
     #[tokio::test]
     async fn upgrades_preserve_originals_and_current_schema_is_a_noop() {
-        for old in [1, 2, 3, 4] {
+        for old in 1..MIGRATIONS.len() {
             let dir = tempfile::tempdir().unwrap();
             let database = libsql::Builder::new_local(dir.path().join("upgrade.db"))
                 .build()
@@ -236,7 +240,7 @@ mod tests {
 
     #[test]
     fn concurrent_initialization_and_upgrades_are_serialized() {
-        for old in [0, 1, 2, 3, 4] {
+        for old in 0..MIGRATIONS.len() {
             let dir = tempfile::tempdir().unwrap();
             let path = dir.path().join("concurrent.db");
             tokio::runtime::Builder::new_current_thread()

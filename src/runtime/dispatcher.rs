@@ -15,6 +15,8 @@ pub(super) async fn run(
     mut stopping: mpsc::Receiver<StopReply>,
     accept_task: tokio::task::AbortHandle,
     binding: Binding,
+    network: tokio::runtime::Handle,
+    mesh_startup: bool,
 ) -> Result<Option<StopReply>> {
     let mut dispatcher = Dispatcher {
         app: Application::new(location.path.clone()),
@@ -25,18 +27,37 @@ pub(super) async fn run(
     let mut stop_reply = None;
     let mut draining = false;
     let mut workers = tokio::task::JoinSet::new();
-    let (internal, mut internal_jobs) = mpsc::channel::<coordinator::InternalJob>(64);
+    let mut deliveries = tokio::task::JoinSet::new();
+    let (mesh_store, mut mesh_steps) = crate::mesh::store::channel();
+    let (transport, mut transport_task) =
+        mesh_driver::Driver::start(mesh_store.clone(), &network, mesh_startup);
+    let mut transport_result = None;
+    let mut transport_stop = None;
     let mut tick = tokio::time::interval(Duration::from_secs(1));
     loop {
+        while deliveries.try_join_next().is_some() {}
         if dispatcher.retired && !draining {
             draining = true;
             jobs.close();
             accept_task.abort();
         }
-        if draining && jobs.is_empty() && workers.is_empty() {
+        if draining && transport_stop.is_none() {
+            let transport = transport.clone();
+            transport_stop = Some(network.spawn(async move { transport.quit().await }));
+        }
+        if draining
+            && jobs.is_empty()
+            && workers.is_empty()
+            && deliveries.is_empty()
+            && transport_result.is_some()
+        {
             break;
         }
         tokio::select! {
+            result = &mut transport_task, if transport_result.is_none() => {
+                transport_result = Some(result);
+                if !draining { draining = true; jobs.close(); accept_task.abort(); }
+            }
             signal = stopping.recv(), if !draining => {
                 stop_reply = signal;
                 draining = true;
@@ -54,37 +75,45 @@ pub(super) async fn run(
                 }
             }
             Some(job) = jobs.recv(), if !draining || !jobs.is_empty() => {
-                if !dispatcher.retired && matches!(job.operation, Operation::Sync { .. }) {
+                if !dispatcher.retired && matches!(job.operation, Operation::Mesh(_)) {
                     if job.reply.is_closed() { continue; }
-                    if workers.len() >= 64 {
-                        let error = crate::error::ApplicationError::new(
-                            Error::Invalid("daemon busy; sync not executed".into()), false);
-                        let _ = job.reply.send(Err(error.into()));
+                    use crate::mesh::pairing::Command;
+                    let limit = if matches!(job.operation, Operation::Mesh(Command::Leave | Command::Reset | Command::Status | Command::Peers)) { 5 } else { 4 };
+                    if workers.len() >= limit {
+                        let _ = job.reply.send(Err(crate::error::ApplicationError::new(Error::Invalid("daemon busy; mesh command not executed".into()), false).into()));
                         continue;
                     }
-                    let internal = internal.clone();
-                    workers.spawn_blocking(move || coordinator::run(job, internal));
+                    workers.spawn_on(mesh::run(job, mesh_store.clone(), transport.clone()), &network);
                 } else {
                     dispatcher.dispatch(job).await;
                 }
             }
-            Some(internal) = internal_jobs.recv(), if !workers.is_empty() => {
-                let caller = Caller {
-                    scope: None, writer: None, diagnostics: internal.diagnostics,
-                };
-                let result = dispatcher.perform(None, internal.operation, caller,
-                    None).await;
-                let _ = internal.reply.send(result);
-                let _ = internal.delivered.await;
+            Some(job) = mesh_steps.recv() => {
+                if job.reply.is_closed() { continue; }
+                let changed = matches!(job.step, crate::mesh::store::Step::CreateIdentity(_) | crate::mesh::store::Step::Accept(_) | crate::mesh::store::Step::Enable(_) | crate::mesh::store::Step::Leave | crate::mesh::store::Step::Disable | crate::mesh::store::Step::Reset);
+                let result = dispatcher.mesh_step(job.step).await;
+                let _ = job.reply.send(result);
+                let _ = job.delivered.await;
+                if changed { transport.changed(); }
             }
             Some(completed) = workers.join_next(), if !workers.is_empty() => {
                 if let Ok((job, result)) = completed {
                     let _ = job.reply.send(result);
-                    let _ = job.delivered.await;
+                    // Mesh outcomes contain metadata, not original record bytes.
+                    // Drain socket delivery on shutdown without occupying the store lane.
+                    deliveries.spawn_on(async move { let _ = job.delivered.await; }, &network);
                 }
             }
+            _ = deliveries.join_next(), if !deliveries.is_empty() => (),
         }
     }
+    if let Some(stop) = transport_stop {
+        stop.await
+            .map_err(|_| Error::Invalid("peer transport shutdown failed".into()))??;
+    }
+    transport_result
+        .unwrap()
+        .map_err(|_| Error::Invalid("peer transport failed".into()))??;
     Ok(stop_reply)
 }
 
@@ -95,6 +124,32 @@ struct Dispatcher {
     retired: bool,
 }
 impl Dispatcher {
+    async fn mesh_step(
+        &mut self,
+        step: crate::mesh::store::Step,
+    ) -> Result<crate::mesh::store::Value> {
+        if self.retired
+            || !self.intact()
+            || platform::identity(&self.location.path)? != self.location.id
+            || (self.binding.file.is_some()
+                && platform::file_identity(&self.location.path)? != self.binding.file)
+        {
+            return Err(Error::Invalid(
+                "store ownership changed; mesh step not executed".into(),
+            ));
+        }
+        let result = self.app.mesh_step(step).await;
+        self.retired = matches!(&result, Err(Error::Application(error)) if matches!(error.code, crate::error::ErrorCode::Schema));
+        let after = platform::file_identity(&self.location.path)?;
+        if self.binding.file.is_some() && after != self.binding.file {
+            self.retired = true;
+            return Err(Error::Invalid(
+                "store replaced during mesh step; owner is retiring".into(),
+            ));
+        }
+        self.binding.file = after;
+        result
+    }
     fn intact(&self) -> bool {
         let identity = |path: &Path| std::fs::symlink_metadata(path).ok().as_ref().map(file_key);
         identity(&self.location.root) == Some(self.binding.root)

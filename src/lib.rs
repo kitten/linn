@@ -2,6 +2,7 @@
 pub mod cli;
 pub mod error;
 pub mod language;
+pub mod mesh;
 pub mod nlp;
 pub mod retrieval;
 pub mod storage;

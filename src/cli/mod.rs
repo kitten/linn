@@ -1,8 +1,8 @@
 //! @ref LLP 0004#runtime
 mod bundle;
 mod listing;
+mod mesh;
 pub mod paths;
-mod sync;
 use crate::{
     error::{Error, Result},
     retrieval::lexical::centered,
@@ -31,6 +31,34 @@ struct Args {
 #[derive(Subcommand)]
 enum Command {
     #[command(
+        name = "sync:pair",
+        about = "Create or redeem a whole-store mesh invitation",
+        after_help = "Invitations authorize merging both entire stores and their meshes, including offline members.\nUse --join with a token, piped stdin, or a terminal prompt. Admission is independent of the optional first sync. Use --sync or --no-sync to choose explicitly."
+    )]
+    SyncPair(mesh::PairArgs),
+    #[command(
+        name = "sync:status",
+        about = "Inspect local mesh enrollment without contacting peers"
+    )]
+    SyncStatus,
+    #[command(name = "sync:peers", about = "List verified mesh members")]
+    SyncPeers,
+    #[command(
+        name = "sync:revoke",
+        about = "Permanently revoke a peer; use self to disable this peer and revoke it"
+    )]
+    SyncRevoke { peer: String },
+    #[command(
+        name = "sync:leave",
+        about = "Disable local transport and revoke this endpoint when reachable"
+    )]
+    SyncLeave,
+    #[command(
+        name = "sync:reset-identity",
+        about = "Reset a copied store's identity; preserve records and deletions"
+    )]
+    SyncReset,
+    #[command(
         name = "daemon:status",
         hide = true,
         about = "Inspect this store’s background process"
@@ -47,24 +75,8 @@ enum Command {
     #[command(about = "Merge a trusted Linn bundle, preserving IDs; deletions are permanent")]
     Import { file: String },
     #[command(
-        name = "sync:remote",
-        about = "Manage trusted SSH peers for this store"
-    )]
-    SyncRemote {
-        #[command(subcommand)]
-        command: sync::RemoteCommand,
-    },
-    #[command(
-        name = "sync:serve",
-        about = "Serve sync over stdin/stdout; no listener"
-    )]
-    SyncServe {
-        #[arg(long)]
-        stdio: bool,
-    },
-    #[command(
-        about = "Pull all SSH remotes, then push the merged records and deletions",
-        after_help = "Configure peers with sync:remote pair. A failed pull prevents all pushes.\nRetry interrupted syncs; use index:rebuild to repair incomplete publication."
+        about = "Collect and distribute records and deletions through the paired mesh",
+        after_help = "Pair with linn sync:pair. Each invocation runs one finite mesh job; automatic sync is deferred.\nPartial progress is durable. Retry interrupted jobs; use index:rebuild to repair incomplete publication."
     )]
     Sync,
     #[command(
@@ -197,9 +209,11 @@ pub async fn run() -> Result<i32> {
             None
         },
     };
-    if matches!(args.command, Command::SyncServe { .. }) {
-        return sync::serve(&path).await;
-    }
+    let first_sync = if let Command::SyncPair(options) = &args.command {
+        options.first_sync()
+    } else {
+        Some(false)
+    };
     let mut input = None;
     let mut output_path = None;
     let check = matches!(args.command, Command::Check);
@@ -220,22 +234,16 @@ pub async fn run() -> Result<i32> {
         Command::Forget { reference } => Op::Forget { reference },
         Command::Check => Op::Check,
         Command::Rebuild => Op::Rebuild,
-        Command::Sync => Op::Sync {
-            environment: std::env::vars_os().collect(),
-        },
-        Command::SyncRemote { command } => match command {
-            sync::RemoteCommand::Pair {
-                name,
-                origin,
-                scope,
-            } => Op::Pair(crate::storage::sync::Remote {
-                name,
-                origin,
-                scope,
-            }),
-            sync::RemoteCommand::Remove { name } => Op::RemoveRemote { name },
-            sync::RemoteCommand::List => Op::Remotes,
-        },
+        Command::SyncPair(options) => Op::Mesh(options.resolve()?),
+        Command::SyncStatus => Op::Mesh(crate::mesh::pairing::Command::Status),
+        Command::SyncPeers => Op::Mesh(crate::mesh::pairing::Command::Peers),
+        Command::SyncRevoke { peer } if peer == "self" => {
+            Op::Mesh(crate::mesh::pairing::Command::Leave)
+        }
+        Command::SyncRevoke { peer } => Op::Mesh(crate::mesh::pairing::Command::Revoke { peer }),
+        Command::SyncLeave => Op::Mesh(crate::mesh::pairing::Command::Leave),
+        Command::SyncReset => Op::Mesh(crate::mesh::pairing::Command::Reset),
+        Command::Sync => Op::Mesh(crate::mesh::pairing::Command::Sync),
         Command::List(options) => Op::List(options.resolve()?),
         Command::Export(options) => {
             let (op, path) = options.resolve();
@@ -287,7 +295,15 @@ pub async fn run() -> Result<i32> {
     if let Some(input) = &mut input {
         input.seek(SeekFrom::Start(0))?;
     }
-    let reply = match crate::runtime::execute(&path, op, caller, input).await {
+    let reply = match crate::runtime::execute_with_progress(
+        &path,
+        op,
+        caller,
+        input,
+        mesh::render_progress,
+    )
+    .await
+    {
         Ok(r) => r,
         Err(e)
             if check
@@ -311,6 +327,29 @@ pub async fn run() -> Result<i32> {
     }
     if let Some(mut output) = reply.output {
         bundle::write_output(&mut output, output_path)?;
+    }
+    let joined = matches!(
+        &reply.value,
+        crate::application::Value::Mesh(crate::mesh::pairing::Output::Changed {
+            operation: crate::mesh::pairing::Change::Paired,
+            ..
+        })
+    );
+    if joined && first_sync.is_none() && !args.json && mesh::offer_sync()? {
+        render(reply.value, false)?;
+        let reply = crate::runtime::execute_with_progress(
+            &path,
+            Op::Mesh(crate::mesh::pairing::Command::Sync),
+            Caller {
+                scope: None,
+                writer: None,
+                diagnostics: Default::default(),
+            },
+            None,
+            mesh::render_progress,
+        )
+        .await?;
+        return render(reply.value, false);
     }
     render(reply.value, args.json)
 }
@@ -462,45 +501,14 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
                 println!("Imported {} items; {} unchanged.", c.changed, c.unchanged);
             }
         }
-        Value::Synced(c) => {
-            if json_output {
-                println!("{}", serde_json::to_string(&c)?);
-            } else {
-                println!(
-                    "Synced {} remotes: {} pulled, {} pushed.",
-                    c.remotes, c.pulled, c.pushed
-                );
+        Value::Mesh(output) => {
+            let incomplete = !output.complete();
+            mesh::render(output, json_output)?;
+            if incomplete {
+                eprintln!("Mesh sync incomplete; accepted progress is durable.");
+                return Ok(2);
             }
         }
-        Value::Paired(name) => {
-            if json_output {
-                println!("{}", json!({"paired":name}));
-            } else {
-                println!("Paired: {name}");
-            }
-        }
-        Value::Removed(name) => {
-            if json_output {
-                println!("{}", json!({"removed":name}));
-            } else {
-                println!("Removed: {name}");
-            }
-        }
-        Value::Remotes(remotes) => {
-            if json_output {
-                println!("{}", json!({"remotes":remotes}));
-            } else {
-                for r in remotes {
-                    println!(
-                        "{}\t{}{}",
-                        r.name,
-                        r.origin,
-                        r.scope.map(|s| format!("\t{s}")).unwrap_or_default()
-                    );
-                }
-            }
-        }
-        Value::SyncFrame(_) => return Err(Error::Invalid("unexpected sync response".into())),
     };
     Ok(0)
 }
@@ -521,9 +529,7 @@ fn print_call(store: &crate::application::SearchPage, call: &Call) {
                 format!(" — {}", c.heading)
             },
             c.text,
-            &r.body_hash()[..12],
-            c.span[0],
-            c.span[1]
+            c.fetch.as_deref().expect("application fetch reference")
         );
     }
     for (title, prefix, list) in [

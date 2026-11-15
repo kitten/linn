@@ -11,5 +11,5 @@ The LLP corpus is the self-contained specification:
 - [0003: Using LLP](llp/0003-using-llp-in-linn.guide.md)
 - [0004: CLI and packaging](llp/0004-runtime-and-evaluation.guide.md)
 - [0005: Evaluation](llp/0005-evaluation.explainer.md)
-- [0006: SSH synchronization](llp/0006-sync.explainer.md)
 - [0007: Background runtime](llp/0007-background-runtime.guide.md)
+- [0008: Replication contracts and mesh synchronization plan](llp/0008-mesh-synchronization.explainer.md)

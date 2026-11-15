@@ -2,6 +2,7 @@
 pub mod bundle;
 mod catalog;
 pub mod listing;
+pub mod mesh;
 mod migrations;
 mod publication;
 pub mod record;
@@ -541,7 +542,7 @@ impl Store {
         st.publish_catalog().await?;
         Ok(st)
     }
-    // @ref LLP 0006#merge-and-publication
+    // @ref LLP 0008#replication-and-publication
     async fn source_snapshot(
         db: &Connection,
         rebuilding: bool,
@@ -4322,7 +4323,7 @@ mod lookup_tests {
         // A legacy schema may predate the auxiliary index.
         store
             .db
-            .execute_batch("DROP INDEX records_writer_created; DROP INDEX records_writer_expiry; DROP INDEX sections_record; DROP TABLE sync_remotes; DROP TABLE sync_state; DROP INDEX sync_scope_records; PRAGMA user_version=2;")
+            .execute_batch("DROP INDEX records_writer_created; DROP INDEX records_writer_expiry; DROP INDEX sections_record; DROP TABLE mesh_pending; DROP TABLE mesh_conflicts; DROP TABLE mesh_roots; DROP TABLE mesh_event_ids; DROP TABLE mesh_successors; DROP TABLE mesh_membership_states; DROP TABLE mesh_events; DROP TABLE mesh_identity; DROP TABLE sync_state; DROP INDEX sync_scope_records; PRAGMA user_version=2;")
             .await
             .unwrap();
         drop(store);
@@ -4899,10 +4900,7 @@ mod sync_snapshot_tests {
                 "INSERT INTO sync_state VALUES('pending',1)".into(),
                 "publication incomplete",
             ),
-            (
-                "INSERT INTO sync_remotes VALUES('peer','ssh://peer',NULL)".into(),
-                "reopen",
-            ),
+            ("CREATE TABLE external_change(value TEXT)".into(), "reopen"),
         ] {
             let dir = tempfile::tempdir().unwrap();
             let path = dir.path().join("resident.db");

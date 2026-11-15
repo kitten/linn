@@ -1,12 +1,11 @@
 # Command-line interface
 
 `mod.rs` owns Clap parsing, client-side input preparation and text/JSON rendering.
-`bundle.rs` handles export destinations; `listing.rs` and `sync.rs` own arguments
-and the SSH stdio adapter. `paths.rs` captures native caller Git provenance and
+`bundle.rs` handles export destinations; `listing.rs` owns list arguments; `mesh.rs` handles pairing input and renders daemon progress events. `paths.rs` captures native caller Git provenance and
 absolute file-input context. It spawns no Git command for CLI operations.
 Typed execution lives in `application`; `runtime` connects to the detached owner.
-The CLI never opens or creates a store, validates content, derives labels or
-coordinates SSH sync. It transports original bytes, caller metadata and replies.
+The CLI never opens or creates a store, validates original bodies, derives labels or
+executes peer transport. It transports original bytes, caller metadata and replies.
 The application derives file source paths and source references from a typed
 input task and the uploaded snapshot. New file source references reuse the body
 SHA-256; no Git subprocess, checkout filters or environment payload is needed.

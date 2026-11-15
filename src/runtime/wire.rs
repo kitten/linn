@@ -1,4 +1,4 @@
-//! Bounded local protocol, separate from the SSH protocol.
+//! Bounded local protocol, separate from the mesh protocol.
 use super::{WAIT, protocol::Frame};
 use crate::error::{Error, Result};
 use base64::{Engine, engine::general_purpose::STANDARD};

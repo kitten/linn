@@ -385,85 +385,6 @@ fn crash_releases_ownership_and_stale_non_socket_is_preserved() {
 }
 
 #[test]
-fn simultaneous_peer_pulls_dispatch_local_steps_without_holding_network_jobs() {
-    let a = Fixture::new();
-    let b = Fixture::new();
-    let aid = json(&a.ok(
-        &["add", "-", "--json", "--unscoped"],
-        Some("A original bytes.\n"),
-    ))["record"]
-        .as_str()
-        .unwrap()
-        .to_owned();
-    let bid = json(&b.ok(
-        &["add", "-", "--json", "--unscoped"],
-        Some("B original bytes.\n"),
-    ))["record"]
-        .as_str()
-        .unwrap()
-        .to_owned();
-    use std::os::unix::fs::PermissionsExt;
-    let ssh = a.dir.path().join("ssh");
-    std::fs::write(
-        &ssh,
-        "#!/bin/sh\nfor arg do last=\"$arg\"; done\nexec /bin/sh -c \"$last\"\n",
-    )
-    .unwrap();
-    std::fs::set_permissions(&ssh, std::fs::Permissions::from_mode(0o700)).unwrap();
-    let paths = std::env::join_paths(
-        [
-            a.dir.path().to_owned(),
-            PathBuf::from(env!("CARGO_BIN_EXE_linn"))
-                .parent()
-                .unwrap()
-                .to_owned(),
-        ]
-        .into_iter()
-        .chain(std::env::split_paths(
-            &std::env::var_os("PATH").unwrap_or_default(),
-        )),
-    )
-    .unwrap();
-    for (local, peer) in [(&a, &b), (&b, &a)] {
-        local.ok(
-            &[
-                "sync:remote",
-                "pair",
-                "peer",
-                &format!("ssh://peer{}", peer.db.display()),
-            ],
-            None,
-        );
-    }
-    std::thread::scope(|scope| {
-        for local in [&a, &b] {
-            let paths = &paths;
-            scope.spawn(move || {
-                let output = local
-                    .command()
-                    .env("PATH", paths)
-                    .args(["sync", "--json"])
-                    .output()
-                    .unwrap();
-                assert!(
-                    output.status.success(),
-                    "{}",
-                    String::from_utf8_lossy(&output.stderr)
-                );
-            });
-        }
-    });
-    assert_eq!(
-        json(&a.ok(&["show", &bid, "--all", "--json"], None))["text"],
-        "B original bytes.\n"
-    );
-    assert_eq!(
-        json(&b.ok(&["show", &aid, "--all", "--json"], None))["text"],
-        "A original bytes.\n"
-    );
-}
-
-#[test]
 fn resident_reads_work_when_cli_cannot_open_database() {
     use std::os::unix::fs::PermissionsExt;
     if unsafe { libc::geteuid() } == 0 {
@@ -484,116 +405,6 @@ fn resident_reads_work_when_cli_cannot_open_database() {
         String::from_utf8_lossy(&output.stderr)
     );
     assert_eq!(json(&output)["text"], body);
-}
-
-#[test]
-fn stop_drains_daemon_sync_workers_and_their_internal_store_steps() {
-    use std::os::unix::fs::PermissionsExt;
-    use std::time::{Duration, Instant};
-    let local = Fixture::new();
-    let remote = Fixture::new();
-    let local_added = local.ok(
-        &["add", "-", "--json", "--unscoped"],
-        Some("Local original.\n"),
-    );
-    let remote_added = remote.ok(
-        &["add", "-", "--json", "--unscoped"],
-        Some("Remote original.\n"),
-    );
-    let origin = format!("ssh://peer{}", remote.db.display());
-    local.ok(&["sync:remote", "pair", "peer", &origin], None);
-    let ssh = local.dir.path().join("ssh");
-    std::fs::write(
-        &ssh,
-        r#"#!/bin/sh
-: > "$SYNC_STARTED"
-while [ ! -f "$SYNC_RELEASE" ]; do /bin/sleep 0.01; done
-for arg do last="$arg"; done
-exec /bin/sh -c "$last"
-"#,
-    )
-    .unwrap();
-    std::fs::set_permissions(&ssh, std::fs::Permissions::from_mode(0o700)).unwrap();
-    let paths = std::env::join_paths(
-        [
-            local.dir.path().to_owned(),
-            PathBuf::from(env!("CARGO_BIN_EXE_linn"))
-                .parent()
-                .unwrap()
-                .to_owned(),
-        ]
-        .into_iter()
-        .chain(std::env::split_paths(
-            &std::env::var_os("PATH").unwrap_or_default(),
-        )),
-    )
-    .unwrap();
-    let started = local.dir.path().join("started");
-    let release = local.dir.path().join("release");
-    let mut sync = local
-        .command()
-        .args(["sync", "--json"])
-        .env("PATH", paths)
-        .env("SYNC_STARTED", &started)
-        .env("SYNC_RELEASE", &release)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let deadline = Instant::now() + Duration::from_secs(10);
-    while !started.exists() {
-        assert!(Instant::now() < deadline, "daemon did not start SSH");
-        std::thread::sleep(Duration::from_millis(10));
-    }
-    // The store dispatcher remains responsive while its worker waits on SSH.
-    local.ok(&["list", "--json"], None);
-    let mut stop = local
-        .command()
-        .arg("daemon:stop")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    // Wait for the authenticated owner to stop accepting new connections.
-    let socket = std::fs::read_dir(local.dir.path().join("linn"))
-        .unwrap()
-        .map(|e| e.unwrap().path())
-        .find(|p| p.extension().is_some_and(|e| e == "sock"))
-        .unwrap();
-    while std::os::unix::net::UnixStream::connect(&socket).is_ok() {
-        assert!(Instant::now() < deadline, "stop did not begin draining");
-        std::thread::sleep(Duration::from_millis(10));
-    }
-    assert!(
-        stop.try_wait().unwrap().is_none(),
-        "stop must wait for accepted sync"
-    );
-    std::fs::write(&release, b"").unwrap();
-    for child in [&mut sync, &mut stop] {
-        let deadline = Instant::now() + Duration::from_secs(15);
-        while child.try_wait().unwrap().is_none() {
-            if Instant::now() >= deadline {
-                let _ = child.kill();
-                panic!("sync and stop must drain without a dispatcher deadlock");
-            }
-            std::thread::sleep(Duration::from_millis(10));
-        }
-    }
-    let output = sync.wait_with_output().unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(stop.wait_with_output().unwrap().status.success());
-    assert_eq!(
-        json(&local.ok(&["daemon:status", "--json"], None))["running"],
-        false
-    );
-    let remote_id = json(&remote_added)["record"].as_str().unwrap().to_owned();
-    let local_id = json(&local_added)["record"].as_str().unwrap().to_owned();
-    local.ok(&["show", &remote_id, "--all"], None);
-    remote.ok(&["show", &local_id, "--all"], None);
 }
 
 #[test]
@@ -838,23 +649,13 @@ fn differently_cased_missing_paths_cannot_keep_two_store_owners() {
     }
     let alias = f.dir.path().join("STORE.DB");
     let start = |path: &std::path::Path| {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_linn"))
+        let output = Command::new(env!("CARGO_BIN_EXE_linn"))
             .arg("--store")
             .arg(path)
-            .args(["sync:serve", "--stdio"])
+            .args(["sync:status", "--json"])
             .env("XDG_RUNTIME_DIR", f.dir.path())
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
+            .output()
             .unwrap();
-        child
-            .stdin
-            .take()
-            .unwrap()
-            .write_all(b"{\"op\":\"hello\",\"version\":1}\n")
-            .unwrap();
-        let output = child.wait_with_output().unwrap();
         assert!(
             output.status.success(),
             "{}",
@@ -899,7 +700,17 @@ fn differently_cased_missing_paths_cannot_keep_two_store_owners() {
                 .count()
         };
         assert_eq!(live(), 2);
-        let create = std::fs::File::open(root.join("create.lock")).unwrap();
+        let create = {
+            use std::os::unix::fs::OpenOptionsExt;
+            std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .truncate(false)
+                .mode(0o600)
+                .open(root.join("create.lock"))
+                .unwrap()
+        };
         create.lock().unwrap();
         let (first, second, ()) = tokio::join!(
             invoke(&f.db, Operation::Check),
@@ -984,153 +795,6 @@ fn ordinary_queries_do_not_require_client_temporary_files() {
             String::from_utf8_lossy(&output.stderr)
         );
         serde_json::from_slice::<serde_json::Value>(&output.stdout).unwrap();
-    }
-}
-
-#[test]
-fn sync_delivery_orders_forget_but_releases_before_peer_acknowledgement() {
-    use std::{
-        os::unix::fs::PermissionsExt,
-        time::{Duration, Instant},
-    };
-    // Always unblock the fake peer before fixture cleanup, including on failure.
-    struct Release(PathBuf);
-    impl Drop for Release {
-        fn drop(&mut self) {
-            let _ = std::fs::write(self.0.join("release"), b"");
-            let _ = std::fs::write(self.0.join("ack"), b"");
-        }
-    }
-    for cancel in [false, true] {
-        let f = Fixture::new();
-        let body = format!(
-            "Original sync delivery boundary.\n{}\n",
-            "x".repeat(2 * 1024 * 1024)
-        );
-        let id = json(&f.ok(&["add", "-", "--json", "--unscoped"], Some(&body)))["record"]
-            .as_str()
-            .unwrap()
-            .to_owned();
-        f.ok(&["sync:remote", "pair", "peer", "ssh://peer"], None);
-        let script = f.dir.path().join("ssh");
-        std::fs::write(
-            &script,
-            r#"#!/bin/sh
-set -eu
-IFS= read -r hello
-printf '%s\n' '{"result":"hello","version":1}'
-if [ ! -f "$SYNC_ROOT/pulled" ]; then
-    while IFS= read -r request; do
-        printf '%s\n' '{"result":"entries","entries":[]}'
-    done
-    : > "$SYNC_ROOT/pulled"
-else
-    IFS= read -r needs
-    printf '{"result":"needed","ids":["%s"]}\n' "$SYNC_ID"
-    dd bs=1 count=1 of="$SYNC_ROOT/first" 2>/dev/null
-    : > "$SYNC_ROOT/writing"
-    while [ ! -f "$SYNC_ROOT/release" ]; do sleep 0.01; done
-    if [ "$SYNC_CANCEL" = 1 ]; then exit 1; fi
-    IFS= read -r rest
-    printf '%s' "$rest" > "$SYNC_ROOT/delivered"
-    while [ ! -f "$SYNC_ROOT/ack" ]; do sleep 0.01; done
-    printf '%s\n' '{"result":"applied","changed":true}'
-    IFS= read -r finish
-    printf '%s\n' '{"result":"done"}'
-fi
-"#,
-        )
-        .unwrap();
-        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o700)).unwrap();
-        let paths = std::env::join_paths(std::iter::once(f.dir.path().to_owned()).chain(
-            std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default()),
-        ))
-        .unwrap();
-        let mut sync = f
-            .command()
-            .arg("sync")
-            .env("PATH", paths)
-            .env("SYNC_ROOT", f.dir.path())
-            .env("SYNC_ID", &id)
-            .env("SYNC_CANCEL", if cancel { "1" } else { "0" })
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap();
-        let _release = Release(f.dir.path().to_owned());
-        let wait = |file: &str| {
-            let deadline = Instant::now() + Duration::from_secs(15);
-            while !f.dir.path().join(file).exists() {
-                assert!(Instant::now() < deadline, "peer did not reach {file}");
-                std::thread::sleep(Duration::from_millis(10));
-            }
-        };
-        wait("writing");
-        let mut forget = f
-            .command()
-            .args(["add:forget", &id, "--json"])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap();
-        std::thread::sleep(Duration::from_millis(200));
-        let premature = forget.try_wait().unwrap();
-        // Controls stay available while the original-data delivery blocks work.
-        f.ok(&["daemon:status", "--json"], None);
-        std::fs::write(f.dir.path().join("release"), b"").unwrap();
-        if !cancel {
-            wait("delivered");
-        }
-        let deadline = Instant::now() + Duration::from_secs(15);
-        while forget.try_wait().unwrap().is_none() {
-            assert!(
-                Instant::now() < deadline,
-                "forget waited for the peer acknowledgement"
-            );
-            std::thread::sleep(Duration::from_millis(10));
-        }
-        let forgotten = forget.wait_with_output().unwrap();
-        let waiting_for_ack = sync.try_wait().unwrap().is_none();
-        std::fs::write(f.dir.path().join("ack"), b"").unwrap();
-        let deadline = Instant::now() + Duration::from_secs(15);
-        while sync.try_wait().unwrap().is_none() {
-            if Instant::now() >= deadline {
-                let _ = sync.kill();
-                panic!("sync did not finish");
-            }
-            std::thread::sleep(Duration::from_millis(10));
-        }
-        let synced = sync.wait_with_output().unwrap();
-        assert!(
-            premature.is_none(),
-            "forget completed before original-data delivery"
-        );
-        assert!(
-            forgotten.status.success(),
-            "{}",
-            String::from_utf8_lossy(&forgotten.stderr)
-        );
-        assert_eq!(
-            synced.status.success(),
-            !cancel,
-            "{}",
-            String::from_utf8_lossy(&synced.stderr)
-        );
-        if !cancel {
-            assert!(
-                waiting_for_ack,
-                "peer must still be waiting for acknowledgement release"
-            );
-            let bytes = [
-                std::fs::read(f.dir.path().join("first")).unwrap(),
-                std::fs::read(f.dir.path().join("delivered")).unwrap(),
-            ]
-            .concat();
-            let request: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-            let envelope: serde_json::Value =
-                serde_json::from_str(request["item"]["envelope"].as_str().unwrap()).unwrap();
-            assert_eq!(envelope["body"], body);
-        }
     }
 }
 

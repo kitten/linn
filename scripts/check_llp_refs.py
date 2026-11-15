@@ -17,6 +17,7 @@ TEXT_EXTENSIONS = {
     ".rs",
     ".sh",
     ".toml",
+    ".ts",
     ".txt",
     ".yaml",
     ".yml",

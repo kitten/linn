@@ -3,6 +3,10 @@ pub enum Error {
     #[error(transparent)]
     Application(#[from] ApplicationError),
     #[error(transparent)]
+    MeshControl(#[from] crate::mesh::client::ControlError),
+    #[error(transparent)]
+    Mesh(#[from] crate::mesh::failure::FailureError),
+    #[error(transparent)]
     Porter(#[from] crate::nlp::porter::Error),
     #[error(transparent)]
     Sql(#[from] libsql::Error),
@@ -26,6 +30,7 @@ pub enum ErrorCode {
     Store,
     Schema,
     Annotation,
+    Mesh(crate::mesh::failure::Kind),
 }
 #[derive(Debug, thiserror::Error, serde::Serialize, serde::Deserialize)]
 #[error("{message}")]
@@ -43,6 +48,8 @@ impl ApplicationError {
             Error::Sql(_) => ErrorCode::Store,
             Error::Schema { .. } => ErrorCode::Schema,
             Error::Porter(_) => ErrorCode::Annotation,
+            Error::MeshControl(_) => ErrorCode::Mesh(crate::mesh::failure::Kind::of(&error)),
+            Error::Mesh(ref error) => ErrorCode::Mesh(error.kind),
             Error::Application(error) => return error,
         };
         Self {

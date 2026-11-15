@@ -1,7 +1,8 @@
 //! Automatic local background runtime.
 //! @ref LLP 0007#automatic-detached-lifecycle
-mod coordinator;
 mod dispatcher;
+mod mesh;
+mod mesh_driver;
 #[cfg(unix)]
 mod platform;
 mod protocol;
@@ -44,6 +45,8 @@ struct Endpoint {
 }
 #[derive(Serialize, Deserialize)]
 struct Bootstrap {
+    #[serde(default = "mesh_startup_default")]
+    mesh_startup: bool,
     endpoint: Endpoint,
     #[serde(with = "crate::native_path")]
     root: PathBuf,
@@ -52,6 +55,9 @@ struct Bootstrap {
     #[serde(with = "crate::native_path")]
     ready: PathBuf,
     token: String,
+}
+fn mesh_startup_default() -> bool {
+    true
 }
 #[derive(Clone)]
 struct Location {
@@ -193,7 +199,7 @@ impl Drop for ReadySocket {
         }
     }
 }
-async fn launch(location: &Location) -> Result<()> {
+async fn launch(location: &Location, mesh_startup: bool) -> Result<()> {
     let root = platform::socket_root()?;
     let socket = root.join(format!("{}.sock", location.key));
     platform::check_socket(&socket)?;
@@ -210,6 +216,7 @@ async fn launch(location: &Location) -> Result<()> {
         identity: file_key(&std::fs::symlink_metadata(&ready)?),
     };
     let bootstrap = Bootstrap {
+        mesh_startup,
         endpoint: Endpoint {
             identity: location.id.clone(),
             path: socket,
@@ -254,7 +261,7 @@ async fn launch(location: &Location) -> Result<()> {
     }
     result?
 }
-async fn session(location: &Location) -> Result<Stream> {
+async fn session(location: &Location, mesh_startup: bool) -> Result<Stream> {
     if live_owner(location)?
         && let Ok(stream) = connect(location, false).await
     {
@@ -265,7 +272,7 @@ async fn session(location: &Location) -> Result<Stream> {
     let start = platform::private_file(&location.file("start.lock"))?;
     wait_lock(&start).await?;
     if !live_owner(location)? {
-        launch(location).await?;
+        launch(location, mesh_startup).await?;
     }
     connect(location, false).await
 }
@@ -275,18 +282,47 @@ pub async fn execute(
     caller: Caller,
     input: impl Into<Option<File>>,
 ) -> Result<Reply> {
+    execute_with_progress(path, operation, caller, input, |_| {}).await
+}
+pub async fn execute_with_progress(
+    path: &Path,
+    operation: Operation,
+    caller: Caller,
+    input: impl Into<Option<File>>,
+    progress: impl FnMut(&crate::mesh::status::Progress),
+) -> Result<Reply> {
     let input = input.into();
     let location = Location::new(path)?;
-    let mut stream = session(&location).await?;
-    exchange(&mut stream, Invocation { operation, caller }, input).await
+    let mesh_startup = !matches!(
+        operation,
+        Operation::Mesh(crate::mesh::pairing::Command::Reset)
+    );
+    let mut stream = session(&location, mesh_startup).await?;
+    exchange_with_progress(
+        &mut stream,
+        Invocation { operation, caller },
+        input,
+        progress,
+    )
+    .await
 }
+#[cfg(test)]
 async fn exchange(
     stream: &mut (impl tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin),
     invocation: Invocation,
+    input: Option<File>,
+) -> Result<Reply> {
+    exchange_with_progress(stream, invocation, input, |_| {}).await
+}
+async fn exchange_with_progress(
+    stream: &mut (impl tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin),
+    invocation: Invocation,
     mut input: Option<File>,
+    mut progress: impl FnMut(&crate::mesh::status::Progress),
 ) -> Result<Reply> {
     let invocation = std::sync::Arc::new(invocation);
     let mutating = invocation.operation.mutates();
+    let mut admitted = None;
     let result = async {
         wire::send(stream, &Frame::Invoke { id: 1 }).await?;
         send_json(stream, invocation.clone()).await?;
@@ -295,38 +331,54 @@ async fn exchange(
         } else {
             wire::send(stream, &Frame::End).await?;
         }
-        match wire::receive::<Frame>(stream).await? {
-            Frame::Reply { id: 1 } => {
-                let envelope = receive_json(stream).await?;
-                invocation.validate_reply(&envelope)?;
-                let ReplyEnvelope {
-                    value,
-                    warnings,
-                    output,
-                } = envelope;
-                let output = if output {
-                    let mut file = tempfile::tempfile()?;
-                    receive_file(stream, &mut file).await?;
-                    file.seek(SeekFrom::Start(0))?;
-                    Some(file)
-                } else {
-                    None
-                };
-                Ok(Reply {
-                    value,
-                    warnings,
-                    output,
-                })
+        loop {
+            match wire::receive::<Frame>(stream).await? {
+                Frame::Progress(event) => {
+                    invocation.validate_progress(&event)?;
+                    if let crate::mesh::status::Progress::Admitted(status) = &event {
+                        if admitted.is_some() {
+                            return Err(Error::Invalid("duplicate admission progress".into()));
+                        }
+                        admitted = Some(status.clone());
+                    }
+                    progress(&event);
+                }
+                Frame::Reply { id: 1 } => {
+                    let envelope = receive_json(stream).await?;
+                    invocation.validate_reply(&envelope)?;
+                    let ReplyEnvelope {
+                        value,
+                        warnings,
+                        output,
+                    } = envelope;
+                    let output = if output {
+                        let mut file = tempfile::tempfile()?;
+                        receive_file(stream, &mut file).await?;
+                        file.seek(SeekFrom::Start(0))?;
+                        Some(file)
+                    } else {
+                        None
+                    };
+                    return Ok(Reply {
+                        value,
+                        warnings,
+                        output,
+                    });
+                }
+                Frame::Failure(error) => return Err(error.into()),
+                Frame::Rejected(message) => {
+                    return Err(crate::error::ApplicationError::new(
+                        Error::Invalid(message),
+                        false,
+                    )
+                    .into());
+                }
+                _ => return Err(Error::Invalid("invalid daemon response".into())),
             }
-            Frame::Failure(error) => Err(error.into()),
-            Frame::Rejected(message) => {
-                Err(crate::error::ApplicationError::new(Error::Invalid(message), false).into())
-            }
-            _ => Err(Error::Invalid("invalid daemon response".into())),
         }
     }
     .await;
-    result.map_err(|error| match error {
+    let result = result.map_err(|error| match error {
         Error::Application(_) => error,
         error => {
             let mut error = crate::error::ApplicationError::new(error, mutating);
@@ -341,7 +393,20 @@ async fn exchange(
             );
             error.into()
         }
-    })
+    });
+    match (result, admitted) {
+        (Err(error), Some(status)) => Ok(Reply::from(Value::Mesh(
+            crate::mesh::pairing::Output::Changed {
+                operation: crate::mesh::pairing::Change::Paired,
+                status,
+                initial_sync: None,
+                initial_sync_error: Some(Box::new(crate::error::ApplicationError::new(
+                    error, true,
+                ))),
+            },
+        ))),
+        (result, _) => result,
+    }
 }
 pub async fn control(path: &Path, stop: bool) -> Result<DaemonState> {
     let location = Location::new(path)?;
@@ -370,6 +435,7 @@ struct Job {
     input: Option<File>,
     reply: oneshot::Sender<Result<Reply>>,
     delivered: oneshot::Receiver<()>,
+    progress: mpsc::Sender<crate::mesh::status::Progress>,
 }
 async fn client(
     mut stream: Stream,
@@ -467,7 +533,8 @@ async fn client(
         }
         None
     };
-    let (tx, rx) = oneshot::channel();
+    let (tx, mut rx) = oneshot::channel();
+    let (progress, mut events) = mpsc::channel(2);
     let (done, delivered) = oneshot::channel();
     if queue
         .try_send(Job {
@@ -477,6 +544,7 @@ async fn client(
             input,
             reply: tx,
             delivered,
+            progress,
         })
         .is_err()
     {
@@ -487,11 +555,19 @@ async fn client(
         .await?;
         return Ok(());
     }
-    let reply = tokio::select! {
-    reply=rx=>reply.map_err(|_|Error::Invalid("daemon stopped before returning a reply".into()))?,
-    _=stream.read_u8()=>return Err(Error::Invalid("client disconnected or sent unexpected data".into())),
+    let reply = loop {
+        tokio::select! {
+            reply = &mut rx => break reply.map_err(|_| Error::Invalid("daemon stopped before returning a reply".into()))?,
+            Some(event) = events.recv() => {
+                timeout(WAIT, wire::send(&mut stream, &Frame::Progress(event))).await.map_err(|_| Error::Invalid("client progress stalled".into()))??;
+            },
+            _ = stream.read_u8() => return Err(Error::Invalid("client disconnected or sent unexpected data".into())),
+        }
     };
     let response = async {
+        while let Ok(event) = events.try_recv() {
+            wire::send(&mut stream, &Frame::Progress(event)).await?;
+        }
         match reply {
             Ok(reply) => {
                 wire::send(&mut stream, &Frame::Reply { id: 1 }).await?;
@@ -598,6 +674,8 @@ async fn daemon(config: Bootstrap) -> Result<()> {
         socket_path: socket.clone(),
         file: owned_file,
     };
+    let network = tokio::runtime::Handle::current();
+    let mesh_startup = config.mesh_startup;
     let dispatched = tokio::task::spawn_blocking(move || -> Result<_> {
         // libSQL's local async methods and native encoding execute synchronously.
         // Build and retain every Store on this thread; keep IPC independently polled.
@@ -610,6 +688,8 @@ async fn daemon(config: Bootstrap) -> Result<()> {
             stopping,
             listener,
             binding,
+            network,
+            mesh_startup,
         ))
     })
     .await;

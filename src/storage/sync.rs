@@ -1,4 +1,4 @@
-//! @ref LLP 0006#merge-and-publication
+//! @ref LLP 0008#replication-and-publication
 use super::{
     Store, migrations,
     record::{Record, hash},
@@ -9,12 +9,6 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 pub const PAGE: usize = 256;
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Remote {
-    pub name: String,
-    pub origin: String,
-    pub scope: Option<String>,
-}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Entry {
     pub id: String,
@@ -56,8 +50,8 @@ impl Item {
 }
 pub struct Replica {
     _database: libsql::Database,
-    db: Connection,
-    path: PathBuf,
+    pub(super) db: Connection,
+    pub(super) path: PathBuf,
 }
 impl Replica {
     pub async fn open(path: &Path) -> Result<Self> {
@@ -91,61 +85,27 @@ impl Replica {
             path: path.to_owned(),
         })
     }
-    async fn transaction(&self, behavior: TransactionBehavior) -> Result<libsql::Transaction> {
+    pub(super) async fn transaction(
+        &self,
+        behavior: TransactionBehavior,
+    ) -> Result<libsql::Transaction> {
         let tx = self.db.transaction_with_behavior(behavior).await?;
         migrations::check(&tx).await?;
         Ok(tx)
     }
-    pub async fn remotes(&self) -> Result<Vec<Remote>> {
-        let tx = self.transaction(TransactionBehavior::Deferred).await?;
-        let mut rows = tx
+    pub(crate) async fn inventory_budget(&self) -> Result<[u64; 2]> {
+        let mut rows = self
+            .db
             .query(
-                "SELECT name,origin,scope FROM sync_remotes ORDER BY name",
+                "SELECT (SELECT count(*) FROM records),(SELECT count(*) FROM tombstones)",
                 (),
             )
             .await?;
-        let mut out = Vec::new();
-        while let Some(r) = rows.next().await? {
-            out.push(Remote {
-                name: r.get(0)?,
-                origin: r.get(1)?,
-                scope: r.get(2)?,
-            });
-        }
-        Ok(out)
-    }
-    pub async fn pair(&self, remote: &Remote) -> Result<()> {
-        let tx = self.transaction(TransactionBehavior::Immediate).await?;
-        let inserted = tx
-            .execute(
-                "INSERT INTO sync_remotes VALUES(?,?,?) ON CONFLICT(name) DO NOTHING",
-                params![
-                    remote.name.clone(),
-                    remote.origin.clone(),
-                    remote.scope.clone()
-                ],
-            )
-            .await?;
-        if inserted == 0 {
-            return Err(Error::Invalid(format!(
-                "sync remote {} already exists; remove it before pairing again",
-                remote.name
-            )));
-        }
-        tx.commit().await?;
-        Ok(())
-    }
-    pub async fn remove(&self, name: &str) -> Result<()> {
-        let tx = self.transaction(TransactionBehavior::Immediate).await?;
-        if tx
-            .execute("DELETE FROM sync_remotes WHERE name=?", [name])
+        let row = rows
+            .next()
             .await?
-            == 0
-        {
-            return Err(Error::Invalid(format!("unknown sync remote: {name}")));
-        }
-        tx.commit().await?;
-        Ok(())
+            .ok_or_else(|| Error::Invalid("missing inventory counts".into()))?;
+        Ok([row.get::<i64>(0)? as u64, row.get::<i64>(1)? as u64])
     }
     pub async fn inventory(
         &self,
@@ -228,10 +188,8 @@ impl Replica {
         match rows.next().await? {
             None => Ok(true),
             Some(row) if Some(row.get::<String>(0)?) == entry.hash => Ok(false),
-            Some(_) => Err(Error::Invalid(format!(
-                "immutable record conflict: {}",
-                entry.id
-            ))),
+            Some(_) => Err(crate::mesh::failure::Kind::Conflict
+                .error(format!("immutable record conflict: {}", entry.id))),
         }
     }
     pub async fn apply(&self, item: &Item, scope: Option<&str>) -> Result<bool> {
@@ -260,10 +218,8 @@ impl Replica {
                 return if same {
                     Ok(false)
                 } else {
-                    Err(Error::Invalid(format!(
-                        "immutable record conflict: {}",
-                        item.id
-                    )))
+                    Err(crate::mesh::failure::Kind::Conflict
+                        .error(format!("immutable record conflict: {}", item.id)))
                 };
             }
             drop(rows);
@@ -316,14 +272,7 @@ mod schema_tests {
         let database = Builder::new_local(&path).build().await.unwrap();
         let writer = database.connect().unwrap();
         writer.execute_batch(&format!("BEGIN IMMEDIATE; CREATE TABLE future_only(value TEXT); INSERT INTO future_only VALUES('untouched'); PRAGMA user_version={}; COMMIT;", super::super::SCHEMA_VERSION + 1)).await.unwrap();
-        let remote = Remote {
-            name: "blocked".into(),
-            origin: "ssh://example.invalid".into(),
-            scope: None,
-        };
         for result in [
-            replica.pair(&remote).await,
-            replica.remove("blocked").await,
             replica
                 .apply(
                     &Item {
@@ -337,7 +286,6 @@ mod schema_tests {
                 .await
                 .map(|_| ()),
             replica.finish().await,
-            replica.remotes().await.map(|_| ()),
             replica.inventory(false, None, None).await.map(|_| ()),
             replica.get("blocked", None).await.map(|_| ()),
             replica
@@ -353,11 +301,16 @@ mod schema_tests {
             let error = crate::error::ApplicationError::new(result.unwrap_err(), true);
             assert!(matches!(error.code, crate::error::ErrorCode::Schema));
         }
-        let mut rows = writer.query("SELECT (SELECT count(*) FROM sync_remotes),(SELECT count(*) FROM tombstones),(SELECT value FROM future_only)", ()).await.unwrap();
+        let mut rows = writer
+            .query(
+                "SELECT (SELECT count(*) FROM tombstones),(SELECT value FROM future_only)",
+                (),
+            )
+            .await
+            .unwrap();
         let row = rows.next().await.unwrap().unwrap();
         assert_eq!(row.get::<i64>(0).unwrap(), 0);
-        assert_eq!(row.get::<i64>(1).unwrap(), 0);
-        assert_eq!(row.get::<String>(2).unwrap(), "untouched");
+        assert_eq!(row.get::<String>(1).unwrap(), "untouched");
         assert!(Store::open(&path).await.is_err());
         assert!(Replica::open(&path).await.is_err());
     }

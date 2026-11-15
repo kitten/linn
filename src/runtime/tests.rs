@@ -90,6 +90,7 @@ async fn published_owner_survives_missing_initiating_client() {
     let store = dir.path().join("store.db");
     let location = Location::new(&store).unwrap();
     let config = Bootstrap {
+        mesh_startup: true,
         endpoint: Endpoint {
             identity: location.id.clone(),
             path: dir.path().join("s"),
@@ -238,7 +239,7 @@ async fn response_delivery_barrier_remains_held_until_a_stalled_stream_is_closed
             send_json(
                 &mut stream,
                 Invocation {
-                    operation: Operation::SyncHello { version: 1 },
+                    operation: Operation::Check,
                     caller: Caller {
                         scope: None,
                         writer: None,
@@ -255,7 +256,7 @@ async fn response_delivery_barrier_remains_held_until_a_stalled_stream_is_closed
             output.set_len(64 * 1024 * 1024).unwrap();
             job.reply
                 .send(Ok(Reply {
-                    value: Value::Removed("test".into()),
+                    value: Value::Checked,
                     warnings: vec![],
                     output: Some(output),
                 }))
@@ -613,6 +614,7 @@ fn native_paths_round_trip_across_startup_handshake_and_file_input() {
         path: path.clone(),
     };
     let config = Bootstrap {
+        mesh_startup: true,
         endpoint: Endpoint {
             identity: identity.clone(),
             path: path.clone(),
@@ -702,4 +704,79 @@ fn native_path_codec_rejects_foreign_encodings_and_retains_legacy_endpoint_shape
     assert_eq!(old.identity, endpoint.identity);
     assert_eq!(old.path, endpoint.path);
     assert!(old.build.is_empty());
+}
+
+#[tokio::test]
+async fn admission_progress_preserves_typed_success_when_the_sync_reply_is_lost() {
+    use crate::mesh::{
+        pairing::{Change, Command, Output, Status},
+        status::Progress,
+    };
+    for admitted in [false, true] {
+        let (mut client, mut server) = tokio::io::duplex(4096);
+        let serving = async move {
+            assert!(matches!(
+                wire::receive::<Frame>(&mut server).await.unwrap(),
+                Frame::Invoke { id: 1 }
+            ));
+            let _: Invocation = receive_json(&mut server).await.unwrap();
+            assert!(matches!(
+                wire::receive::<Frame>(&mut server).await.unwrap(),
+                Frame::End
+            ));
+            if admitted {
+                wire::send(
+                    &mut server,
+                    &Frame::Progress(Progress::Admitted(Status {
+                        transport: Default::default(),
+                        endpoint: Some("1".repeat(64)),
+                        service: Some("https://mesh.example".into()),
+                        head: Some("2".repeat(64)),
+                        enabled: true,
+                        pending_leave: false,
+                        conflict: false,
+                        members: vec!["1".repeat(64)],
+                        revoked: vec![],
+                    })),
+                )
+                .await
+                .unwrap();
+            }
+        };
+        let invocation = Invocation {
+            operation: Operation::Mesh(Command::Pair {
+                service: None,
+                invitation: Some("token".into()),
+                bootstrap: None,
+                cancel: None,
+                initial_sync: true,
+            }),
+            caller: Caller {
+                scope: None,
+                writer: None,
+                diagnostics: Default::default(),
+            },
+        };
+        let mut events = 0;
+        let receiving = exchange_with_progress(&mut client, invocation, None, |_| events += 1);
+        let (result, ()) = tokio::join!(receiving, serving);
+        assert_eq!(events, usize::from(admitted));
+        if admitted {
+            let Value::Mesh(Output::Changed {
+                operation: Change::Paired,
+                status,
+                initial_sync: None,
+                initial_sync_error: Some(error),
+            }) = result.unwrap().value
+            else {
+                panic!("typed admission outcome expected");
+            };
+            assert!(status.enabled);
+            assert!(error.mutation_may_have_committed);
+        } else {
+            assert!(
+                matches!(result, Err(Error::Application(error)) if error.mutation_may_have_committed)
+            );
+        }
+    }
 }

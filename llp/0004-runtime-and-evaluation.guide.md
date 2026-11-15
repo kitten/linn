@@ -3,7 +3,7 @@
 **Type:** Explainer\
 **Status:** Active\
 **Systems:** CLI, Paths, Packaging\
-**Related:** LLP 0000, LLP 0001, LLP 0002, LLP 0003, LLP 0005, LLP 0006, LLP 0007
+**Related:** LLP 0000, LLP 0001, LLP 0002, LLP 0003, LLP 0005, LLP 0008, LLP 0007
 
 ## Runtime
 
@@ -21,10 +21,11 @@ each invocation. It never opens or creates the store or executes an operation
 locally. File adds send a typed input task with absolute source path, captured
 repository root alongside the byte snapshot.
 The application derives input kind, source metadata, relative source path and
-the source reference from the existing body SHA-256. Content validation, default labels and SSH synchronization all run in
-the daemon. The application owns execution, clocks, reference/cursor rules
-and typed results; the CLI owns text/JSON rendering and exit codes. `sync:serve`
-bridges its unchanged SSH stdio protocol to this application dispatcher.
+the source reference from the existing body SHA-256. Content validation, default
+labels and replica operations all run in the daemon. The application owns
+execution, clocks, reference/cursor rules and typed results; the CLI owns
+text/JSON rendering and exit codes. Mesh network workers submit bounded store
+steps through the same dispatcher under LLP 0008.
 Native Windows delivery remains specified but unimplemented in LLP 0007.
 
 Routine internal debug statistics, including POS projection publication counts
@@ -64,9 +65,11 @@ Commands are in three groups. An agent that reads memory needs only the first.
 | | `linn import <file\|->` | Merge an original-data bundle; preserve identities |
 | Maintain | `linn index:check` | Run the integrity check; exit 0 if clean, 3 if damaged |
 | | `linn index:rebuild` | Rebuild sections and the index from stored bodies and envelopes |
-| | `linn sync:remote pair\|remove\|list` | Configure trusted SSH peers |
-| | `linn sync` | Pull every peer before pushing merged records and deletions |
-| | `linn sync:serve [--stdio]` | Serve the SSH protocol without a listener |
+| | `linn sync` | Run a finite whole-store mesh exchange |
+| | `linn sync:pair` | Create or redeem a mesh invitation; optionally start the first sync |
+| | `linn sync:status`, `linn sync:peers` | Inspect local enrollment and transport state |
+| | `linn sync:revoke <peer-id\|self>`, `linn sync:leave` | Revoke a member or disable and leave this endpoint |
+| | `linn sync:reset-identity` | Remove a copied store's identity while preserving records |
 
 - **Scope.** The scope of a directory is computed, never configured:
   1. If the directory is not inside a git repository, it is unscoped.
@@ -127,17 +130,23 @@ Commands are in three groups. An agent that reads memory needs only the first.
 
 Top-level `export` and `import` transfer existing records; `add` creates new ones.
 Bundle format, selection, deletion privacy, lifecycle validation and recovery
-are specified in LLP 0006#file-export-and-import. Export defaults to stdout;
+are specified in LLP 0008#file-export-and-import. Export defaults to stdout;
 import accepts a file or stdin (`-`). Full original-data backups use unfiltered
 `export --all-states`.
 
 ## Synchronization
 
-`sync:remote pair <name> <ssh-origin> [--scope <repository>]`,
-`sync:remote remove <name>` and `sync:remote list` manage store-local remotes.
-`sync` pulls all remotes before pushing the merged records and tombstones.
-`sync:serve [--stdio]` serves SSH sessions over stdin/stdout without a listener.
-The protocol, conflicts, scope selection and recovery rules are in LLP 0006.
+LLP 0008 owns replica/publication contracts, mesh commands, membership and
+manual whole-store exchange. The interface is
+`linn sync:pair --service <url>` to create an invitation and
+`linn sync:pair --join [invitation]` to redeem it, then `linn sync` to run a finite
+mesh exchange. The owner can serve another member's explicit request while idle;
+local writes, timers and reconnects do not initiate record synchronization.
+Automatic record synchronization is not enabled. Interactive joining offers an optional first sync;
+scripts select it with `--sync`. Admission is complete before that job begins.
+The obsolete transport, remote-management commands and remote configuration
+are removed. There is no mesh exchange
+scope filter; file export selection remains independent.
 
 ## Commands in detail
 
@@ -268,7 +277,7 @@ The opaque s1 cursor is URL-safe unpadded base64 of JSON (query, caller scope, n
 Use the Nix flake for cargo fmt, cargo clippy --workspace --all-targets --all-features -- -D warnings, cargo test --workspace --all-features, and nix build. The build assets contain config.json, tokenizer.json and model.safetensors for the pinned SSE v2 model in LLP 0002. Fetch weights and tokenizer from revision-pinned, SHA-256-checked upstream URLs at build time; generate the byte-stable Linn model descriptor. Never download on ingest/search or commit weights. No developer-local path is a flake input. The installed binary embeds the model and requires no Nix-store dynamic dependency. See LLP 0005 for local scoring.
 
 The global options are `--store <path>` and `--json`; `--help` is available on
-all commands. There is no search `--scope` or model setup/download command; `sync:remote pair --scope` selects records for exchange only. Both file and stdin ingest
+all commands. There is no search `--scope` or model setup/download command. Both file and stdin ingest
 capture Git email attribution; all new records are accepted. File source type is repo-file
 with the evidence hash as ref; stdin source type is derived-from-thread with null
 ref. Close envelopes also capture Git email attribution and have default source metadata. Ingest warns
@@ -393,14 +402,12 @@ execution validation from evaluating a derivation on one machine.
 
 `checks.<system>.package-smoke` checks a copied packaged binary with isolated
 home/config/data directories, no asset environment variables, and synthetic data.
-It verifies original-byte backup restoration, retries, tombstone precedence,
-schema upgrade from the previous version and recovery from an interrupted stdio
-sync. Required license files accompany the package. The optional real-SSH mode
-uses loopback, temporary host/client keys, strict host verification and a forced
-Linn command; it cleans up its process and keys. It is an explicit local test,
-not a background service. The same protocol can be checked with a separately
-supplied compatible peer binary. Real two-device and other-OS execution remain
-separate acceptance measurements.
+It verifies search/show, original-byte backup restoration, idempotent import,
+tombstones, schema upgrade, pending-publication recovery through `sync`, truncated
+bundle rejection and rejection of retired commands. Required license files
+accompany the package. Native mesh transfer and relay interoperability have
+separate tests under LLP 0008; the package smoke check does not establish
+cross-device or cross-account interoperability.
 
 ## CI and tagged releases
 
