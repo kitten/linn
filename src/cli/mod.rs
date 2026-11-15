@@ -330,10 +330,10 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
                 return Ok(1);
             };
             if json_output {
-                let cards:Vec<_>=call.cards.iter().enumerate().map(|(i,c)|{let r=&page.records[&c.record];json!({"n":i+1,"record":c.record,"label":r.label,"heading":c.heading,"excerpt":c.text,"fetch":format!("{}:v1:{}:{}",&r.body_hash()[..12],c.span[0],c.span[1]),"labels":c.labels})}).collect();
+                let cards:Vec<_>=call.cards.iter().enumerate().map(|(i,c)|{let r=&page.records[&c.record];json!({"n":i+1,"record":c.record,"label":r.label,"heading":c.heading,"excerpt":c.text,"fetch":c.fetch,"labels":c.labels})}).collect();
                 println!(
                     "{}",
-                    json!({"cursor":page.cursor,"call":page.number,"status":if cards.is_empty(){"nothing_qualified"}else{"results"},"cards":cards,"related":pointer_json(&page,&call.related),"hints":pointer_json(&page,&call.hints),"more":page.more})
+                    json!({"cursor":page.cursor,"call":page.number,"status":if cards.is_empty(){"nothing_qualified"}else{"results"},"cards":cards,"related":pointer_json(&call.related),"hints":pointer_json(&call.hints),"more":page.more})
                 );
             } else {
                 print_call(&page, call);
@@ -511,7 +511,7 @@ fn print_call(store: &crate::application::SearchPage, call: &Call) {
     for (i, c) in call.cards.iter().enumerate() {
         let r = &store.records[&c.record];
         println!(
-            "[{}] {}{}{}\n    {}\n    fetch {}:v1:{}:{}",
+            "[{}] {}{}{}\n    {}\n    fetch {}",
             i + 1,
             r.label,
             if r.kind == "doc" { " (doc)" } else { "" },
@@ -535,7 +535,7 @@ fn print_call(store: &crate::application::SearchPage, call: &Call) {
             for (i, p) in list.iter().enumerate() {
                 let r = &store.records[&p.record];
                 println!(
-                    "[{prefix}{}] {}{}{}\n    {}{}\n    fetch {}:v1:{}:{}",
+                    "[{prefix}{}] {}{}{}\n    {}{}\n    fetch {}",
                     i + 1,
                     p.label,
                     if r.kind == "doc" { " (doc)" } else { "" },
@@ -558,18 +558,13 @@ fn print_call(store: &crate::application::SearchPage, call: &Call) {
                         String::new()
                     },
                     centered(&p.excerpt, &[]),
-                    &r.body_hash()[..12],
-                    p.span[0],
-                    p.span[1]
+                    p.fetch.as_deref().expect("application fetch reference")
                 );
             }
         }
     }
 }
 
-fn pointer_json(
-    store: &crate::application::SearchPage,
-    pointers: &[crate::storage::Pointer],
-) -> Vec<serde_json::Value> {
-    pointers.iter().enumerate().map(|(i,p)|{let r=&store.records[&p.record];json!({"n":i+1,"record":p.record,"label":p.label,"heading":p.heading,"excerpt":p.excerpt,"fetch":format!("{}:v1:{}:{}",&r.body_hash()[..12],p.span[0],p.span[1]),"matched":p.matched,"missing":p.missing})}).collect()
+fn pointer_json(pointers: &[crate::storage::Pointer]) -> Vec<serde_json::Value> {
+    pointers.iter().enumerate().map(|(i,p)|{json!({"n":i+1,"record":p.record,"label":p.label,"heading":p.heading,"excerpt":p.excerpt,"fetch":p.fetch,"matched":p.matched,"missing":p.missing})}).collect()
 }

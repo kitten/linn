@@ -438,7 +438,7 @@ async fn execute_store(
             store.load_record_sections(&rid).await?;
             let lifecycle = store.lifecycle_references(&rid).await?;
             let (record, span) = store.resolve(&reference, scope.as_deref())?;
-            let fetch = format!("{}:v1:{}:{}", record.body_hash(), span[0], span[1]);
+            let fetch = crate::reference::fetch(&record.body_hash(), span);
             if !store.validity.eligible(record, &ctx.now) {
                 let child = lifecycle.iter().map(|id| &store.records[id]).find(|r| {
                     r.state == "accepted"
@@ -533,11 +533,9 @@ async fn execute_store(
                     heading: sec.path.join(" > "),
                     span: [span.start, span.end],
                     text: excerpt,
-                    fetch: Some(format!(
-                        "{}:v1:{}:{}",
-                        record.body_hash(),
-                        span.start,
-                        span.end
+                    fetch: Some(crate::reference::fetch(
+                        &record.body_hash(),
+                        [span.start, span.end],
                     )),
                     ..Card::default()
                 });
@@ -773,8 +771,21 @@ async fn search(store: &mut Store, q: &str, ctx: &Context, start: usize) -> Resu
             },
         );
     }
+    let mut call = call.clone();
+    for card in &mut call.cards {
+        card.fetch = Some(crate::reference::short_fetch(
+            records[&card.record].body_hash(),
+            card.span,
+        ));
+    }
+    for pointer in call.hints.iter_mut().chain(&mut call.related) {
+        pointer.fetch = Some(crate::reference::short_fetch(
+            records[&pointer.record].body_hash(),
+            pointer.span,
+        ));
+    }
     Ok(SearchPage {
-        call: Some(call.clone()),
+        call: Some(call),
         records,
         number: i + 1,
         cursor: token,

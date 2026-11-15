@@ -60,6 +60,11 @@ moving them to a resident process would require recreating caller cwd/environmen
 semantics. Never mutate process-global Git search paths or environment to do so.
 Store/config paths, local input/output I/O and presentation remain client tasks.
 
+The [shared reference encoder](../src/reference.rs) constructs canonical fetch identifiers
+for cards and pointers. Search references retain the 12-character hash prefix
+and exact byte spans. CLI adapters render these identifiers without rebuilding
+their syntax.
+
 Results carry data, not preformatted terminal text. Text and JSON adapters
 preserve existing output, diagnostics and exit codes. Structured errors retain
 whether original data committed, whether publication failed, and the applicable

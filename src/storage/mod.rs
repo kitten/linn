@@ -168,6 +168,8 @@ pub struct Pointer {
     pub excerpt: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub via: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fetch: Option<String>,
 }
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Call {
@@ -2965,7 +2967,7 @@ impl Store {
             section: id,
             text: b.text.chars().skip(start).take(180).collect(),
             labels: Vec::new(),
-            fetch: center.map(|_| format!("{}:v1:{}:{}", b.hash, b.start, b.end)),
+            fetch: center.map(|_| crate::reference::fetch(&b.hash, [b.start, b.end])),
         }
     }
     pub(crate) async fn prepare_porter(

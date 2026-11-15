@@ -1107,6 +1107,7 @@ impl Store {
                     matched,
                     excerpt: centered(&text, &words),
                     via: Some("heading".into()),
+                    fetch: None,
                 }
             })
             .collect())
@@ -1223,6 +1224,7 @@ impl Store {
                 matched,
                 excerpt,
                 via: None,
+                fetch: None,
             });
         }
         let mut vector_hints = Vec::new();
@@ -1277,6 +1279,7 @@ impl Store {
                         matched,
                         excerpt: centered(&b.text, &words),
                         via: Some("vector".into()),
+                        fetch: None,
                     });
                 }
                 if selected == 3 {

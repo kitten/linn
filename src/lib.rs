@@ -19,3 +19,4 @@ pub mod runtime;
 pub mod diagnostics;
 
 mod native_path;
+mod reference;

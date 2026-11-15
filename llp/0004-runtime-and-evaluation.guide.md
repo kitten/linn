@@ -148,6 +148,8 @@ Runs `search` (Search algorithms), applies Command structure's CLI rules, and pr
 - **Cards.** At most 5. Call 1 is the page of Call-1 page. Two non-overlapping blocks of one record can
   both appear. A tested call-1 card shows its heading path and the excerpt from Call-1 page. It does not
   show the repository. Cards from call 3 also show their edge label.
+- **Fetch identifiers.** The application supplies canonical references; CLI
+  rendering preserves the 12-character hash prefix and original byte spans.
 - **Related pointers.** Up to 2, printed after the cards under `Related (heading match, not
   results):`. Each has its fetch id.
 - **Silence.** A silent search prints `Nothing qualified.` and up to 3 near misses under `Near

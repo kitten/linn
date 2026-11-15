@@ -13,6 +13,7 @@ The CLI and eval harness share this library. Code is grouped by responsibility:
 - [sync/](sync/README.md): SSH transport, bounded exchange, and mesh coordination.
 - `application/`: typed operations/input tasks, caller context, source metadata, results and cursors.
 - [runtime/](runtime/README.md): detached bootstrap, ownership, framed IPC, a dedicated store thread and SSH coordination workers.
+- `reference.rs`: shared original-byte fetch identifier encoding.
 - `diagnostics.rs`: task-local output controls and captured diagnostics.
 - [cli/](cli/README.md): argument parsing, caller context, byte transport and presentation.
 
