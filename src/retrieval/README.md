@@ -8,7 +8,7 @@
 - `passage.rs`: source-bound pair qualification and stable passage coverage ordering.
 - `confidence.rs`: confidence features and the fixed open gate.
 - `hit_order.rs`: posting iteration order.
-- `selection.rs`: compatible top-k partition ordering.
+- `selection.rs`: compatible top-k partition ordering and exact lazy similarity queues.
 - `similarity.rs`: exact floating-point vector and matrix kernels.
 
 These modules operate on `storage::Store`. Language resources live in

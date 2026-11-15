@@ -1660,3 +1660,46 @@ The confidence gate remains open and the maximum is five cards.
 
 The implementation is fixed in `src/retrieval/competition.rs` and the candidate
 acquisition in `src/retrieval/lexical.rs`. There are no runtime policy switches.
+
+
+### Joint competition execution
+
+Reuse the original query's exact/stem coverage snapshots, raw rankings and shared
+scoring state when they exist for the same query text, caller scope, eligibility
+clock and publication. Coverage holds the same scoring object used to construct
+its matchers, including query IDFs and ordered source pairs. Existing write,
+publication and clock invalidation still apply. If an original-query snapshot is
+unavailable (for example after a rewritten search), recompute the ordinary two
+matchers; never substitute rewritten-query scores or hits for the original query.
+This avoids issuing the original indexed FTS and POS work a second time.
+
+Keep exact global vector scoring with the existing full matrix and arithmetic.
+Heapify the eligible `(block id, float32 cosine)` population and pop it in the
+same descending `total_cmp` score, ascending block-id order as the specified full
+sort. Inspect consecutive batches of 64 through the existing indexed header
+loader, apply the query filters and retain at most 40 distinct records. Continue
+until 40 qualify or the heap is exhausted; a filtered or duplicate-heavy prefix
+is never a reason to stop early. Heap construction is linear in numeric rows;
+only the inspected prefix incurs heap-pop ordering work. This introduces neither
+a new record map nor approximate retrieval. It preserves the previous header-read
+batch boundaries and the complete candidate population.
+
+Candidate cosine for final joint scoring still uses the original individual dot
+kernel, not the global matrix-vector result, since their floating-point reductions
+can differ. Borrow exact row slices from the already loaded matrix instead of
+copying selected vectors through a temporary map. Score only the retained union,
+retain the same original-byte cards and preserve missing-vector errors.
+
+Represent competition evidence as typed Rust values. Compute each row's two
+joint scores once, retaining the specified arithmetic order, float32-to-float64
+promotion, tie keys and strict margins. Move the native response into selection;
+clone only cards selected for a changed first page. No JSON encode/decode round
+trip, full-response clone, unused coverage/tier/pool diagnostics or repeated tier
+search belongs on this execution path. The frozen JSON selector is a test-only
+reference for compatibility. No algorithm settings or diagnostics change selection.
+
+libSQL remains authoritative for indexed FTS hits, lifecycle/statistical joins,
+POS pair lookup, block/header/body reads and persisted vector publication. Its
+indexed-key batches are retained. Exact vector scanning is deliberately global;
+SQL cosine functions, approximate vector indexes or early vector admission cuts
+cannot replace its arithmetic and candidate set in a performance-only change.

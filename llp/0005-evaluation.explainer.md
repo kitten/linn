@@ -588,3 +588,20 @@ archived evaluations remain measurements of that frozen implementation. Retain
 corpus-free tests of both-score protection, unknown evidence,
 quoted-term barriers, empty admission, duplicate pages and preservation of later
 calls. Source changes that alter these outcomes require new measurement.
+
+
+### Protected competition execution compatibility
+
+The joint competition execution refactor preserves the accepted candidate set,
+arithmetic, margins and card scheduling in LLP 0002. Corpus-free tests compare
+its typed selector with the frozen JSON selector, heap batches with the complete
+score/id sort, filtered distinct-record vector selection with full sorting, and
+cached versus recomputed matcher evidence on built and reopened stores with clock
+expiry and query filters. The JSON reference compiles only for tests.
+
+The historical competition timings above include the previous JSON adapter,
+duplicate matcher work and full vector sort. They are not measurements of the
+refactored execution path. No fresh benchmark, full retrieval suite or physical
+neutral pass is claimed for this refactor; compatibility tests are not those
+measurements and do not establish a percentage speedup. Exact global vector work
+and cold numerical-matrix reads remain part of the accepted algorithm's cost.

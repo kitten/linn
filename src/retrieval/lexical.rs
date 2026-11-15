@@ -75,6 +75,7 @@ pub(crate) struct Matched {
 }
 #[derive(Clone)]
 pub(crate) struct Coverage {
+    scoring: Arc<Scoring>,
     counts: HashMap<usize, usize>,
     hits: Vec<HashSet<usize>>,
     scores: HashMap<usize, f64>,
@@ -83,6 +84,7 @@ pub(crate) struct Coverage {
 impl From<&Matched> for Coverage {
     fn from(m: &Matched) -> Self {
         Self {
+            scoring: m.scoring.clone(),
             counts: m.counts.clone(),
             hits: m.hits.clone(),
             scores: m
@@ -1676,8 +1678,60 @@ pub fn centered(text: &str, words: &[String]) -> String {
 }
 
 impl Store {
+    fn competition_lexical(&self, a: &[Rank], b: &[Rank]) -> HashSet<usize> {
+        let mut ids = HashSet::new();
+        for ranking in [a, b] {
+            let mut records = HashSet::new();
+            ids.extend(
+                ranking
+                    .iter()
+                    .filter(|r| records.insert(self.rows[&r.sid].record.as_str()))
+                    .take(40)
+                    .map(|r| r.sid),
+            );
+        }
+        ids
+    }
+    async fn competition_vector_rows(
+        &mut self,
+        q: &Query,
+        ctx: &Context,
+        cached: &crate::storage::BlockMatrix,
+        scores: &[f32],
+    ) -> Result<HashSet<usize>> {
+        let mut order = crate::retrieval::selection::SimilarityQueue::new(
+            cached
+                .ids
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| {
+                    cached.eligible[*i]
+                        && (cached.expires[*i].is_empty() || cached.expires[*i] > ctx.now)
+                })
+                .map(|(i, id)| (*id, scores[i])),
+        );
+        let mut ids = HashSet::new();
+        let mut seen = HashSet::new();
+        loop {
+            let batch = order.next_batch();
+            if batch.is_empty() {
+                break;
+            }
+            self.load_block_headers(batch.iter().copied()).await?;
+            for id in &batch {
+                let row = &self.rows[id];
+                if self.allowed_query(row, q) && seen.insert(row.record.clone()) {
+                    ids.insert(*id);
+                    if ids.len() == 40 {
+                        return Ok(ids);
+                    }
+                }
+            }
+        }
+        Ok(ids)
+    }
     // @ref LLP 0002#joint-record-competition
-    pub(crate) async fn competition_evidence(
+    pub(super) async fn competition_evidence(
         &mut self,
         text: &str,
         ctx: &Context,
@@ -1687,84 +1741,52 @@ impl Store {
         self.ensure_usable()?;
 
         let mut result = Evidence {
-            query: text.into(),
-            model: crate::language::embedding::ARTIFACT_MODEL.into(),
-            parse_error: None,
-            query_pairs: 0,
             candidates: Vec::new(),
             baseline,
         };
         let q = match Query::parse(text) {
             Ok(q) if !q.content().is_empty() => q,
-            Ok(_) => return Ok(result),
-            Err(error) => {
-                result.parse_error = Some(error);
-                return Ok(result);
-            }
+            _ => return Ok(result),
         };
         self.set_query_clock(&ctx.now);
-        let stats = self.scope_stats(&ctx.now, &q).await?;
-        let mut scoring = Scoring::new(&q, &stats);
-        let idfs = scoring
-            .terms
-            .iter()
-            .flat_map(|(_, ws)| ws.iter().cloned())
-            .collect();
-        scoring.pairs = self.occurrence_pairs(&q, &idfs).await?;
-        result.query_pairs = scoring.pairs.len();
-        let scoring = Arc::new(scoring);
-        let mut memo = HashMap::new();
-        let a = self
-            .matcher(&q, ctx, false, scoring.clone(), &mut memo)
-            .await?;
-        let b = self
-            .matcher(&q, ctx, true, scoring.clone(), &mut memo)
-            .await?;
-        let mut lexical = HashSet::new();
-        for m in [&a, &b] {
-            let mut records = HashSet::new();
-            lexical.extend(
-                m.ranking
-                    .iter()
-                    .filter(|r| records.insert(self.rows[&r.sid].record.clone()))
-                    .take(40)
-                    .map(|r| r.sid),
-            );
-        }
-        let vector = self.encoder()?.encode(&query::split(text).1);
-        let vector_ids = {
-            let (cached, scores) = self.vector_scores(&vector).await?;
-            let mut order: Vec<_> = cached
-                .ids
+        let (a, b, lexical) = if let (Some(a), Some(b), Some(ar), Some(br)) = (
+            self.coverage.get(&(text.into(), ctx.scope.clone(), false)),
+            self.coverage.get(&(text.into(), ctx.scope.clone(), true)),
+            self.rankings
+                .get(&(text.into(), ctx.scope.clone(), ctx.now.clone(), false)),
+            self.rankings
+                .get(&(text.into(), ctx.scope.clone(), ctx.now.clone(), true)),
+        ) {
+            (a.clone(), b.clone(), self.competition_lexical(ar, br))
+        } else {
+            // Empty-page rewrites can leave no exact original-query snapshot.
+            let stats = self.scope_stats(&ctx.now, &q).await?;
+            let mut scoring = Scoring::new(&q, &stats);
+            let idfs = scoring
+                .terms
                 .iter()
-                .enumerate()
-                .filter(|(i, _)| {
-                    cached.eligible[*i]
-                        && (cached.expires[*i].is_empty() || cached.expires[*i] > ctx.now)
-                })
-                .map(|(i, id)| (*id, scores[i]))
+                .flat_map(|(_, ws)| ws.iter().cloned())
                 .collect();
-            order.sort_by(|(ia, a), (ib, b)| b.total_cmp(a).then(ia.cmp(ib)));
-            let mut vector_ids = HashSet::new();
-            let mut seen = HashSet::new();
-            for batch in order.chunks(64) {
-                self.load_block_headers(batch.iter().map(|(id, _)| *id))
-                    .await?;
-                for (id, _) in batch {
-                    let row = &self.rows[id];
-                    if self.allowed_query(row, &q) && seen.insert(row.record.clone()) {
-                        vector_ids.insert(*id);
-                        if vector_ids.len() == 40 {
-                            break;
-                        }
-                    }
-                }
-                if vector_ids.len() == 40 {
-                    break;
-                }
-            }
-            vector_ids
+            scoring.pairs = self.occurrence_pairs(&q, &idfs).await?;
+            let scoring = Arc::new(scoring);
+            let mut memo = HashMap::new();
+            let a = self
+                .matcher(&q, ctx, false, scoring.clone(), &mut memo)
+                .await?;
+            let b = self.matcher(&q, ctx, true, scoring, &mut memo).await?;
+            let lexical = self.competition_lexical(&a.ranking, &b.ranking);
+            (
+                Arc::new(Coverage::from(&a)),
+                Arc::new(Coverage::from(&b)),
+                lexical,
+            )
         };
+        let scoring = &a.scoring;
+        let vector = self.encoder()?.encode(&query::split(text).1);
+        let (vector_matrix, scores) = self.vector_scores(&vector).await?;
+        let vector_ids = self
+            .competition_vector_rows(&q, ctx, &vector_matrix, &scores)
+            .await?;
         let mut pos_ids = HashSet::new();
         if !scoring.pairs.is_empty() {
             let pairs: Vec<_> = scoring.pairs.iter().map(|(a, b, _)| (a, b)).collect();
@@ -1829,7 +1851,6 @@ impl Store {
                 || pos_ids.contains(id)
                 || baseline_ids.contains(id)
         });
-        let vectors = self.selected_vectors(&ids).await?;
         let normalizer = (2.2
             * scoring
                 .terms
@@ -1839,46 +1860,28 @@ impl Store {
         .max(1.);
         for id in ids {
             let row = &self.rows[&id];
-            let missing = |quoted: bool| {
-                q.terms
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, t)| if quoted { t.phrase } else { t.hard() })
-                    .filter(|(i, _)| !a.hits[*i].contains(&id) && !b.hits[*i].contains(&id))
-                    .count()
-            };
+            let vector_row = vector_matrix.ids.binary_search(&id).map_err(|_| {
+                crate::error::Error::Invalid("missing selected block vector".into())
+            })?;
             result.candidates.push(Candidate {
                 card: self.card(id, Some(&q)),
                 lexical: scoring.score(row),
                 pos: 0.75 * bonuses.get(&id).copied().unwrap_or(0.),
-                cosine: crate::language::embedding::dot(&vectors[&id], &vector),
+                cosine: crate::language::embedding::dot(
+                    vector_matrix.matrix.row(vector_row),
+                    &vector,
+                ),
                 normalizer,
                 far: self.records[&row.record].scope.as_ref().is_some_and(|s| {
                     s.to_lowercase() != ctx.scope.as_deref().unwrap_or("").to_lowercase()
                 }),
-                exact_coverage: q
+                missing_quoted: q
                     .terms
                     .iter()
                     .enumerate()
-                    .filter(|(_, t)| t.content())
-                    .filter(|(i, _)| a.hits[*i].contains(&id))
+                    .filter(|(_, t)| t.phrase)
+                    .filter(|(i, _)| !a.hits[*i].contains(&id) && !b.hits[*i].contains(&id))
                     .count(),
-                stem_coverage: q
-                    .terms
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, t)| t.content())
-                    .filter(|(i, _)| b.hits[*i].contains(&id))
-                    .count(),
-                content_terms: q.content().len(),
-                required: q.need,
-                missing_hard: missing(false),
-                missing_quoted: missing(true),
-                exact_tier: a.ranking.iter().find(|r| r.sid == id).map(|r| r.tier),
-                stem_tier: b.ranking.iter().find(|r| r.sid == id).map(|r| r.tier),
-                lexical_pool: lexical.contains(&id),
-                vector_pool: vector_ids.contains(&id),
-                pos_pool: pos_ids.contains(&id),
             });
         }
         Ok(result)
@@ -1888,6 +1891,134 @@ impl Store {
 #[cfg(test)]
 mod indexed_tests {
     use super::*;
+    #[tokio::test]
+    async fn competition_reuses_query_snapshot_without_changing_evidence() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("competition.db");
+        let mut expires = record("expires", "alpha beta scoped evidence", "accepted");
+        expires.stale_after = Some("2026-11-06T00:00:00Z".into());
+        let mut built = Store::build(
+            &path,
+            vec![
+                record(
+                    "a",
+                    "# Alpha\nalpha beta noun pair\n## Detail\nalpha beta more source",
+                    "accepted",
+                ),
+                record("b", "beta alpha unrelated detail", "accepted"),
+                record("blocked", "alpha beta", "candidate"),
+                expires,
+            ],
+        )
+        .await
+        .unwrap();
+        let mut reopened = Store::open(&path).await.unwrap();
+        for store in [&mut built, &mut reopened] {
+            for now in [crate::storage::NOW, "2027-01-01T00:00:00Z"] {
+                let ctx = Context {
+                    now: now.into(),
+                    ..Context::default()
+                };
+                for text in [
+                    "alpha beta",
+                    "kind:note alpha beta",
+                    "writer:unknown alpha beta",
+                    "\"alpha beta\"",
+                ] {
+                    let (baseline, _, _) = store.base_search(text, &ctx).await.unwrap();
+                    let cached = store
+                        .competition_evidence(text, &ctx, baseline.clone())
+                        .await
+                        .unwrap();
+                    store.coverage.clear();
+                    store.rankings.clear();
+                    let fresh = store
+                        .competition_evidence(text, &ctx, baseline)
+                        .await
+                        .unwrap();
+                    let ids: Vec<_> = cached.candidates.iter().map(|c| c.card.section).collect();
+                    let copied = store.selected_vectors(&ids).await.unwrap();
+                    let query_vector = store.encoder().unwrap().encode(&query::split(text).1);
+                    for candidate in &cached.candidates {
+                        assert_eq!(
+                            candidate.cosine.to_bits(),
+                            crate::language::embedding::dot(
+                                &copied[&candidate.card.section],
+                                &query_vector
+                            )
+                            .to_bits(),
+                            "borrowed versus copied dot for {text}"
+                        );
+                    }
+                    assert_eq!(
+                        serde_json::to_value(cached).unwrap(),
+                        serde_json::to_value(fresh).unwrap(),
+                        "{text} at {now}"
+                    );
+                }
+            }
+        }
+    }
+    #[tokio::test]
+    async fn competition_vector_queue_matches_full_sort_with_record_dedup_and_filters() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("vector-order.db");
+        let records = (0..48)
+            .map(|i| {
+                let mut r = record(
+                    &format!("r{i:02}"),
+                    "# Alpha\nalpha beta\n## Detail\nbeta alpha",
+                    "accepted",
+                );
+                if i % 3 == 0 {
+                    r.kind = "doc".into();
+                }
+                r
+            })
+            .collect();
+        let mut store = Store::build(&path, records).await.unwrap();
+        let cached = store.block_matrix().await.unwrap();
+        let scores: Vec<_> = cached.ids.iter().map(|id| ((id * 17) % 5) as f32).collect();
+        let ctx = Context::default();
+        for text in [
+            "alpha beta",
+            "kind:doc alpha beta",
+            "kind:note alpha beta",
+            "writer:unknown alpha beta",
+        ] {
+            let q = Query::parse(text).unwrap();
+            let actual = store
+                .competition_vector_rows(&q, &ctx, &cached, &scores)
+                .await
+                .unwrap();
+            let mut sorted: Vec<_> = cached
+                .ids
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| {
+                    cached.eligible[*i]
+                        && (cached.expires[*i].is_empty() || cached.expires[*i] > ctx.now)
+                })
+                .map(|(i, id)| (*id, scores[i]))
+                .collect();
+            sorted.sort_by(similarity_order);
+            store
+                .load_block_headers(sorted.iter().map(|(id, _)| *id))
+                .await
+                .unwrap();
+            let mut seen = HashSet::new();
+            let expected: HashSet<_> = sorted
+                .into_iter()
+                .filter(|(id, _)| {
+                    let row = &store.rows[id];
+                    store.allowed_query(row, &q) && seen.insert(row.record.clone())
+                })
+                .take(40)
+                .map(|(id, _)| id)
+                .collect();
+            assert_eq!(actual, expected, "{text}");
+        }
+    }
     #[tokio::test]
     async fn indexed_hint_selection_matches_materialized_sections() {
         let dir = tempfile::tempdir().unwrap();

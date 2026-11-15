@@ -210,3 +210,72 @@ mod tests {
         }
     }
 }
+
+// @ref LLP 0002#joint-record-competition
+// Heapify once, then inspect only the exact score/id-ordered prefix needed by
+// lifecycle, query filters and distinct-record selection.
+pub(super) struct SimilarityQueue(std::collections::BinaryHeap<SimilarityRow>);
+#[derive(Clone, Copy)]
+struct SimilarityRow(usize, f32);
+impl PartialEq for SimilarityRow {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other).is_eq()
+    }
+}
+impl Eq for SimilarityRow {}
+impl PartialOrd for SimilarityRow {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for SimilarityRow {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.1
+            .total_cmp(&other.1)
+            .then_with(|| other.0.cmp(&self.0))
+    }
+}
+impl SimilarityQueue {
+    pub(super) fn new(rows: impl Iterator<Item = (usize, f32)>) -> Self {
+        Self(rows.map(|(id, score)| SimilarityRow(id, score)).collect())
+    }
+    pub(super) fn next_batch(&mut self) -> Vec<usize> {
+        (0..64)
+            .map_while(|_| self.0.pop().map(|row| row.0))
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod similarity_queue_tests {
+    use super::*;
+    #[test]
+    fn batches_match_full_sort_including_float_ties_and_filtered_prefixes() {
+        let values = [
+            f32::NEG_INFINITY,
+            -1.,
+            -0.,
+            0.,
+            0.5,
+            0.5,
+            f32::INFINITY,
+            f32::NAN,
+        ];
+        for n in [0, 1, 63, 64, 65, 1024] {
+            let rows: Vec<_> = (0..n)
+                .map(|i| (i * 7 + 3, values[(i * 13) % values.len()]))
+                .filter(|(id, _)| id % 3 != 0)
+                .collect();
+            let mut expected = rows.clone();
+            expected.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+            let mut queue = SimilarityQueue::new(rows.into_iter());
+            for batch in expected.chunks(64) {
+                assert_eq!(
+                    queue.next_batch(),
+                    batch.iter().map(|x| x.0).collect::<Vec<_>>()
+                );
+            }
+            assert!(queue.next_batch().is_empty());
+        }
+    }
+}
