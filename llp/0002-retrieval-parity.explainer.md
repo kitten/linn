@@ -373,8 +373,11 @@ below stay in force unless LLP 0005's adoption requirements pass.
 
 - **Model.** One static SSE v2 model, `RikkaBotan/stable-static-embedding-fast-retrieval-mrl-en-v2`,
   revision `928b418b2741b7f7b1b557a53845ac88ad5054c4`. It contains 30,522 token vectors
-  of 512 float32 coordinates and three learned coordinate arrays. Provenance and
-  licenses are in [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES).
+  of 512 float32 coordinates and three learned coordinate arrays. The model assets
+  retain their Apache-2.0 notice in [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES).
+  The native encoder implements the mean/DyT equations without retaining the
+  reference Python module's implementation; its separate MIT notice does not
+  apply to the shipped native implementation.
 - **In the binary.** Embed the tokenizer and safetensors at build time. Checked
   safetensors parsing and aligned little-endian F32 views borrow the table without
   copying it at startup. Inference is native Rust using the tokenizer crate and

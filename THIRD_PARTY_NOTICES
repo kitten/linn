@@ -26,35 +26,9 @@ Embedded static embedding model
 RikkaBotan/stable-static-embedding-fast-retrieval-mrl-en-v2
 Revision: 928b418b2741b7f7b1b557a53845ac88ad5054c4
 https://huggingface.co/RikkaBotan/stable-static-embedding-fast-retrieval-mrl-en-v2/tree/928b418b2741b7f7b1b557a53845ac88ad5054c4
-The model card identifies the weights as Apache-2.0. Weights are build inputs,
-not Git contents. Linn's native implementation uses the published mean/DyT
-equations, a bounded input, and platform-native tanh; it does not execute SSE.py.
-The implementation source carries this notice:
-Copyright 2026 Rikka Botan. All rights reserved. Licensed under MIT License.
-https://huggingface.co/RikkaBotan/stable-static-embedding-fast-retrieval-mrl-en-v2/blob/928b418b2741b7f7b1b557a53845ac88ad5054c4/SSE.py
-
-MIT License
-
-Copyright (c) 2026 Rikka Botan
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
+The model card identifies the weights as Apache-2.0. The weights and tokenizer
+are embedded build inputs; inference uses Linn's native implementation of the
+model equations.
 
                                  Apache License
                            Version 2.0, January 2004
