@@ -953,3 +953,14 @@ List seeks the writer plus creation/expiry range and uses indexed ID tie order.
 Search intersects FTS row IDs with blocks belonging to records selected by the
 writer index before loading lexical block metadata. Corpus scoring statistics
 remain global; attribution is never lexical evidence.
+
+
+### Exact numerical loading
+
+Global numerical retrieval retains the original complete matrix, row order and
+512-float layout. Decode persisted little-endian float arrays in bulk on a
+little-endian host only when their byte alignment admits a checked float32 view.
+Otherwise retain per-float little-endian decoding. Preserve every bit, including
+signed zero and NaN payloads; validate existing blob lengths and matrix dimensions
+before use. This changes neither storage format nor numerical kernels and adds
+no persistent copy of block vectors.

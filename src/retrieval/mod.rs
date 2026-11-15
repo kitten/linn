@@ -5,6 +5,7 @@ pub(crate) mod confidence;
 pub(crate) mod fallback;
 pub(crate) mod hit_order;
 pub mod lexical;
+pub(crate) mod memo;
 pub(crate) mod ordered;
 mod passage;
 pub mod query;

@@ -325,8 +325,7 @@ impl Store {
         if proposals.is_empty() {
             return Ok(vec![]);
         }
-        let encoder = self.encoder()?;
-        let target = encoder.encode(text.trim());
+        let target = self.query_encoding(text.trim())?;
         let index = self.candidate_beam_terms(&words).await?;
         let banned: HashSet<_> = words.iter().filter_map(|w| index.get(w).copied()).collect();
         let mut sum = vec![0.; 512];
@@ -351,7 +350,7 @@ impl Store {
                         .map(|(t, m)| t - m)
                         .collect::<Vec<_>>()
                 } else {
-                    target.clone()
+                    target.as_ref().clone()
                 };
                 let options: Vec<_> = cached
                     .matrix
@@ -438,13 +437,12 @@ impl Store {
         }) {
             return Ok(None);
         }
-        let encoder = self.encoder()?;
-        let query_vector = encoder.encode(text.trim());
+        let query_vector = self.query_encoding(text.trim())?;
         let matrix = self.form_vectors(forms).await?;
         let mut claimed = HashSet::new();
         let mut candidates = Vec::new();
         for word in &words {
-            let v = encoder.encode(word);
+            let v = self.query_encoding(word)?;
             let options: Vec<_> = matrix.multiply(&v).into_iter().enumerate().collect();
             let order = crate::retrieval::selection::top(
                 &options.iter().map(|r| r.1).collect::<Vec<_>>(),
@@ -520,7 +518,7 @@ impl Store {
             .filter(|sid| self.hint_eligible(&self.rows[sid].record))
             .collect();
         let means = self.candidate_section_means(&candidates).await?;
-        let vector = self.encoder()?.encode(text.trim());
+        let vector = self.query_encoding(text.trim())?;
         let mut best = None;
         let mut best_cos = -1.;
         for (sid, mean) in &means {
@@ -628,9 +626,8 @@ impl Store {
         if vecs.is_empty() {
             return Ok(None);
         }
-        let encoder = self.encoder()?;
-        let av = encoder.encode(&a);
-        let bv = encoder.encode(&b);
+        let av = self.query_encoding(&a)?;
+        let bv = self.query_encoding(&b)?;
         let scores = vecs.pair(&av, &bv);
         let nearest = |column: usize| {
             crate::retrieval::selection::top(

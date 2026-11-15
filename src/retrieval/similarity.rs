@@ -4,6 +4,22 @@
 #[link(name = "Accelerate", kind = "framework")]
 unsafe extern "C" {}
 
+// @ref LLP 0001#publication-and-indexed-reads
+pub(crate) fn append_le_f32(values: &mut Vec<f32>, bytes: &[u8]) {
+    assert!(bytes.len().is_multiple_of(4));
+    #[cfg(target_endian = "little")]
+    if let Ok(floats) = bytemuck::try_cast_slice::<u8, f32>(bytes) {
+        values.extend_from_slice(floats);
+        return;
+    }
+    // SQL blob alignment is not a public guarantee; retain the portable decoder.
+    values.extend(
+        bytes
+            .chunks_exact(4)
+            .map(|b| f32::from_le_bytes(b.try_into().unwrap())),
+    );
+}
+
 pub(crate) struct Matrix {
     values: Vec<f32>,
     columns: usize,
@@ -194,6 +210,36 @@ pub fn matrix<'a>(rows: impl Iterator<Item = &'a [f32]>, q: &[f32]) -> Vec<f32> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn bulk_blob_decode_preserves_bits_for_aligned_and_unaligned_slices() {
+        let bits = [
+            0,
+            0x8000_0000,
+            0x3f80_0000,
+            0x7f80_0000,
+            0xff80_0000,
+            0x7fc0_0042,
+            0x0000_0001,
+        ];
+        let bytes: Vec<_> = bits.iter().flat_map(|n: &u32| n.to_le_bytes()).collect();
+        let mut unaligned = vec![0u8];
+        unaligned.extend_from_slice(&bytes);
+        for source in [&bytes[..], &unaligned[1..], &[]] {
+            let mut actual = vec![42.];
+            append_le_f32(&mut actual, source);
+            let expected: Vec<_> = std::iter::once(42f32.to_bits())
+                .chain(
+                    source
+                        .chunks_exact(4)
+                        .map(|b| f32::from_le_bytes(b.try_into().unwrap()).to_bits()),
+                )
+                .collect();
+            assert_eq!(
+                actual.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                expected
+            );
+        }
+    }
     #[test]
     fn dictionary_preserves_every_float_bit_and_occurrence() {
         let a = vec![0.; 512];

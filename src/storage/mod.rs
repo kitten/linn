@@ -224,6 +224,7 @@ pub struct Store {
     pub links: Arc<HashMap<String, HashSet<String>>>,
     pub basenames: HashMap<String, HashSet<String>>,
     encoder: Option<Arc<Encoder>>,
+    pub(crate) retrieval_memo: crate::retrieval::memo::Memo,
     pub hits: HashMap<(bool, String), HashSet<usize>>,
     eligible_hits: HashMap<(bool, String, String), HashSet<usize>>,
     pub porter_cache: HashMap<String, String>,
@@ -386,6 +387,7 @@ impl Store {
             links: Arc::new(HashMap::new()),
             basenames: HashMap::new(),
             encoder: None,
+            retrieval_memo: crate::retrieval::memo::Memo::default(),
             hits: HashMap::new(),
             eligible_hits: HashMap::new(),
             porter_cache: HashMap::new(),
@@ -696,11 +698,7 @@ impl Store {
             if bytes.len() % 4 != 0 {
                 return Err(Error::Invalid("invalid numerical projection bytes".into()));
             }
-            values.extend(
-                bytes
-                    .chunks_exact(4)
-                    .map(|b| f32::from_le_bytes(b.try_into().unwrap())),
-            );
+            crate::retrieval::similarity::append_le_f32(&mut values, &bytes);
         }
         crate::retrieval::similarity::Matrix::from_values(values, rows)
             .ok_or_else(|| Error::Invalid("invalid numerical projection matrix".into()))
@@ -810,12 +808,12 @@ impl Store {
     }
     // @ref LLP 0001#publication-and-indexed-reads
     pub(crate) async fn candidate_vector_scores(
-        &self,
+        &mut self,
         ids: &[usize],
         query: &[f32],
     ) -> Result<Vec<(usize, f32)>> {
-        if let Some(cache) = &self.vector_matrix {
-            let scores = cache.matrix.multiply(query);
+        if let Some(cache) = self.vector_matrix.clone() {
+            let scores = self.block_scores(&cache, query);
             return Ok(ids
                 .iter()
                 .filter_map(|id| {
@@ -935,11 +933,7 @@ impl Store {
                 records.push(row.get::<i64>(2)? as usize);
                 eligible.push(row.get::<i64>(3)? != 0);
                 expires.push(row.get::<String>(4)?);
-                values.extend(
-                    bytes
-                        .chunks_exact(4)
-                        .map(|b| f32::from_le_bytes(b.try_into().unwrap())),
-                );
+                crate::retrieval::similarity::append_le_f32(&mut values, &bytes);
             }
         }
         let matrix = crate::retrieval::similarity::Matrix::from_values(values, ids.len())
@@ -2485,6 +2479,7 @@ impl Store {
         self.stats.clear();
         self.sentence_cache = None;
         self.vector_matrix = None;
+        self.retrieval_memo = crate::retrieval::memo::Memo::default();
         self.df.clear();
         self.word_order.clear();
         self.vocab.clear();
@@ -2675,6 +2670,7 @@ impl Store {
     }
     // @ref LLP 0007#store-publication-and-synchronization
     pub(crate) fn begin_query(&mut self, query: &str, ctx: &Context) {
+        self.retrieval_memo.clear_encodings();
         if memo_over_budget(
             self.hits
                 .iter()

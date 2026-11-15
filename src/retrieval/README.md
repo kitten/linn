@@ -5,6 +5,7 @@
 - `fallback.rs`: the ordered empty-page procedure and its derived encodings.
 - `ordered.rs`: POS-selected occurrence evidence used by lexical scoring.
 - `competition.rs`: fixed joint scoring, 10% native membership and 20% first-result protection.
+- `memo.rs`: bounded exact-text encoding and publication-bound numerical reuse.
 - `passage.rs`: source-bound pair qualification and stable passage coverage ordering.
 - `confidence.rs`: confidence features and the fixed open gate.
 - `hit_order.rs`: posting iteration order.

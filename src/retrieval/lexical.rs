@@ -584,7 +584,7 @@ impl Store {
                     .flat_map(|(_, words)| words.iter().map(|(_, idf)| idf))
                     .sum::<f64>())
             .max(1.);
-            let query_vector = self.encoder()?.encode(&query::split(text).1);
+            let query_vector = self.query_encoding(&query::split(text).1)?;
             let vectors = self.selected_vectors(&tied).await?;
             for id in tied {
                 scores.insert(
@@ -911,9 +911,9 @@ impl Store {
     async fn vector_scores(
         &mut self,
         vector: &[f32],
-    ) -> Result<(Arc<crate::storage::BlockMatrix>, Vec<f32>)> {
+    ) -> Result<(Arc<crate::storage::BlockMatrix>, Arc<Vec<f32>>)> {
         let cached = self.block_matrix().await?;
-        let values = cached.matrix.multiply(vector);
+        let values = self.block_scores(&cached, vector);
         Ok((cached, values))
     }
     async fn page(
@@ -1189,7 +1189,7 @@ impl Store {
                         && self.hint_eligible(&self.rows[sid].record)
                 });
                 if !candidates.is_empty() {
-                    let vector = self.encoder()?.encode(text.trim());
+                    let vector = self.query_encoding(text.trim())?;
                     let best = self
                         .candidate_vector_scores(
                             &candidates.into_iter().collect::<Vec<_>>(),
@@ -1453,7 +1453,7 @@ impl Store {
         let mut vector_hints = Vec::new();
         let text = query::split(text).1;
         if !text.trim().is_empty() && !self.rare_blocks(&words, 2.5).is_empty() {
-            let vector = self.encoder()?.encode(text.trim());
+            let vector = self.query_encoding(text.trim())?;
             let mut seen: HashSet<_> = word_hints.iter().map(|h| h.record.clone()).collect();
             let mut selected = 0;
             let (cached, scores) = self.vector_scores(&vector).await?;
@@ -1473,7 +1473,7 @@ impl Store {
                         *eligible && (expires.is_empty() || expires > &self.query_clock)
                     })
                     .collect::<Vec<_>>(),
-                scores,
+                &scores,
                 &seen_records,
             );
             self.load_blocks(nearest.iter().map(|(id, _)| *id)).await?;
@@ -1553,12 +1553,15 @@ impl Store {
         ids: &[usize],
         records: &[usize],
         eligible: &[bool],
-        scores: Vec<f32>,
+        scores: &[f32],
         seen: &HashSet<usize>,
     ) -> Vec<(usize, f32)> {
         let mut best = HashMap::<usize, (usize, f32)>::new();
-        for (((&sid, &record), &eligible), score) in
-            ids.iter().zip(records).zip(eligible).zip(scores)
+        for (((&sid, &record), &eligible), score) in ids
+            .iter()
+            .zip(records)
+            .zip(eligible)
+            .zip(scores.iter().copied())
         {
             if seen.contains(&record) || !eligible {
                 continue;
@@ -1782,7 +1785,7 @@ impl Store {
             )
         };
         let scoring = &a.scoring;
-        let vector = self.encoder()?.encode(&query::split(text).1);
+        let vector = self.query_encoding(&query::split(text).1)?;
         let (vector_matrix, scores) = self.vector_scores(&vector).await?;
         let vector_ids = self
             .competition_vector_rows(&q, ctx, &vector_matrix, &scores)
@@ -2103,7 +2106,7 @@ mod indexed_tests {
     async fn candidate_vector_corpus_bits() {
         let path = std::env::var_os("LINN_VECTOR_PARITY_STORE").unwrap();
         let mut full = Store::open(std::path::Path::new(&path)).await.unwrap();
-        let sparse = Store::open(std::path::Path::new(&path)).await.unwrap();
+        let mut sparse = Store::open(std::path::Path::new(&path)).await.unwrap();
         let matrix = full.block_matrix().await.unwrap();
         assert!(!matrix.ids.is_empty(), "requires a populated copied store");
         crate::diagnostics::emit(format!(
@@ -2166,7 +2169,7 @@ mod indexed_tests {
                 .copied()
                 .chain([usize::MAX / 2])
                 .collect();
-            let sparse = Store::open(&path).await.unwrap();
+            let mut sparse = Store::open(&path).await.unwrap();
             for text in ["cache policy", "database query", "alpha-beta"] {
                 let query = full.encoder().unwrap().encode(text);
                 let expected = full
@@ -2399,7 +2402,7 @@ mod indexed_tests {
                     &ids.iter()
                         .map(|id| store.hint_eligible(&store.rows[id].record))
                         .collect::<Vec<_>>(),
-                    scores,
+                    &scores,
                     &seen
                         .iter()
                         .map(|rid| store.indexes.record_positions[rid])

@@ -1703,3 +1703,24 @@ POS pair lookup, block/header/body reads and persisted vector publication. Its
 indexed-key batches are retained. Exact vector scanning is deliberately global;
 SQL cosine functions, approximate vector indexes or early vector admission cuts
 cannot replace its arithmetic and candidate set in a performance-only change.
+
+
+### Exact numerical reuse
+
+Within one search request, memoize encodings by the exact text supplied to the
+existing encoder. Preserve each caller's existing trimming, filter removal,
+wordpiece truncation and floating-point operations; do not normalize different
+strings into one key. The work memo retains at most 16 encodings and 64 KiB of
+text keys. Uncached inputs use the same encoder. Clear text encodings on each
+ordinary request and invalidate all numerical memos with store-derived state on
+writes, rebuild, forget or publication replacement.
+
+Retain at most one complete block-matrix score array. Reuse it only for the same
+matrix allocation/publication and bit-identical query-vector components, including
+signed zero and NaN payload identity. Share the immutable score array across hint,
+rare-neighbor and joint acquisition stages without cloning the array. Apply current
+query filters and lifecycle/expiry predicates separately on every use. A clock or
+scope change cannot reuse a previous eligibility decision. A different query or
+matrix recomputes the unchanged full matrix-vector kernel. Never cache padded
+candidate-only results as complete numerical results, replace individual dot
+scores with matrix scores, or substitute a form/sentence matrix for block scores.
