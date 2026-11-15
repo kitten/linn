@@ -8,3 +8,10 @@ __pycache__/
 /evals/.env
 
 /dist/
+/relay/node_modules/
+/.wrangler/
+/relay/.wrangler/
+/relay/.dev.vars
+/relay/.interop-*
+/relay/coverage/
+/relay/dist/

@@ -48,6 +48,7 @@
               cmake
               python3
               actionlint
+              nodejs_24
             ];
             LINN_MODEL = assets.model;
             LINN_POS_TOKENIZER_BUILD = assets.tokenizer;

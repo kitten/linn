@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "linn-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "durable_objects": {
+    "bindings": [{ "name": "COORDINATOR", "class_name": "RelayCoordinator" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RelayCoordinator"] }],
+  "observability": { "enabled": false }
+}
