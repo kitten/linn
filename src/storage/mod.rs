@@ -2575,78 +2575,89 @@ impl Store {
         if missing.as_ref().is_some_and(Vec::is_empty) {
             return Ok(());
         }
+        let words: Vec<_> = words
+            .into_iter()
+            .filter(|word| {
+                if stem {
+                    !self.loaded_stems.contains(word)
+                } else {
+                    !self.loaded_terms.contains(word)
+                }
+            })
+            .collect();
         if let Some(ids) = &missing {
             self.load_block_core(ids.iter().copied()).await?;
-            self.db
-                .execute("DELETE FROM temp.feature_candidates", ())
-                .await?;
-            self.db
-                .execute(
+            if !words.is_empty() {
+                self.db
+                    .execute("DELETE FROM temp.feature_candidates", ())
+                    .await?;
+                self.db.execute(
                     "INSERT OR IGNORE INTO temp.feature_candidates SELECT value FROM json_each(?)",
                     [serde_json::to_string(ids)?],
-                )
-                .await?;
-        }
-        for word in words {
-            if if stem {
-                self.loaded_stems.contains(&word)
-            } else {
-                self.loaded_terms.contains(&word)
-            } {
-                continue;
+                ).await?;
             }
+        }
+        if !words.is_empty() {
             let table = if stem { "stem_vocab" } else { "vocab" };
             let positions = if !with_positions {
                 "'[]'"
             } else if stem {
-                "json_group_array(offset ORDER BY offset)"
+                "json_group_array(v.offset ORDER BY v.offset)"
             } else {
-                "json_group_array(offset ORDER BY offset) FILTER (WHERE col='body')"
+                "json_group_array(v.offset ORDER BY v.offset) FILTER (WHERE v.col='body')"
             };
             let filter = if missing.is_some() {
-                " AND doc IN (SELECT id FROM temp.feature_candidates)"
+                " AND v.doc IN (SELECT id FROM temp.feature_candidates)"
             } else {
                 ""
             };
+            // Keep the bounded word list outside the vocabulary loop so each
+            // virtual-table scan receives an exact term constraint.
             let sql = format!(
-                "SELECT doc,col,count(*),{positions} FROM {table} WHERE term=?{filter} GROUP BY doc,col"
+                "SELECT v.term,v.doc,v.col,count(*),{positions} FROM json_each(?) q CROSS JOIN {table} v WHERE v.term=q.value{filter} GROUP BY v.term,v.doc,v.col ORDER BY v.term,v.doc,v.col"
             );
-            let mut result = self.db.query(&sql, [word.clone()]).await?;
-            let mut occurrences = Vec::new();
-            while let Some(row) = result.next().await? {
-                occurrences.push((
-                    row.get::<i64>(0)? as usize,
-                    row.get::<String>(1)?,
-                    row.get::<i64>(2)? as f64,
-                    serde_json::from_str::<Vec<usize>>(&row.get::<String>(3)?)?,
-                ));
-            }
-            if missing.is_none() {
-                self.load_block_headers(occurrences.iter().map(|r| r.0))
-                    .await?;
-            }
-            for (id, col, count, offsets) in occurrences {
-                if let Some(block) = self.rows.get_mut(&id) {
-                    if stem {
-                        block.stem_positions.insert(word.clone(), offsets);
-                    } else {
-                        if with_positions && col == "body" {
-                            block.body_positions.insert(word.clone(), offsets);
+            let statement = self.db.prepare(&sql).await?;
+            for chunk in words.chunks(128) {
+                let mut rows = statement.query([serde_json::to_string(chunk)?]).await?;
+                let mut occurrences = Vec::new();
+                while let Some(row) = rows.next().await? {
+                    occurrences.push((
+                        row.get::<String>(0)?,
+                        row.get::<i64>(1)? as usize,
+                        row.get::<String>(2)?,
+                        row.get::<i64>(3)? as f64,
+                        serde_json::from_str::<Vec<usize>>(&row.get::<String>(4)?)?,
+                    ));
+                }
+                drop(rows);
+                statement.reset();
+                if missing.is_none() {
+                    self.load_block_headers(occurrences.iter().map(|r| r.1))
+                        .await?;
+                }
+                for (word, id, col, count, offsets) in occurrences {
+                    if let Some(block) = self.rows.get_mut(&id) {
+                        if stem {
+                            block.stem_positions.insert(word, offsets);
+                        } else {
+                            if with_positions && col == "body" {
+                                block.body_positions.insert(word.clone(), offsets);
+                            }
+                            let col = match col.as_str() {
+                                "heading" => 0,
+                                "body" => 1,
+                                _ => 2,
+                            };
+                            block.tf.entry(word).or_default()[col] = count;
                         }
-                        let col = match col.as_str() {
-                            "heading" => 0,
-                            "body" => 1,
-                            _ => 2,
-                        };
-                        block.tf.entry(word.clone()).or_default()[col] = count;
                     }
                 }
-            }
-            if missing.is_none() {
-                if stem {
-                    self.loaded_stems.insert(word);
-                } else {
-                    self.loaded_terms.insert(word);
+                if missing.is_none() {
+                    if stem {
+                        self.loaded_stems.extend(chunk.iter().cloned());
+                    } else {
+                        self.loaded_terms.extend(chunk.iter().cloned());
+                    }
                 }
             }
         }
@@ -5027,4 +5038,95 @@ fn writer_fts_statement(
         ),
         vec![expression.into(), writer.into()],
     )
+}
+
+#[cfg(test)]
+mod batched_term_tests {
+    use super::*;
+    #[tokio::test]
+    async fn batched_terms_match_individual_indexed_queries_and_keep_exact_seek_plan() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("terms.db");
+        let record = serde_json::from_value(serde_json::json!({"id":"r","body":"# Café\nalpha alpha cats beta\n## More\nbeta cats alpha zlast"})).unwrap();
+        Store::build(&path, vec![record]).await.unwrap();
+        for stem in [false, true] {
+            for selected in [false, true] {
+                let mut store = Store::open(&path).await.unwrap();
+                let table = if stem { "stem_vocab" } else { "vocab" };
+                let base_words = if stem {
+                    vec!["alpha", "beta", "cat", "missing"]
+                } else {
+                    vec!["alpha", "beta", "cafe", "cats", "missing"]
+                };
+                let mut words: Vec<String> = base_words.into_iter().map(str::to_owned).collect();
+                words.extend((0..130).map(|i| format!("padding{i:03}")));
+                words.push("zlast".into());
+                let ids: Vec<_> = {
+                    let mut rows = store
+                        .db
+                        .query("SELECT id FROM nav_blocks ORDER BY id LIMIT 1", ())
+                        .await
+                        .unwrap();
+                    vec![rows.next().await.unwrap().unwrap().get::<i64>(0).unwrap() as usize]
+                };
+                if selected {
+                    store
+                        .load_candidate_terms(words.iter().cloned(), stem, &ids)
+                        .await
+                        .unwrap();
+                } else {
+                    store.load_terms(words.iter().cloned(), stem).await.unwrap();
+                }
+                for word in &words {
+                    let sql = format!(
+                        "SELECT doc,col,count(*),json_group_array(offset ORDER BY offset) FROM {table} WHERE term=? GROUP BY doc,col"
+                    );
+                    let mut rows = store.db.query(&sql, [word.as_str()]).await.unwrap();
+                    let mut final_stems = HashMap::new();
+                    while let Some(row) = rows.next().await.unwrap() {
+                        let id = row.get::<i64>(0).unwrap() as usize;
+                        if selected && !ids.contains(&id) {
+                            continue;
+                        }
+                        let col = row.get::<String>(1).unwrap();
+                        let count = row.get::<i64>(2).unwrap() as f64;
+                        let offsets =
+                            serde_json::from_str::<Vec<usize>>(&row.get::<String>(3).unwrap())
+                                .unwrap();
+                        let block = &store.rows[&id];
+                        if stem {
+                            final_stems.insert(id, offsets);
+                        } else {
+                            let index = match col.as_str() {
+                                "heading" => 0,
+                                "body" => 1,
+                                _ => 2,
+                            };
+                            assert_eq!(block.tf[word.as_str()][index], count);
+                            if col == "body" {
+                                assert_eq!(block.body_positions[word.as_str()], offsets);
+                            }
+                        }
+                    }
+                    for (id, offsets) in final_stems {
+                        assert_eq!(store.rows[&id].stem_positions[word.as_str()], offsets);
+                    }
+                }
+                let sql = format!(
+                    "EXPLAIN QUERY PLAN SELECT v.term,v.doc,v.col,count(*) FROM json_each(?) q CROSS JOIN {table} v WHERE v.term=q.value GROUP BY v.term,v.doc,v.col"
+                );
+                let mut plan = store
+                    .db
+                    .query(&sql, ["[\"alpha\",\"beta\"]"])
+                    .await
+                    .unwrap();
+                let mut indexed = false;
+                while let Some(row) = plan.next().await.unwrap() {
+                    let detail = row.get::<String>(3).unwrap();
+                    indexed |= detail.contains("SCAN v VIRTUAL TABLE INDEX 1:");
+                }
+                assert!(indexed, "batched {table} must retain exact term seeks");
+            }
+        }
+    }
 }

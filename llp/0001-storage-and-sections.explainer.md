@@ -955,7 +955,7 @@ writer index before loading lexical block metadata. Corpus scoring statistics
 remain global; attribution is never lexical evidence.
 
 
-### Exact numerical loading
+### Exact numerical loading and indexed term reads
 
 Global numerical retrieval retains the original complete matrix, row order and
 512-float layout. Decode persisted little-endian float arrays in bulk on a
@@ -964,3 +964,13 @@ Otherwise retain per-float little-endian decoding. Preserve every bit, including
 signed zero and NaN payloads; validate existing blob lengths and matrix dimensions
 before use. This changes neither storage format nor numerical kernels and adds
 no persistent copy of block vectors.
+
+Batch requested FTS vocabulary terms in sorted groups of at most 128. Keep
+`json_each` outside the vocabulary scan with a cross join and constrain the virtual
+table's term exactly for each input. Count occurrences by term, block and column
+inside libSQL; aggregate positions in numeric offset order with the same column
+filters. Preserve the previous term/block/column update order, global loaded-term
+markers, and candidate-id completeness tracking. Candidate frequencies remain
+restricted by the existing temporary indexed candidate table. This is fewer
+prepared executions of existing term-index lookups, not a vocabulary scan or new
+frequency/position map.
