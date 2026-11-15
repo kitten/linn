@@ -1400,8 +1400,17 @@ If the query has no adjacent nonempty content-term token arrays, tagging can
 also be skipped regardless of source-publication availability: no scoring pair
 can be formed at all.
 
-The focused runtime in `src/nlp` retains the pinned dictionary, rules and
-statistical chunker. The build verifies the original resource digest and
+The runtime in `src/nlp/annotation/` implements the pinned dictionary, rule and
+statistical chunker semantics. The Rust runtime and legacy resource decoder were
+reimplemented from source-informed behavioral contracts and oracle observations;
+technical review found no substantive retained upstream implementation body.
+This is not a claim of independently invented algorithms or strict input
+isolation: the tokenizer/compiler and efficiency authors disclosed memory-search
+snippet exposure outside their intended inputs, without original source access.
+The linguistic data retain their separate LGPL notices in `src/nlp/LICENSE`.
+The runtime and resource compiler share this annotation subtree, using explicit
+module paths; the public NLP module exports only the tokenizer, errors and Porter
+adapter. The build verifies the original resource digest and
 converts it to a versioned embedded asset: dictionary FST, stable word ids,
 flat original spellings and ordered tag arrays. Runtime loading does not expand
 the dictionary into bidirectional hash maps. Source tag ordering, casing and
@@ -1426,6 +1435,14 @@ padding; loading decodes the same integer values and float32 bits in bulk,
 including signed zero and NaN payloads. Reject incomplete packed elements.
 The original wire layout remains a build-time compatibility decoder; changing
 the compiled asset layout changes its format marker, not annotation semantics.
+Keep that decoder in `src/nlp/compiler.rs`, outside the runtime module tree.
+Upstream rule examples and no-op rules need not enter the runtime asset; retain
+the order and diagnostic names of active rules. Reject unsupported text engines
+at build time instead of silently omitting them. The pinned regex patterns use
+the regular matcher, translating the URL pattern with preserved alternatives,
+greediness and capture groups. This fixed-resource contract does not extend to
+arbitrary legacy regex syntax. Compile fixed retrieval regexes once and reuse
+them without changing their patterns or matching behavior.
 
 Disambiguation visits rules in order and applies the
 first rule producing changes before continuing after it; do not speculatively

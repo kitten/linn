@@ -1,4 +1,8 @@
 //! Compare the local rule engine with the unchanged registry implementation.
+#[allow(dead_code)]
+#[path = "../../src/nlp/compiler.rs"]
+mod nlp;
+
 use clap::Parser;
 use serde_json::{Value, json};
 use std::{error::Error, fs, path::PathBuf, time::Instant};
@@ -17,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
     let bytes = include_bytes!(env!("LINN_POS_TOKENIZER_BUILD"));
     let old = nlprule::Tokenizer::from_reader(bytes.as_slice())?;
-    let compiled = linn::nlp::Tokenizer::from_reader(bytes.as_slice())?.compile_asset()?;
+    let compiled = nlp::compile_asset(bytes)?;
     let new = linn::nlp::Tokenizer::from_compiled(&compiled)?;
     let mut texts = vec![
         "cache invalidation policy".to_owned(),
@@ -73,17 +77,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 fn preserves_complete_linguistic_analysis() {
     let bytes = include_bytes!(env!("LINN_POS_TOKENIZER_BUILD"));
     let old = nlprule::Tokenizer::from_reader(bytes.as_slice()).unwrap();
-    let compiled = linn::nlp::Tokenizer::from_reader(bytes.as_slice())
-        .unwrap()
-        .compile_asset()
-        .unwrap();
+    let compiled = nlp::compile_asset(bytes).unwrap();
     let new = linn::nlp::Tokenizer::from_compiled(&compiled).unwrap();
     assert_eq!(
         compiled,
-        linn::nlp::Tokenizer::from_reader(bytes.as_slice())
-            .unwrap()
-            .compile_asset()
-            .unwrap(),
+        nlp::compile_asset(bytes).unwrap(),
         "compiled asset must be reproducible"
     );
     for text in [

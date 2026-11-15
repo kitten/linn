@@ -1,7 +1,7 @@
 use sha2::{Digest, Sha256};
 use std::{env, fs, path::PathBuf};
 #[allow(dead_code)] // The build uses only the compatibility decoder and asset writer.
-#[path = "src/nlp/annotation.rs"]
+#[path = "src/nlp/compiler.rs"]
 mod nlp;
 fn main() {
     println!("cargo:rerun-if-env-changed=LINN_MODEL");
@@ -21,11 +21,9 @@ fn main() {
         "e2b51e506aede495268ee05dee0b97956e768107f5bb5891585144a5ff2fd773"
     );
     println!("cargo:rerun-if-changed={}", asset.display());
-    let tokenizer =
-        nlp::Tokenizer::from_reader(data.as_slice()).expect("decode linguistic build input");
     fs::write(
         output.join("english.nlp"),
-        tokenizer.compile_asset().expect("compile NLP asset"),
+        nlp::compile_asset(&data).expect("compile NLP asset"),
     )
     .expect("write lookup-ready linguistic asset");
     println!("cargo:rerun-if-changed=src/nlp");
