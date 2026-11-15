@@ -547,3 +547,44 @@ confirmation. Verify the integrated stage against its frozen standalone response
 and execute retrieval and physical neutral evaluations. Supporting-span gains do
 not establish improved primary record retrieval or true silence. The ordinary
 adoption requirements remain in force for future retrieval changes.
+
+
+### Explicit acceptance of protected joint record competition
+
+The operator explicitly authorized the fixed joint competition in LLP 0002,
+including its 20% first-result protection and preceding 10% membership protection,
+as the native search default. This is a disclosed acceptance of measured
+tradeoffs using reused exploratory evidence, not a fresh one-shot h2 confirmation
+or permission to tune future coefficients on h2. The ordinary adoption rule remains
+in force for subsequent algorithm changes. The existing confidence gate stays open.
+
+Against the accepted record-local passage baseline, original-query first-result
+added successes / newly broken successes are: dev 19/2; h2 21/6; scale-dev 21/2;
+scale-h2 14/4; matched 1/0; synthetic 12/0; matched-s5 3/1. These pairs remain the
+same under the independently reviewed relevance corrections. First-page pairs
+are respectively 38/4, 27/1, 32/7, 20/1, 3/0, 14/0 and 6/0. Corrected labels
+change some baseline totals; they do not supply fresh blind validation. Wordings,
+scaled corpora and matched subsets overlap and must not be pooled independently.
+
+The stricter first-result protection sacrifices some valid promotions: synthetic
+first-result hits are 43/49 rather than unprotected competition's 46/49, while
+first-page hits remain 49/49 (baseline 35/49). Two baseline-correct h2 silences
+become nonempty and remain unresolved. Supporting-section case successes are dev
+56→57, h2 237→239, scale-dev 52→52, scale-h2 225→225. Aggregate counts conceal
+remaining source losses; acceptance is not a claim of monotonic per-case quality.
+
+The candidate meets the observed matched qmd added-error ceilings, not a general
+qmd dominance claim or an estimated silence allowance. Serial exploratory native
+measurements give median invocation costs 32.627 vs 11.873 ms on dev and 235.269
+vs 128.831 ms on scale-h2. These are candidate-then-baseline passes, not randomized
+replicated speed estimates. Physical neutral p95 per call is 27.14/29.70/227.37/
+241.89 ms on dev/h2/scale-dev/scale-h2; both scaled latency gates fail. Integrity,
+empty-correct and exposure gates retain failures; h2 must-not rate worsens from
+.037 to .041. No full neutral pass or silence improvement is claimed.
+
+The frozen candidate was checked against replay over all 6,181 prepared wordings.
+Integration preserves its acquisition, selection arithmetic and stage ordering;
+archived evaluations remain measurements of that frozen implementation. Retain
+corpus-free tests of both-score protection, unknown evidence,
+quoted-term barriers, empty admission, duplicate pages and preservation of later
+calls. Source changes that alter these outcomes require new measurement.

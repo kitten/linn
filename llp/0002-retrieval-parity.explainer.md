@@ -22,12 +22,13 @@ Location narrows only through explicit path/heading filters. Cwd is never a
 ranking signal; caller scope supplies only the specified within-tier penalty.
 Labels and inherited paths may suggest related pointers but cannot satisfy a
 lexical query. A BM25 score is a rank within one query, not a portable confidence
-cutoff across corpora. Keep tiers before scores and the diagnostic confidence
-gate open. Cards point to bytes to read; a topical hint is not an answer.
+cutoff across corpora. The lexical stage keeps tiers before scores; the joint
+record competition below supplies the explicitly accepted record overrides. Keep
+the diagnostic confidence gate open. Cards point to bytes to read; a topical hint is not an answer.
 
 One static model supplies the hint, neighbor, beam, form, sentence and within-record
-passage tie-breaking operations below. It does not fuse independent vector rankings into the lexical
-page. No author-maintained vocabulary, automatic similarity-based record merge,
+passage tie-breaking operations below. It also supplies the bounded joint record competition below; this is direct
+score comparison, not rank fusion or a second learned reranker. No author-maintained vocabulary, automatic similarity-based record merge,
 model-extracted graph, or second retrieval service is part of this design.
 
 ## Search algorithms
@@ -1531,7 +1532,7 @@ are unchanged. The operator authorized this correction even where it changes a p
 
 The operator explicitly authorized adopting the measured source-bound passage
 selector as a permanent native search stage. It runs after ordered fallbacks and
-source-backed address placement, within the same read snapshot and before final
+source-backed address placement and joint record competition, within the same read snapshot and before final
 lifecycle filtering. It selects supporting bytes within records already returned;
 it does not change record admission, rank order or the five-card maximum. This is
 an explicit adoption decision, not a claim that supporting-span improvements met
@@ -1589,3 +1590,73 @@ nominal compounds. Coverage and incumbent preference precede numerical scores;
 compute the unchanged BM25L/POS and stored-vector tie breakers only for unresolved
 coverage ties. This omits work that cannot affect the specified result. No
 corpus-wide startup map, persistent derived state or runtime switch is added.
+
+
+### Joint record competition
+
+After ordered fallbacks and source addressing, before record-local passage
+selection, ordinary unresolved queries run the following fixed competition.
+Qualified-suffix rewrites and source-addressed pages retain their existing
+behavior. Parse errors, queries without content and pages with duplicate native
+record ids preserve the original response. The original lexical/fallback page is
+called the native page here; it is an internal input, not a runtime mode.
+
+Acquire the first block of each of at most 40 distinct records from each lexical
+matcher's stored ranking. Independently rank eligible stored block vectors by
+the existing query encoder's cosine (descending, block id ascending), apply the
+ordinary query filters, and retain the first block per record up to 40 records.
+For query POS pairs, fetch at most 160 distinct block ids in ascending order from
+the existing pair lookup, enforce lifecycle and query filters, compute the
+ordinary source-pair bonus, and retain positive-bonus blocks by descending bonus
+then block id, one per record, up to 40. Union these with all native call cards'
+block ids. Load original candidate bytes and exact stored vectors by indexed ids;
+no new index, model, ingestion enrichment or startup map is added.
+
+Reject candidate rows missing a quoted query term under both lexical matchers.
+Other hard terms remain lexical acquisition requirements, not a semantic admission
+veto. For each remaining row define:
+
+```
+Z = max(1, 2.2 * sum of query scoring-word IDFs)
+L = (BM25L + 0.75 * source-pair bonus) / Z
+V = max(0, cosine)
+ML = max candidate L, substituting 1 only when zero
+MV = max candidate V, substituting 1 only when zero
+S1 = L - (7 / Z if far else 0) + V
+S2 = L - (7 / Z if far else 0) + 0.5 * ML / MV * V
+```
+
+ML/MV are computed before the original-scope penalty. Sort rows by descending
+S1, then record id, span start, span end and section id ascending; the first row
+represents each record. A record is better than another only when both S1 and
+S2 are strictly greater. Missing representative evidence cannot authorize a
+replacement. These score margins are not relevance probabilities or the closed
+confidence gate.
+
+Start with native record order; use stable adjacent swaps where the following
+record is better. Visit new representatives in S1 order. At five cards admit one
+only if it is better than the tail; below five admit it without that comparison.
+Bubble it left using the same two-score comparison and truncate to five.
+Then apply these protections in this exact order:
+
+1. Walk omitted native records in native order. Among selected non-native records,
+   choose the lowest S1 (record id ascending on ties). Permit that entrant to keep
+   the native record out only if its advantage at **both** scores is strictly
+   greater than `0.10 * max(abs(native score), 1e-12)`. Otherwise remove the entrant
+   and append the native card.
+2. If the selected first record differs from the native first record, permit the
+   change only when both advantages are strictly greater than
+   `0.20 * max(abs(native score), 1e-12)`. Otherwise remove any duplicate of the
+   native first record, prepend its original card, and truncate to five. This
+   final restoration can evict a supporting tail record.
+
+Retained/restored native records keep their original card bytes; new records use
+their representative card. Rebuild changed first-call text as unnumbered
+`heading: text` lines. Preserve later calls, hints and related pointers. Run the
+accepted record-local passage stage afterward, then the ordinary final eligibility
+filter, inside the existing read snapshot. Empty native pages may gain cards;
+these protections do not certify absence or repair false admissions on empty pages.
+The confidence gate remains open and the maximum is five cards.
+
+The implementation is fixed in `src/retrieval/competition.rs` and the candidate
+acquisition in `src/retrieval/lexical.rs`. There are no runtime policy switches.

@@ -1675,6 +1675,216 @@ pub fn centered(text: &str, words: &[String]) -> String {
     }
 }
 
+impl Store {
+    // @ref LLP 0002#joint-record-competition
+    pub(crate) async fn competition_evidence(
+        &mut self,
+        text: &str,
+        ctx: &Context,
+        baseline: Vec<Call>,
+    ) -> Result<crate::retrieval::competition::Evidence> {
+        use crate::retrieval::competition::{Candidate, Evidence};
+        self.ensure_usable()?;
+
+        let mut result = Evidence {
+            query: text.into(),
+            model: crate::language::embedding::ARTIFACT_MODEL.into(),
+            parse_error: None,
+            query_pairs: 0,
+            candidates: Vec::new(),
+            baseline,
+        };
+        let q = match Query::parse(text) {
+            Ok(q) if !q.content().is_empty() => q,
+            Ok(_) => return Ok(result),
+            Err(error) => {
+                result.parse_error = Some(error);
+                return Ok(result);
+            }
+        };
+        self.set_query_clock(&ctx.now);
+        let stats = self.scope_stats(&ctx.now, &q).await?;
+        let mut scoring = Scoring::new(&q, &stats);
+        let idfs = scoring
+            .terms
+            .iter()
+            .flat_map(|(_, ws)| ws.iter().cloned())
+            .collect();
+        scoring.pairs = self.occurrence_pairs(&q, &idfs).await?;
+        result.query_pairs = scoring.pairs.len();
+        let scoring = Arc::new(scoring);
+        let mut memo = HashMap::new();
+        let a = self
+            .matcher(&q, ctx, false, scoring.clone(), &mut memo)
+            .await?;
+        let b = self
+            .matcher(&q, ctx, true, scoring.clone(), &mut memo)
+            .await?;
+        let mut lexical = HashSet::new();
+        for m in [&a, &b] {
+            let mut records = HashSet::new();
+            lexical.extend(
+                m.ranking
+                    .iter()
+                    .filter(|r| records.insert(self.rows[&r.sid].record.clone()))
+                    .take(40)
+                    .map(|r| r.sid),
+            );
+        }
+        let vector = self.encoder()?.encode(&query::split(text).1);
+        let vector_ids = {
+            let (cached, scores) = self.vector_scores(&vector).await?;
+            let mut order: Vec<_> = cached
+                .ids
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| {
+                    cached.eligible[*i]
+                        && (cached.expires[*i].is_empty() || cached.expires[*i] > ctx.now)
+                })
+                .map(|(i, id)| (*id, scores[i]))
+                .collect();
+            order.sort_by(|(ia, a), (ib, b)| b.total_cmp(a).then(ia.cmp(ib)));
+            let mut vector_ids = HashSet::new();
+            let mut seen = HashSet::new();
+            for batch in order.chunks(64) {
+                self.load_block_headers(batch.iter().map(|(id, _)| *id))
+                    .await?;
+                for (id, _) in batch {
+                    let row = &self.rows[id];
+                    if self.allowed_query(row, &q) && seen.insert(row.record.clone()) {
+                        vector_ids.insert(*id);
+                        if vector_ids.len() == 40 {
+                            break;
+                        }
+                    }
+                }
+                if vector_ids.len() == 40 {
+                    break;
+                }
+            }
+            vector_ids
+        };
+        let mut pos_ids = HashSet::new();
+        if !scoring.pairs.is_empty() {
+            let pairs: Vec<_> = scoring.pairs.iter().map(|(a, b, _)| (a, b)).collect();
+            let mut rows = self.db.query(
+                "SELECT DISTINCT l.block FROM json_each(?) q JOIN pos_pair_lookup l ON l.left_key=json_extract(q.value,'$[0]') AND l.right_key=json_extract(q.value,'$[1]') ORDER BY l.block LIMIT 160",
+                [serde_json::to_string(&pairs)?],
+            ).await?;
+            while let Some(row) = rows.next().await? {
+                pos_ids.insert(row.get::<i64>(0)? as usize);
+            }
+            drop(rows);
+            self.load_block_headers(pos_ids.iter().copied()).await?;
+            pos_ids.retain(|id| {
+                self.record_eligible(&self.rows[id].record)
+                    && self.allowed_query(&self.rows[id], &q)
+            });
+        }
+        let mut ids = lexical.clone();
+        ids.extend(vector_ids.iter().copied());
+        ids.extend(pos_ids.iter().copied());
+        ids.extend(
+            result
+                .baseline
+                .iter()
+                .flat_map(|c| c.cards.iter().map(|c| c.section)),
+        );
+        let mut ids: Vec<_> = ids.into_iter().collect();
+        ids.sort_unstable();
+        self.load_blocks(ids.iter().copied()).await?;
+        ids.retain(|id| {
+            self.record_eligible(&self.rows[id].record) && self.allowed_query(&self.rows[id], &q)
+        });
+        self.load_candidate_frequencies(
+            q.terms
+                .iter()
+                .flat_map(|t| query::surface(&t.text))
+                .map(|w| query::norm(&w)),
+            &ids,
+        )
+        .await?;
+        let bonuses = self.occurrence_bonuses(&ids, &scoring.pairs).await?;
+        let mut pos_order: Vec<_> = pos_ids
+            .into_iter()
+            .filter(|id| bonuses.get(id).is_some_and(|s| *s > 0.))
+            .collect();
+        pos_order.sort_by(|a, b| bonuses[b].total_cmp(&bonuses[a]).then(a.cmp(b)));
+        let mut seen = HashSet::new();
+        let pos_ids: HashSet<_> = pos_order
+            .into_iter()
+            .filter(|id| seen.insert(self.rows[id].record.clone()))
+            .take(40)
+            .collect();
+        // Discard source-pair overfetch rows outside the declared union.
+        let baseline_ids: HashSet<_> = result
+            .baseline
+            .iter()
+            .flat_map(|c| c.cards.iter().map(|c| c.section))
+            .collect();
+        ids.retain(|id| {
+            lexical.contains(id)
+                || vector_ids.contains(id)
+                || pos_ids.contains(id)
+                || baseline_ids.contains(id)
+        });
+        let vectors = self.selected_vectors(&ids).await?;
+        let normalizer = (2.2
+            * scoring
+                .terms
+                .iter()
+                .flat_map(|(_, ws)| ws.iter().map(|(_, idf)| idf))
+                .sum::<f64>())
+        .max(1.);
+        for id in ids {
+            let row = &self.rows[&id];
+            let missing = |quoted: bool| {
+                q.terms
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, t)| if quoted { t.phrase } else { t.hard() })
+                    .filter(|(i, _)| !a.hits[*i].contains(&id) && !b.hits[*i].contains(&id))
+                    .count()
+            };
+            result.candidates.push(Candidate {
+                card: self.card(id, Some(&q)),
+                lexical: scoring.score(row),
+                pos: 0.75 * bonuses.get(&id).copied().unwrap_or(0.),
+                cosine: crate::language::embedding::dot(&vectors[&id], &vector),
+                normalizer,
+                far: self.records[&row.record].scope.as_ref().is_some_and(|s| {
+                    s.to_lowercase() != ctx.scope.as_deref().unwrap_or("").to_lowercase()
+                }),
+                exact_coverage: q
+                    .terms
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, t)| t.content())
+                    .filter(|(i, _)| a.hits[*i].contains(&id))
+                    .count(),
+                stem_coverage: q
+                    .terms
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, t)| t.content())
+                    .filter(|(i, _)| b.hits[*i].contains(&id))
+                    .count(),
+                content_terms: q.content().len(),
+                required: q.need,
+                missing_hard: missing(false),
+                missing_quoted: missing(true),
+                exact_tier: a.ranking.iter().find(|r| r.sid == id).map(|r| r.tier),
+                stem_tier: b.ranking.iter().find(|r| r.sid == id).map(|r| r.tier),
+                lexical_pool: lexical.contains(&id),
+                vector_pool: vector_ids.contains(&id),
+                pos_pool: pos_ids.contains(&id),
+            });
+        }
+        Ok(result)
+    }
+}
+
 #[cfg(test)]
 mod indexed_tests {
     use super::*;

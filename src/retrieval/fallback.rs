@@ -1003,6 +1003,10 @@ impl Store {
         }
         addressed.extend(self.quoted_filename(q, &mut calls).await?);
         if original_query {
+            if addressed.is_empty() {
+                let evidence = self.competition_evidence(q, ctx, calls.clone()).await?;
+                calls = crate::retrieval::competition::apply(&evidence)?;
+            }
             self.refine_record_passages(q, ctx, &addressed, &mut calls)
                 .await?;
         }
