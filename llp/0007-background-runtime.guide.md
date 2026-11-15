@@ -435,13 +435,17 @@ installation is required for local Windows use.
 
 ## Concurrency and scheduling
 
-Keep one store dispatcher on a dedicated daemon thread with its own current-thread
-Tokio runtime. A private dispatcher object owns application and ownership state;
+Keep one writer dispatcher and one serialized reader on separate dedicated daemon
+threads, each with its own current-thread Tokio runtime. Overlapping reads and
+writes use independent libSQL connections, never connection clones.
+Route complete requests on the IPC runtime so synchronous reconstruction cannot
+hold up read admission. Keep both queues bounded by the shared request budget. A private dispatcher object owns application and ownership state;
 validate the known bound socket path directly around operations, without rereading
 endpoint discovery JSON. Endpoint metadata remains client discovery data. Start
 network workers directly in a JoinSet blocking task; no extra local-task wrapper
-or LocalSet is needed in the store runtime. Construct, use and drop Application, Store and Replica handles on
-that thread. The IPC runtime accepts connections, frames input/output and answers
+or LocalSet is needed in the store runtime. Construct, use and drop writer Application, Store and Replica handles on the
+writer thread. Each lane owns its Application; a parked Store may move between
+lanes only under the exclusive publication gate, never while in use. The IPC runtime accepts connections, frames input/output and answers
 status independently. The vendored [local libSQL adapter](../vendor/libsql/src/local/impls.rs)
 has async signatures but executes synchronous native calls; native model/linguistic work also need not yield.
 Placing those calls on the IPC thread would stall handshakes, overload rejection,
@@ -454,27 +458,32 @@ this is scheduling isolation, not a hard real-time responsiveness guarantee.
 | Different stores | Independent owners and dispatchers; may execute in parallel. |
 | Handshakes, input transfer, daemon lifecycle status | Overlap store execution within connection/admission bounds. Lifecycle status does not touch the database. |
 | Search and search:more | One at a time per store, including other reads. They mutate query clocks, candidate caches and temporary SQL workspaces. |
-| Show, outline, list and export | Execute in the same serialized store lane. Complete original-data response transmission before the next store operation. |
-| Add, close, forget, import and rebuild | Exclusive store execution through publication and response completion. No partially executed mutation is replayed. |
+| Show, outline, list and export | Execute on the serialized reader lane; retain the read/delivery gate through original-data transmission. |
+| Add, close, forget, import and rebuild | One writer lane. Reconstruction overlaps complete old-publication reads; commit drains the reader/delivery gate. No partially executed mutation is replayed. |
 | Integrity check | Serialized; its implementation takes an immediate transaction, so a nonmutating API label does not make it a parallel reader. |
 | Sync | Network workers may overlap each other and ordinary requests. Each local replica step is serialized. A whole exchange is not one atomic store transaction. |
 | Stop | Stops admission, drains accepted store work and network workers, then closes handles and releases ownership. |
 
-Execute complete uploads in the order they enter the external FIFO; neither
-socket arrival nor handshake admission determines execution order. Internal
+Route complete uploads in external FIFO order, preserving FIFO within each
+execution lane; neither socket arrival nor handshake admission determines that
+order. Reads may overlap earlier unfinished writes and see the preceding complete
+publication. A write's successful response follows its atomic commit. Internal
 replica requests have their own bounded FIFO; choose
 between ready external/internal work without a priority that can indefinitely
 exclude peer progress. Do not promise a total ordering across independent sync
-sessions. Ordinary reads may fail with pending-publication recovery instructions
-between a sync apply and finish; they must not observe partial derived state.
+sessions. Ordinary reads remain available on the preceding complete publication
+between sync apply and finish and throughout reconstruction. Only the final
+commit/checkpoint waits for read execution and delivery to drain. Legacy pending
+publications still require explicit recovery; partial derived state is never read.
 
 The response-delivery acknowledgement belongs to the transport task. That task
 has one 30-second response-write timeout and resolves or drops its acknowledgement
 only after the response future finishes or is cancelled. For ordinary application
 replies the dispatcher waits for that acknowledgement without a second competing timer: otherwise its timer
 could release a later forget while the earlier transport is still writing.
-A stalled ordinary response therefore delays subsequent store operations until
-completion, transport cancellation or disconnect, while status remains available.
+A stalled original-data response delays subsequent reads and final publication
+commit until completion, transport cancellation or disconnect. Reconstruction,
+network progress and status remain independently scheduled.
 Mesh metadata/progress delivery drains separately as described above.
 
 Mesh Get steps read original bytes on the store lane. Before each outbound
@@ -487,31 +496,45 @@ deadline; peer acknowledgement waits do not occupy the lane. LLP 0008 defines
 the exact transfer and cancellation contract. Mesh status reads store metadata
 through the dispatcher; it contacts no peer and starts no record job.
 
-Each store uses one serialized execution lane. Cloning a libSQL Connection
-shares its underlying connection and does not create independent transactions,
-query workspaces or mutable caches. Immutable model resources can be shared.
+The reader owns its Application and exclusive use of its Store, mutable caches
+and temporary SQL workspaces. A cloned connection shares its underlying SQLite
+connection and is suitable only for deliberate joined writer scopes, not reader
+isolation. Process-wide immutable model resources remain shared.
 
-Reader initialization must not race migration or derived-state publication.
-Every read must pin and validate the publication/pending state in its own
-snapshot, preserve live-versus-reopened lifecycle behavior, and invalidate all
-publication-bound state after writes. Keep mutations exclusive; drain active
-read execution and response transmission before acknowledging forget, rebuilding,
-retiring an owner or stopping. Consecutive read-response streaming could overlap
-under that same barrier, but is serialized here. Do not switch journal mode just
-to add concurrency. Any later reader-pool delivery must measure throughput,
-tail latency, per-reader memory and writer delay on representative stores and
-verify exact ordered page parity under LLP 0005 before adoption.
+Reader initialization and each read validate exact schema, SQLite schema cookie,
+pending state and publication identity in a short snapshot. Staging and membership
+commits leave publication-bound caches valid. The writer prepares a replacement
+inside an immediate transaction while readers see the preceding complete state.
+A fair read/write gate covers reader execution through response completion and is
+acquired exclusively only for the final publication commit/checkpoint. Thus no old
+queued response can be transmitted after successful forget. Outbound peer chunks
+remain serialized on the writer lane and retain their existing delivery leases.
+Between requests park the published Store under the publication gate. Ordinary
+writer operations take that idle Store, then return its published state before
+acknowledgement, reusing the existing write/query caches. A reader arriving during
+reconstruction opens an independent connection to the preceding complete
+publication. Commit drops any obsolete reader cache before releasing the gate;
+replica reconstruction discards it before building too. A rolled-back write
+preserves the preceding durable publication and readers may reopen it. This removes forgotten bytes from reachable
+reader caches and avoids retaining two corpus views while idle. The parked reader
+never owns the writer's barrier, preventing a reference cycle. Both lanes share
+the bound file identity so creation or replacement cannot leave one lane with an
+obsolete ownership fence. Stop drains both
+lanes and delivery acknowledgements before releasing ownership.
+Preserve live-versus-reopened lifecycle behavior; this adds no reader pool or
+runtime retrieval setting. LLP 0001 specifies WAL, checkpoint and erasure policy.
 
 ## Store publication and synchronization
 
-Serialize store operations in one dispatcher. Avoid holding a read
+Serialize writes in the writer dispatcher and ordinary reads in the reader lane. Avoid holding a read
 snapshot across requests. Every request checks publication identity and pending
 publication in the same snapshot as its reads, as required by LLP 0001. Search
 and pagination hold one checked source snapshot through filter-reference
 resolution, retrieval, pointer-block loading and result construction; the shared
 agent implementation does not nest a second transaction. Direct agent and list
-callers also validate exact schema, pending publication and source data version
-inside their own snapshots. Acquire and verify the Store once, then hold that
+callers also validate exact schema, SQLite schema cookie, pending publication and
+publication identity inside their own snapshots. Membership and staging commits
+alone do not invalidate query caches. Acquire and verify the Store once, then hold that
 snapshot around the store operation; snapshot ownership does not reacquire the
 Store through a second application layer. External writers remain possible,
 including older binaries and independently initiated replica sessions.
@@ -538,8 +561,9 @@ without a cache knob or change to retrieval arithmetic.
 
 On a stale handle, discard publication-bound caches and reopen before starting
 an operation. Preserve process-wide immutable model resources. Do not retry
-partially executed writes. Pending publication blocks ordinary reads and leaves
-explicit sync/rebuild recovery available. Recovery dispatch must not depend on
+partially executed writes. Legacy pending publication blocks ordinary reads and
+leaves explicit sync/rebuild recovery available. New staged originals preserve
+the preceding complete publication until the atomic replacement commits. Recovery dispatch must not depend on
 successfully opening an ordinary healthy Store first. Failed rebuild/forget
 handles remain unusable under LLP 0001.
 
@@ -561,10 +585,10 @@ Keep current live-instance versus reopened-store lifecycle/link behavior exactly
 as specified in LLP 0001. Test both: residency must not accidentally change the
 existing forget-until-rebuild rules. Clear the specified forgotten-record caches;
 never serve stale bodies or queued results after a forget has completed. Acknowledge successful mutations only after publication completes. Serialize
-ordinary reply delivery before the next operation, so a completed forget cannot be
-followed by transmission of an earlier queued response. A disconnected client
+ordinary read response delivery under the publication gate, so a completed forget
+cannot be followed by transmission of an earlier response. A disconnected client
 is skipped before execution when detected; executing mutations still complete
-their durable publication or preserve the pending marker. Preserve transactional secure deletion and tombstone precedence;
+their atomic publication or preserve durable incoming staging for recovery. Preserve transactional secure deletion and tombstone precedence;
 Residency adds no stronger memory-erasure guarantee than the existing contract.
 
 Route peer synchronization and membership operations through the same typed

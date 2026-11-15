@@ -24,8 +24,9 @@ This LLP owns mesh identity, pairing, replication, publication and file-bundle
 contracts. SSH synchronization and remote-management commands are absent.
 Migration 7 removes remote configuration; migration 8 compacts derived
 membership caches and indexes root history. Migration 9 removes the unused hint
-table. Original records, history and tombstones survive these migrations. Local
-RPC compatibility is 3, mesh job/ALPN profile is 1, and signed membership
+table. Migration 10 adds durable incoming-item staging for atomic publication.
+Original records, history and tombstones survive these migrations. Local
+RPC compatibility is 4, mesh job/ALPN profile is 1, and signed membership
 event/receipt profile is 1.
 
 Address discovery consists of IPv4 LAN/loopback mDNS and Iroh's connection
@@ -76,8 +77,8 @@ invitations and local network configuration.
 A full database backup contains the identity and must be protected accordingly.
 Restoring in place preserves it. A copy intended to run alongside the original
 must run `sync:reset-identity` before network activity and enroll as a new
-peer. Reset removes the copy's local enrollment and secret without revoking the
-original peer or altering records and tombstones. Duplicate live endpoint
+peer. Reset removes the copy's local enrollment and secret, checkpointing WAL
+before success under LLP 0001, without revoking the original peer or altering records and tombstones. Duplicate live endpoint
 identities produce a visible error rather than endlessly replacing each other's
 connections. Key loss is recovered by enrollment with a fresh identity and
 revocation of the old one; there is no cloud recovery secret. The reset
@@ -804,17 +805,28 @@ as envelope metadata, not as a network authorization boundary. Writer email is
 unverified attribution, never peer authentication. Membership grants read/write
 replication of the whole store; removal cannot retract existing copies.
 
-Each received item commits atomically with a pending marker. Forget deletes
-sections and original records using secure deletion and FTS segment merging.
-When no sections remain, reset the external-content FTS index with `delete-all`
-before optimizing, including its empty-index accounting. A completed transfer
-or bounded mesh batch rebuilds derived indexes once if anything changed, then
-clears the marker. A crash or indexing failure leaves originals durable and
-blocks ordinary store opens with instructions to run `index:rebuild` or sync.
-Check the pending marker inside the same pinned read transaction that supplies
-the source version and catalog/index reads. An import committed before this
-snapshot must block the open; a later import must not mix into its reads. Sync
-resumes from originals and tombstones, not an acknowledgement cursor.
+Each received item commits durably to the private incoming table. Replica
+inventory/get/needs include these accepted originals, preserving idempotence,
+conflict detection and tombstone precedence before publication. Ordinary queries
+continue using the preceding complete publication. Mesh transfers retain their 256-item/4 MiB publication
+bound. Finish consumes durable staging in pages of at most 256 items or a 4 MiB
+prefix, allowing one independently bounded item to exceed that byte target.
+Validated file imports perform one bulk publication rather than repeatedly
+rebuilding the whole store for each input page. Additional working memory for
+staging is bounded; durable accepted originals awaiting publication remain
+uncapped like other original history.
+
+Finish moves staged originals and tombstones, builds all derived indexes and
+clears staging in one checked immediate transaction. Internal joined transaction scopes cannot expose an intermediate publication. A crash or failure restores staging and the
+preceding complete query publication; retry finish through sync or rebuild. The
+legacy pending marker is recovered under LLP 0001. Apply acknowledges durable
+acceptance; finish acknowledges complete publication. Before successful finish
+with tombstones, drain old original-data responses and checkpoint/truncate WAL.
+Drain replayed staging even when every item is already published or tombstoned;
+discarded original bytes and legacy pending recovery require WAL erasure too.
+Forget retains secure deletion, FTS `delete-all` on an empty index and segment
+optimization. Sync resumes from durable originals/tombstones, not an
+acknowledgement cursor.
 Rebuilding may recompute the documented lifecycle projection, just as explicit
 rebuild does. Concurrent writers are serialized by SQL write transactions;
 publication uses the existing source-version check. A sync is not a distributed

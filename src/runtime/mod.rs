@@ -415,17 +415,39 @@ pub async fn control(path: &Path, stop: bool) -> Result<DaemonState> {
     if !live_owner(&location)? {
         return Ok(DaemonState::stopped());
     }
-    let mut stream = connect(&location, true).await?;
-    wire::send(&mut stream, &if stop { Frame::Stop } else { Frame::Status }).await?;
-    match wire::receive::<Frame>(&mut stream).await? {
-        Frame::State(state) => {
-            if stop {
-                let owner = platform::private_file(&location.file("owner.lock"))?;
-                wait_lock(&owner).await?;
+    let result = async {
+        let mut stream = connect(&location, true).await?;
+        wire::send(&mut stream, &if stop { Frame::Stop } else { Frame::Status }).await?;
+        match wire::receive::<Frame>(&mut stream).await? {
+            Frame::State(state) => {
+                if stop {
+                    let owner = platform::private_file(&location.file("owner.lock"))?;
+                    wait_lock(&owner).await?;
+                }
+                Ok(state)
             }
-            Ok(state)
+            _ => Err(Error::Invalid("invalid daemon control response".into())),
         }
-        _ => Err(Error::Invalid("invalid daemon control response".into())),
+    }
+    .await;
+    match result {
+        Err(Error::Io(error))
+            if matches!(
+                error.kind(),
+                std::io::ErrorKind::NotFound
+                    | std::io::ErrorKind::ConnectionRefused
+                    | std::io::ErrorKind::ConnectionReset
+                    | std::io::ErrorKind::BrokenPipe
+                    | std::io::ErrorKind::UnexpectedEof
+            ) =>
+        {
+            // Retirement can remove the socket between owner inspection and
+            // connect. Holding start.lock excludes a replacement owner.
+            let owner = platform::private_file(&location.file("owner.lock"))?;
+            wait_lock(&owner).await?;
+            Ok(DaemonState::stopped())
+        }
+        result => result,
     }
 }
 struct Job {
@@ -642,7 +664,35 @@ async fn daemon(config: Bootstrap) -> Result<()> {
         )
         .await;
     }
-    let (queue, jobs) = mpsc::channel::<Job>(64);
+    let (queue, mut incoming) = mpsc::channel::<Job>(64);
+    let (writes, jobs) = mpsc::channel::<Job>(64);
+    let (reads, read_jobs) = mpsc::channel::<Job>(64);
+    // Route on the IPC runtime: synchronous indexing must not delay read admission.
+    let router = tokio::task::spawn_local(async move {
+        while let Some(job) = incoming.recv().await {
+            let target = if matches!(
+                job.operation,
+                Operation::Search { .. }
+                    | Operation::More { .. }
+                    | Operation::Show { .. }
+                    | Operation::Outline { .. }
+                    | Operation::List(_)
+                    | Operation::Export(_)
+            ) {
+                &reads
+            } else {
+                &writes
+            };
+            if let Err(error) = target.try_send(job) {
+                let job = error.into_inner();
+                let _ = job.reply.send(Err(crate::error::ApplicationError::new(
+                    Error::Invalid("daemon busy or stopping; request not executed".into()),
+                    false,
+                )
+                .into()));
+            }
+        }
+    });
     let (stop, stopping) = mpsc::channel(1);
     let identity = location.id.clone();
     let socket = config.endpoint.path.clone();
@@ -672,8 +722,26 @@ async fn daemon(config: Bootstrap) -> Result<()> {
         lock: lock_identity,
         socket: socket_identity,
         socket_path: socket.clone(),
-        file: owned_file,
+        file: std::sync::Arc::new(std::sync::Mutex::new(owned_file)),
     };
+    let read_barrier = crate::storage::read_barrier();
+    let reader_location = location.clone();
+    let reader_binding = binding.clone();
+    let reader_barrier = read_barrier.clone();
+    let (reader_failure, reader_failed) = mpsc::channel(1);
+    let reader = tokio::task::spawn_blocking(move || -> Result<()> {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()?;
+        rt.block_on(dispatcher::read_run(
+            reader_location,
+            reader_binding,
+            read_jobs,
+            reader_barrier,
+            reader_failure,
+        ));
+        Ok(())
+    });
     let network = tokio::runtime::Handle::current();
     let mesh_startup = config.mesh_startup;
     let dispatched = tokio::task::spawn_blocking(move || -> Result<_> {
@@ -683,17 +751,26 @@ async fn daemon(config: Bootstrap) -> Result<()> {
             .enable_all()
             .build()?;
         rt.block_on(dispatcher::run(
-            dispatch_location,
+            dispatcher::Owner {
+                location: dispatch_location,
+                binding,
+                accept_task: listener,
+            },
             jobs,
             stopping,
-            listener,
-            binding,
             network,
             mesh_startup,
+            read_barrier,
+            reader_failed,
         ))
     })
     .await;
     accept_task.abort();
+    router.abort();
+    let _ = router.await;
+    reader
+        .await
+        .map_err(|error| Error::Invalid(format!("store reader failed: {error}")))??;
     let stop_reply = dispatched
         .map_err(|error| Error::Invalid(format!("store dispatcher failed: {error}")))??;
     if std::fs::symlink_metadata(&socket)

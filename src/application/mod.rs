@@ -165,6 +165,8 @@ impl From<Value> for Reply {
 }
 pub struct Application {
     path: PathBuf,
+    pub(crate) live_links: Option<crate::storage::LiveLinks>,
+    pub(crate) read_barrier: Option<crate::storage::ReadBarrier>,
     store: Option<Store>,
     replica: Option<crate::storage::sync::Replica>,
 }
@@ -172,26 +174,33 @@ impl Application {
     pub fn new(path: PathBuf) -> Self {
         Self {
             path,
+            live_links: None,
+            read_barrier: None,
             store: None,
             replica: None,
         }
     }
-    async fn store(&mut self, rebuild: bool) -> Result<&mut Store> {
-        if let Some(s) = &self.store
-            && s.verify_source_version(&s.db).await.is_err()
-        {
-            self.store = None;
+    pub(crate) fn restore_reader(&mut self, barrier: &crate::storage::ReadBarrier) {
+        self.store = barrier.take_reader();
+    }
+    pub(crate) fn park_reader(&mut self, barrier: &crate::storage::ReadBarrier) {
+        barrier.park_reader(self.store.take());
+        self.live_links = None;
+    }
+    pub(crate) fn publish_reader(&mut self, barrier: &crate::storage::ReadBarrier) {
+        if let Some(store) = self.store.take() {
+            barrier.park_reader(Some(store));
         }
-        if rebuild {
+    }
+    async fn store(&mut self) -> Result<&mut Store> {
+        if let Some(s) = &mut self.store
+            && !s.publication_current().await?
+        {
             self.store = None;
         }
         if self.store.is_none() {
             let started = std::time::Instant::now();
-            self.store = Some(if rebuild {
-                Store::open_for_rebuild(&self.path).await?
-            } else {
-                Store::open(&self.path).await?
-            });
+            self.store = Some(Store::open(&self.path).await?);
             if crate::diagnostics::enabled("LINN_STARTUP_TIMINGS") {
                 crate::diagnostics::emit(format!(
                     "linn application: {}",
@@ -199,12 +208,18 @@ impl Application {
                 ));
             }
         }
-        Ok(self.store.as_mut().unwrap())
+        let store = self.store.as_mut().unwrap();
+        store.read_barrier = self.read_barrier.clone();
+        if let Some(live) = &self.live_links {
+            store.restore_live_links(live);
+        }
+        Ok(store)
     }
     async fn replica(&mut self) -> Result<&crate::storage::sync::Replica> {
         if self.replica.is_none() {
             let started = std::time::Instant::now();
             self.replica = Some(crate::storage::sync::Replica::open(&self.path).await?);
+            self.replica.as_mut().unwrap().read_barrier = self.read_barrier.clone();
             if crate::diagnostics::enabled("LINN_STARTUP_TIMINGS") {
                 crate::diagnostics::emit(format!(
                     "linn application: {}",
@@ -225,6 +240,7 @@ impl Application {
         let mut input = input.into();
         let flags = caller.diagnostics.clone();
         let mutates = op.mutates();
+        let release_replica = matches!(op, Operation::Import | Operation::Rebuild);
         let (result, lines) = crate::diagnostics::capture(flags, async {
             let started = std::time::Instant::now();
             let result = self.execute_inner(op, caller, &mut input).await;
@@ -237,6 +253,9 @@ impl Application {
             result
         })
         .await;
+        if release_replica {
+            self.replica = None;
+        }
         match result {
             Ok(mut reply) => {
                 reply.warnings.extend(lines);
@@ -281,6 +300,11 @@ impl Application {
                 )
                 .into());
             }
+            Rebuild => {
+                self.store = None;
+                self.replica().await?.rebuild().await?;
+                return Ok(Value::Rebuilt.into());
+            }
             _ => {}
         }
         let prepared = if let Add(options) = &op {
@@ -288,7 +312,7 @@ impl Application {
         } else {
             None
         };
-        let store = self.store(matches!(op, Rebuild)).await?;
+        let store = self.store().await?;
         let snapshot = if matches!(
             op,
             Search { .. } | More { .. } | Show { .. } | Outline { .. }
@@ -600,10 +624,6 @@ async fn execute_store(
         Check => {
             store.integrity().await?;
             Value::Checked
-        }
-        Rebuild => {
-            store.rebuild().await?;
-            Value::Rebuilt
         }
         _ => unreachable!(),
     };

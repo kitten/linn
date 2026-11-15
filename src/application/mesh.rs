@@ -30,9 +30,19 @@ impl Application {
         }
     }
     pub(crate) async fn mesh_step(&mut self, step: Step) -> Result<MeshValue> {
+        let finished = matches!(
+            &step,
+            Step::Finish
+                | Step::Peer {
+                    request: crate::sync::protocol::Request::Finish,
+                    ..
+                }
+        );
         let result = self.mesh_step_inner(step).await;
-        if result.is_err() {
+        if result.is_err() || finished {
             self.replica = None;
+        }
+        if result.is_err() {
             self.store = None;
         }
         result.map_err(|error| crate::error::ApplicationError::new(error, true).into())

@@ -394,6 +394,7 @@ fn resident_reads_work_when_cli_cannot_open_database() {
     let body = "Only the daemon owns the open store.\n";
     let added = f.ok(&["add", "-", "--json", "--unscoped"], Some(body));
     let id = json(&added)["record"].as_str().unwrap().to_owned();
+    f.ok(&["show", &id, "--all", "--json"], None);
     let permissions = std::fs::metadata(&f.db).unwrap().permissions();
     std::fs::set_permissions(&f.db, std::fs::Permissions::from_mode(0o000)).unwrap();
     assert!(std::fs::File::open(&f.db).is_err());
@@ -510,11 +511,18 @@ fn control_remains_responsive_while_store_waits_on_an_external_sqlite_lock() {
         .unwrap();
     let mut read = f
         .command()
-        .args(["show", &id, "--all", "--json"])
+        .args(["add", "-", "--unscoped", "--json"])
+        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
+    read.stdin
+        .take()
+        .unwrap()
+        .write_all(b"Writer waiting for the external lock.\n")
+        .unwrap();
+    f.ok(&["show", &id, "--all", "--json"], None);
     std::thread::sleep(Duration::from_millis(200));
     let blocked = read.try_wait().unwrap().is_none();
     let start = Instant::now();
@@ -546,7 +554,7 @@ fn control_remains_responsive_while_store_waits_on_an_external_sqlite_lock() {
     let output = read.wait_with_output().unwrap();
     assert!(
         blocked,
-        "the reader must actually encounter the external lock"
+        "the writer must actually encounter the external lock"
     );
     assert!(
         status.status.success(),
@@ -562,13 +570,13 @@ fn control_remains_responsive_while_store_waits_on_an_external_sqlite_lock() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert_eq!(json(&output)["text"], "Locked-store original.\n");
+    assert!(json(&output)["record"].is_string());
     assert_eq!(
         json(&f.ok(&["list", "--json"], None))["records"]
             .as_array()
             .unwrap()
             .len(),
-        1,
+        2,
         "disconnected queued mutations must not execute"
     );
 }
