@@ -18920,3 +18920,90 @@ on the same production implementation. Tests are not a fresh full-suite quality 
 physical-neutral confirmation. No post-refactor percentage speedup is claimed.
 LLP 0002 describes execution and LLP 0005 distinguishes historical timing from
 this unmeasured refactor. All changes remain unstaged and uncommitted.
+
+
+## Exact numerical reuse and selective candidate reads (2026-11-15)
+
+Follow-up to the committed execution optimization at3833a4d. The operator asked
+for implementation across the three remaining areas: exact vector loading/scans,
+reuse of identical encodings/numerical results, and candidate/database allocations
+and round trips. The prior request for no new measurements remains respected:
+no retrieval eval, latency benchmark, new relevance labels or performance estimate.
+The fixed retrieval algorithm, models, arithmetic, margins and five-card budget
+are unchanged. This is implementation work, not new ranker tuning or an adoption
+claim based on a small corpus. LLPs0001/0002/0005 describe the contracts.
+
+Implemented:
+
+- A checked bulk little-endian float32 loader for complete block and fallback
+  matrices, with an unaligned/big-endian portable-decoding fallback. Existing blob
+  size and matrix-dimension errors remain. Signed zero and NaN payloads retain
+  their bits; no new array store, index, model, numerical kernel or matrix shape.
+- Bounded per-request exact-text encoding reuse (16 entries,64KiB key bytes),
+  preserving every caller's original trimming and filter removal. Other inputs
+  encode normally. All query-side scalar encode calls now use this helper;
+  query-independent write preparation still uses the original encoder directly.
+- One immutable complete block-score result keyed by the existing matrix Arc's
+  identity and exact query float bits. Hints, resident rare-neighbor scoring and
+  competition share this array. Eligibility, clock, scope and filters are still
+  checked independently. Padded candidate-only results never populate this cache,
+  and final candidate dot products are not replaced by matrix scores. All new
+  memos invalidate with ordinary derived state on writes/rebuild/forget/replacement.
+  A new query/matrix still requires the original complete exact numeric scan.
+- Metadata-only competition representatives. FTS frequencies and persisted POS
+  witnesses determine the identical scores and selected records before original
+  bodies are fetched. Hydrate only selected incoming cards (at most5) before
+  passage selection or response return, retaining original native cards and all
+  later calls. This also avoids per-candidate excerpt regex compilation for
+  discarded representatives. Internal metadata cards never escape the helper.
+- Batch normalized vocabulary terms in groups of128 using a prepared libSQL
+  query. `json_each` is the outer side of a cross join; each vocabulary lookup
+  retains an exact term constraint and candidate ids remain restricted by the
+  existing indexed temporary table. Count and aggregate ordered positions in SQL,
+  retaining term/block/column update order and loaded/missing term bookkeeping.
+  No global frequency/position map or persistent schema/index change.
+
+Compatibility tests compare complete deferred/eager responses on reopened stores,
+assert no more than five incoming body loads, compare exact cache/direct kernel
+bits and cache identity separation, check encoding budgets and write/forget
+invalidation, and compare aligned/unaligned blob decoding including non-finite
+patterns. Batched frequency/position queries match individual reference queries
+across a128-term boundary; EXPLAIN QUERY PLAN confirms exact virtual-table term
+seeks. Existing lifecycle, projection, numeric-gap, passage and selector fixtures
+remain part of the workspace suite. These are tests, not reused retrieval evals or
+physical-neutral gates. No percentage speedup is claimed; unshared exact global
+vector scans and their cold reads remain part of the algorithm.
+
+## Incremental execution latency after exact reuse (2026-11-15)
+
+The operator subsequently requested quantification, superseding the earlier
+no-measurement instruction for this latency benchmark. Compared committed3833a4d
+against the preceding uncommitted execution changes, using matched Nix release
+packages on Apple M3 Ultra. Full CLI wall time, fresh client process per request,
+ordinary repository context, sequential isolated copies of the existing stores.
+Four paired phases alternate AB/BA/AB/BA; each starts a fresh daemon, warms the
+fixed query list, then times two rotated traversals. No retrieval gold scoring,
+retuning, outlier removal or concurrent build; filesystem caches remain warm.
+
+| Store | Warm median ms, before→after | Time reduction | Speedup | Warm p95 ms, before→after |
+|---|---:|---:|---:|---:|
+| Dev:1,376 records /6,096 blocks |32.996→17.124|48.1%|1.93×|43.502→27.168|
+| Scale-dev:16,906 records /189,767 blocks |123.971→100.764|18.7%|1.23×|297.529→277.470|
+
+Each store uses the same11 stratified original dev queries, chosen before timing
+with the existing cli_latency first/last category procedure and dev hash split.
+There are88 warm samples per binary per store. Every query's warm median improves:
+35.0–56.2% dev and6.6–28.9% scale-dev. All352 measured warm responses match exactly
+within/across binaries, apart from cursor clocks, including exit status;22 distinct
+query/store pages. This is exploratory sampled parity, not full retrieval or
+physical-neutral validation. Real CLI scope/clock is used, not per-case eval scope.
+
+Fresh-daemon first-search medians:58.232→44.520ms dev(23.5% less time),
+463.308→442.766ms scale-dev(4.4%). Only four samples per binary/store; do not treat
+these startup estimates as stable percentiles or disk-cold timings. Preparation
+and SQLite online backup are excluded; both binaries use the same prepared store.
+No component profiling or per-optimization attribution is claimed. Scratch daemons
+were stopped. Source changes remain uncommitted; this is incremental versus3833a4d,
+not versus the older passage-only implementation. Driver, binary hashes, protocol,
+raw samples, pages and report are archived outside the checkout at
+`/Users/agent/git/.archives/linn/incremental-speed-20261115/`.
