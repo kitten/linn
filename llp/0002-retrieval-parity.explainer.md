@@ -1294,8 +1294,26 @@ The two-sentence comparison is a dense float32 matrix multiplication, using the
 system Accelerate implementation through CBLAS on macOS. Top-k probes retain
 introselect's unsorted order, rather than sorting equal scores before choosing
 the first sentence pair. These are numerical and ordering compatibility rules,
-not new scores or thresholds. The selection attribution is in
-[THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES).
+not new scores or thresholds.
+
+The depth budget is twice the floor of log2 of the current partition length,
+reset on recursive prefix selection and saturated at zero. An exhausted budget
+uses complete groups of five from the strict interior, excluding both active
+endpoints and ignoring the incomplete tail. Within each group, conditionally
+exchange slots `(0,1)`, `(3,4)`, `(0,3)`, `(1,4)`, then `(1,2)` to put the
+smaller working value first. Comparisons are strict float32 comparisons of
+negated scores. Select the median slot without further exchanges: if slot 3 is
+less than slot 2, choose slot 1 when slot 3 is less than slot 1, otherwise slot 3;
+otherwise choose slot 2. A fully sorted group or an extra compare-exchange changes
+the required index order even when it selects the same value.
+
+Exchange each selected ID with its group ordinal in the compacted prefix,
+preserving the displaced ID. Recursively partition that prefix only when it has
+more than two medians, targeting its middle position. One or two medians remain
+in extraction order. Move the chosen pivot to the active lower endpoint and
+start the common scans outside the strict interior. These mutation rules and
+their ordering regressions are implemented in
+[selection.rs](../src/retrieval/selection.rs).
 
 Use matrix-vector kernels for a nearest-block walk and probe proposals, a
 matrix-matrix kernel for the two sentence phrases, and a vector dot product for
