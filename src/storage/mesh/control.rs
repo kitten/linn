@@ -8,7 +8,7 @@ use crate::mesh::membership::{
 // Only current leaves are cached. Historical states are rebuilt from immutable
 // receipts when needed (for an old invitation or conflicting branch), never
 // copied into permanent storage again. Iterative replay avoids recursive depth.
-async fn state(tx: &libsql::Transaction, head: &str) -> Result<Option<Membership>> {
+async fn state(tx: &libsql::Connection, head: &str) -> Result<Option<Membership>> {
     enum Work {
         Load(String),
         Apply(Box<Acceptance>),
@@ -678,7 +678,7 @@ mod tests {
             .unwrap();
         replica
             .db
-            .execute("PRAGMA user_version=7", ())
+            .execute_batch("DROP TABLE sync_incoming; PRAGMA user_version=7;")
             .await
             .unwrap();
         drop(replica);

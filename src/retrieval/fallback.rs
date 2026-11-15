@@ -1424,6 +1424,7 @@ mod technical_file_stem_tests {
             details.contains("SEARCH record_basenames USING PRIMARY KEY"),
             "{details}"
         );
+        drop(plan);
         let mut calls = vec![];
         st.technical_file_stem("allowPush git-access", &Context::default(), &mut calls)
             .await

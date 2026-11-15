@@ -102,10 +102,7 @@ impl Store {
     }
     pub(super) async fn publish_catalog(&mut self) -> Result<()> {
         self.materialize_records().await?;
-        let tx = self
-            .db
-            .transaction_with_behavior(libsql::TransactionBehavior::Immediate)
-            .await?;
+        let tx = self.publication_transaction().await?;
         self.verify_source_version(&tx).await?;
         let mut rows = tx
             .query("SELECT value FROM projections WHERE key='structure'", ())
@@ -206,10 +203,7 @@ impl Store {
         means: &[(usize, Vec<f32>)],
         proposals: &[String],
     ) -> Result<()> {
-        let tx = self
-            .db
-            .transaction_with_behavior(libsql::TransactionBehavior::Immediate)
-            .await?;
+        let tx = self.publication_transaction().await?;
         self.verify_source_version(&tx).await?;
         let mut rows = tx
             .query("SELECT value FROM projections WHERE key='structure'", ())

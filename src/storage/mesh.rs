@@ -180,7 +180,18 @@ impl Replica {
             "DELETE FROM mesh_pending; DELETE FROM mesh_roots; DELETE FROM mesh_event_ids; DELETE FROM mesh_successors; DELETE FROM mesh_membership_states; DELETE FROM mesh_events; DELETE FROM mesh_identity;",
         )
         .await?;
+        tx.execute(
+            "INSERT OR REPLACE INTO sync_state VALUES('erase-checkpoint',1)",
+            (),
+        )
+        .await?;
+        let _readers = if let Some(barrier) = &self.read_barrier {
+            Some(barrier.write().await)
+        } else {
+            None
+        };
         tx.commit().await?;
+        super::publication::checkpoint_erasure(&self.db).await?;
         Ok(())
     }
 }

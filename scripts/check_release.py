@@ -49,10 +49,11 @@ def smoke(binary, root, env):
     with sqlite3.connect(root / "restored.db") as db:
         assert db.execute("SELECT id FROM tombstones WHERE id=?", (forgotten,)).fetchone()
         # Recreate the supported previous schema, without changing original bytes.
-        db.executescript("DROP TABLE mesh_pending; DROP TABLE mesh_conflicts; DROP TABLE mesh_roots; DROP TABLE mesh_event_ids; DROP TABLE mesh_successors; DROP TABLE mesh_membership_states; DROP TABLE mesh_events; DROP TABLE mesh_identity; DROP INDEX records_writer_created; DROP INDEX records_writer_expiry; CREATE TABLE sync_remotes(name TEXT PRIMARY KEY,origin TEXT NOT NULL,scope TEXT); INSERT INTO sync_remotes VALUES('old','ssh://retired/store',NULL); PRAGMA user_version=4;")
+        db.executescript("DROP TABLE mesh_pending; DROP TABLE mesh_conflicts; DROP TABLE mesh_roots; DROP TABLE mesh_event_ids; DROP TABLE mesh_successors; DROP TABLE mesh_membership_states; DROP TABLE mesh_events; DROP TABLE mesh_identity; DROP TABLE sync_incoming; DROP INDEX records_writer_created; DROP INDEX records_writer_expiry; CREATE TABLE sync_remotes(name TEXT PRIMARY KEY,origin TEXT NOT NULL,scope TEXT); INSERT INTO sync_remotes VALUES('old','ssh://retired/store',NULL); PRAGMA user_version=4;")
     cli("restored.db", "list")
     with sqlite3.connect(root / "restored.db") as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 9
+        assert db.execute("PRAGMA user_version").fetchone()[0] == len(list(
+            (Path(__file__).resolve().parents[1] / "src/storage/migrations").glob("[0-9][0-9][0-9][0-9]-*.sql")))
         assert not db.execute("SELECT 1 FROM sqlite_master WHERE name='sync_remotes'").fetchone()
         db.execute("INSERT OR REPLACE INTO sync_state VALUES('pending',1)")
     cli("restored.db", "daemon:stop")

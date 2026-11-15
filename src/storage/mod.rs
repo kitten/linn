@@ -5,6 +5,7 @@ pub mod listing;
 pub mod mesh;
 mod migrations;
 mod publication;
+pub(crate) use publication::{LiveLinks, ReadBarrier, read_barrier};
 pub mod record;
 pub mod sections;
 pub mod sync;
@@ -207,6 +208,7 @@ pub struct Store {
     stat_misses: HashSet<String>,
     _database: Database,
     pub db: Connection,
+    pub(crate) read_barrier: Option<publication::ReadBarrier>,
     pub records: BTreeMap<String, Record>,
     pub rows: BTreeMap<usize, Block>,
     pub sections: BTreeMap<String, Vec<Section>>,
@@ -219,7 +221,7 @@ pub struct Store {
     pub word_order: Vec<String>,
     pub direct: BTreeMap<usize, Tree>,
     pub deep: BTreeMap<usize, Tree>,
-    pub links: HashMap<String, HashSet<String>>,
+    pub links: Arc<HashMap<String, HashSet<String>>>,
     pub basenames: HashMap<String, HashSet<String>>,
     encoder: Option<Arc<Encoder>>,
     pub hits: HashMap<(bool, String), HashSet<usize>>,
@@ -254,6 +256,7 @@ pub struct Store {
     vocabulary_probes: HashSet<String>,
     pub(crate) structure_stamp: Vec<u8>,
     source_version: i64,
+    schema_version: i64,
     write_failed: bool,
 }
 
@@ -272,20 +275,19 @@ fn memo_over_budget(entries: impl Iterator<Item = (usize, usize)>) -> bool {
 }
 
 const SCRATCH: &str = r#"
-CREATE TEMP TABLE feature_candidates(id INTEGER PRIMARY KEY);
-CREATE VIRTUAL TABLE temp.fts_terms USING fts5vocab(main,fts,'row');
+CREATE TEMP TABLE IF NOT EXISTS feature_candidates(id INTEGER PRIMARY KEY);
+CREATE VIRTUAL TABLE IF NOT EXISTS temp.fts_terms USING fts5vocab(main,fts,'row');
 "#;
 
 impl Store {
     pub async fn open(path: &Path) -> Result<Self> {
         Self::open_index(path, false).await
     }
-    /// Open an older embedding projection only for an explicit complete rebuild.
+    #[cfg(test)]
     pub(crate) async fn open_for_rebuild(path: &Path) -> Result<Self> {
         Self::open_index(path, true).await
     }
     async fn open_index(path: &Path, rebuilding: bool) -> Result<Self> {
-        let mut timing = StartupTiming::new();
         if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
             use std::os::unix::fs::DirBuilderExt;
             std::fs::DirBuilder::new()
@@ -310,7 +312,18 @@ impl Store {
         let db = database.connect()?;
         db.execute_batch("PRAGMA page_size=16384; PRAGMA secure_delete=ON; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA temp_store=MEMORY; PRAGMA cache_size=-65536; PRAGMA mmap_size=268435456;").await?;
         migrations::apply(&db).await?;
-        let model = db.transaction().await?;
+        publication::enable_wal(&db).await?;
+        // Healthy opens stay read-only. Any legacy derived-state repair joins
+        // this snapshot and publishes atomically instead of exposing each helper.
+        let tx = db.transaction().await?;
+        let store = Self::open_connection(database, db, rebuilding).await?;
+        tx.commit().await?;
+        Ok(store)
+    }
+    async fn open_connection(database: Database, db: Connection, rebuilding: bool) -> Result<Self> {
+        let mut timing = StartupTiming::new();
+        migrations::check(&db).await?;
+        let model = publication::transaction(&db, libsql::TransactionBehavior::Deferred).await?;
         migrations::check(&model).await?;
         model.execute_batch(SCRATCH).await?;
         // @ref LLP 0001#embedding-publication
@@ -347,6 +360,9 @@ impl Store {
         }
         model.commit().await?;
         timing.mark("database-open-schema-scratch");
+        let mut schema = db.query("PRAGMA schema_version", ()).await?;
+        let schema_version = schema.next().await?.unwrap().get::<i64>(0)?;
+        drop(schema);
         let mut st = Self {
             query_clock: current_time(),
             memo_query: None,
@@ -354,6 +370,7 @@ impl Store {
             stat_misses: HashSet::new(),
             _database: database,
             db,
+            read_barrier: None,
             records: BTreeMap::new(),
             rows: BTreeMap::new(),
             sections: BTreeMap::new(),
@@ -366,7 +383,7 @@ impl Store {
             word_order: Vec::new(),
             direct: BTreeMap::new(),
             deep: BTreeMap::new(),
-            links: HashMap::new(),
+            links: Arc::new(HashMap::new()),
             basenames: HashMap::new(),
             encoder: None,
             hits: HashMap::new(),
@@ -399,6 +416,7 @@ impl Store {
             vocabulary_probes: HashSet::new(),
             structure_stamp: Vec::new(),
             source_version: 0,
+            schema_version,
             write_failed: false,
         };
         let (snapshot, source_version) = Self::source_snapshot(&st.db, rebuilding).await?;
@@ -506,9 +524,7 @@ impl Store {
             snapshot.rollback().await?;
             if st.structure_stamp == structure_version() {
                 let stamp = structure_stamp();
-                let tx = st
-                    .db
-                    .transaction_with_behavior(libsql::TransactionBehavior::Immediate)
+                let tx = publication::transaction(&st.db, libsql::TransactionBehavior::Immediate)
                     .await?;
                 st.verify_source_version(&tx).await?;
                 let changed = tx
@@ -546,8 +562,8 @@ impl Store {
     async fn source_snapshot(
         db: &Connection,
         rebuilding: bool,
-    ) -> Result<(libsql::Transaction, i64)> {
-        let snapshot = db.transaction().await?;
+    ) -> Result<(publication::Transaction, i64)> {
+        let snapshot = publication::transaction(db, libsql::TransactionBehavior::Deferred).await?;
         migrations::check(&snapshot).await?;
         // This read pins the snapshot before recording its version or reading indexes.
         let mut pending = snapshot
@@ -701,10 +717,7 @@ impl Store {
         &self,
         artifacts: &[(&str, Vec<u8>, &crate::retrieval::similarity::Matrix)],
     ) -> Result<()> {
-        let tx = self
-            .db
-            .transaction_with_behavior(libsql::TransactionBehavior::Immediate)
-            .await?;
+        let tx = self.publication_transaction().await?;
         self.verify_source_version(&tx).await?;
         let mut ready = tx
             .query("SELECT value FROM projections WHERE key='structure'", ())
@@ -948,10 +961,7 @@ impl Store {
         Ok(cache)
     }
     async fn persist_structure(&mut self) -> Result<()> {
-        let tx = self
-            .db
-            .transaction_with_behavior(libsql::TransactionBehavior::Immediate)
-            .await?;
+        let tx = self.publication_transaction().await?;
         self.verify_source_version(&tx).await?;
         tx.execute_batch("DELETE FROM nav_block_words; DELETE FROM nav_section_words; DELETE FROM nav_surface; DELETE FROM nav_sections; DELETE FROM nav_blocks; DELETE FROM nav_tree_rows; DELETE FROM nav_trees; DELETE FROM nav_links; DELETE FROM nav_lexemes; DELETE FROM record_index_totals; DELETE FROM fallback_vectors; DELETE FROM fallback_artifacts;").await?;
         let mut lexemes = HashMap::<&str, i64>::new();
@@ -1050,7 +1060,7 @@ impl Store {
             }
         }
         let link = tx.prepare("INSERT INTO nav_links VALUES(?,?)").await?;
-        for (source, targets) in &self.links {
+        for (source, targets) in self.links.iter() {
             for target in targets {
                 link.execute(params![source.as_str(), target.as_str()])
                     .await?;
@@ -1071,13 +1081,50 @@ impl Store {
         Ok(())
     }
     // @ref LLP 0007#store-publication-and-synchronization
-    pub(crate) async fn application_snapshot(&self) -> Result<libsql::Transaction> {
+    pub(crate) async fn application_snapshot(&self) -> Result<publication::Transaction> {
         self.ensure_usable()?;
-        let (snapshot, version) = Self::source_snapshot(&self.db, false).await?;
-        if version != self.source_version {
+        let (snapshot, _) = Self::source_snapshot(&self.db, false).await?;
+        let mut schema = snapshot.query("PRAGMA schema_version", ()).await?;
+        if schema.next().await?.unwrap().get::<i64>(0)? != self.schema_version {
+            return Err(Error::Invalid("store schema changed; reopen it".into()));
+        }
+        drop(schema);
+        let mut rows = snapshot
+            .query("SELECT value FROM projections WHERE key='structure'", ())
+            .await?;
+        if rows
+            .next()
+            .await?
+            .map(|r| r.get::<Vec<u8>>(0))
+            .transpose()?
+            .as_deref()
+            != Some(self.structure_stamp.as_slice())
+        {
             return Err(Error::Invalid("store changed; reopen it".into()));
         }
+        drop(rows);
         Ok(snapshot)
+    }
+    pub(crate) async fn publication_current(&mut self) -> Result<bool> {
+        let (snapshot, version) = Self::source_snapshot(&self.db, false).await?;
+        let mut rows = snapshot
+            .query("SELECT value FROM projections WHERE key='structure'", ())
+            .await?;
+        let current = rows
+            .next()
+            .await?
+            .map(|r| r.get::<Vec<u8>>(0))
+            .transpose()?;
+        drop(rows);
+        snapshot.rollback().await?;
+        let mut schema = self.db.query("PRAGMA schema_version", ()).await?;
+        let same_schema = schema.next().await?.unwrap().get::<i64>(0)? == self.schema_version;
+        if same_schema && current.as_deref() == Some(self.structure_stamp.as_slice()) {
+            self.source_version = version;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
     pub(crate) async fn verify_source_version(&self, db: &Connection) -> Result<()> {
         migrations::check(db).await?;
@@ -1113,7 +1160,7 @@ impl Store {
         self.rows.clear();
         self.direct.clear();
         self.deep.clear();
-        self.links.clear();
+        self.links = Arc::new(HashMap::new());
         self.basenames.clear();
         self.loaded_blocks.clear();
         self.loaded_sections.clear();
@@ -1213,10 +1260,7 @@ impl Store {
         drop(rows);
         self.load_records(self.records.keys().cloned().collect::<Vec<_>>())
             .await?;
-        let tx = self
-            .db
-            .transaction_with_behavior(libsql::TransactionBehavior::Immediate)
-            .await?;
+        let tx = self.publication_transaction().await?;
         self.verify_source_version(&tx).await?;
         tx.execute("DELETE FROM record_headers", ()).await?;
         let statement = tx
@@ -1389,10 +1433,7 @@ impl Store {
             return Ok(());
         }
         drop(rows);
-        let tx = self
-            .db
-            .transaction_with_behavior(libsql::TransactionBehavior::Immediate)
-            .await?;
+        let tx = self.publication_transaction().await?;
         self.verify_source_version(&tx).await?;
         self.write_record_totals(&tx, &self.structure_stamp).await?;
         tx.commit().await?;
@@ -1550,10 +1591,7 @@ impl Store {
             return Ok(());
         }
         drop(rows);
-        let tx = self
-            .db
-            .transaction_with_behavior(libsql::TransactionBehavior::Immediate)
-            .await?;
+        let tx = self.publication_transaction().await?;
         self.verify_source_version(&tx).await?;
         tx.execute("DELETE FROM record_basenames", ()).await?;
         let statement = tx
@@ -1792,13 +1830,14 @@ impl Store {
             .records
             .keys()
             .map(|r| (r.clone(), HashSet::new()))
-            .collect();
+            .collect::<HashMap<_, _>>()
+            .into();
         let mut result = self
             .db
             .query("SELECT source,target FROM nav_links", ())
             .await?;
         while let Some(row) = result.next().await? {
-            self.links
+            Arc::make_mut(&mut self.links)
                 .entry(row.get(0)?)
                 .or_default()
                 .insert(row.get(1)?);
@@ -2031,7 +2070,7 @@ impl Store {
             while let Some(row) = result.next().await? {
                 targets.insert(row.get::<String>(0)?);
             }
-            self.links.insert(source.clone(), targets);
+            Arc::make_mut(&mut self.links).insert(source.clone(), targets);
         }
         let missing: HashSet<_> = q
             .words
@@ -2206,6 +2245,7 @@ impl Store {
         }
         for r in records {
             if !forgotten.contains(&r.id) {
+                st.reject_staged_id(&r.id).await?;
                 st.records.insert(r.id.clone(), r);
             }
         }
@@ -2224,6 +2264,8 @@ impl Store {
         if t.next().await?.is_some() {
             return Err(Error::Invalid("record is forgotten".into()));
         }
+        drop(t);
+        self.reject_staged_id(&r.id).await?;
         self.records.insert(r.id.clone(), r);
         self.rebuild().await
     }
@@ -2268,7 +2310,9 @@ impl Store {
     }
     pub async fn rebuild(&mut self) -> Result<()> {
         let previous = self.begin_write_cache().await?;
+        let tx = self.publication_transaction().await?;
         let result = self.rebuild_inner().await;
+        let result = self.commit_publication(tx, result, false).await;
         let result = self.finish_write_cache(previous, result).await;
         self.write_outcome(result)
     }
@@ -2345,10 +2389,7 @@ impl Store {
                 self.vectors.insert(id, v);
             }
         }
-        let tx = self
-            .db
-            .transaction_with_behavior(libsql::TransactionBehavior::Immediate)
-            .await?;
+        let tx = self.publication_transaction().await?;
         self.verify_source_version(&tx).await?;
         tx.execute("DELETE FROM sections", ()).await?;
 
@@ -2848,7 +2889,7 @@ impl Store {
         self.direct.clear();
         self.deep.clear();
         self.basenames.clear();
-        self.links.clear();
+        self.links = Arc::new(HashMap::new());
         let link = regex::Regex::new(r"\]\(([^)]+)\)").unwrap();
         let mut by_path = HashMap::<&str, Vec<&str>>::new();
         for record in self.records.values() {
@@ -2885,7 +2926,7 @@ impl Store {
                         .map(|id| (*id).to_owned()),
                 )
                 .collect();
-            self.links.insert(r.id.clone(), targets);
+            Arc::make_mut(&mut self.links).insert(r.id.clone(), targets);
             if !self.tree_eligible(r) {
                 continue;
             }
@@ -3173,16 +3214,24 @@ impl Store {
     }
     pub async fn forget(&mut self, rid: &str) -> Result<()> {
         let previous = self.begin_write_cache().await?;
+        let tx = self.publication_transaction().await?;
         let result = self.forget_inner(rid).await;
+        let result = self.commit_publication(tx, result, true).await;
         let result = self.finish_write_cache(previous, result).await;
         self.write_outcome(result)
     }
     async fn forget_inner(&mut self, rid: &str) -> Result<()> {
         self.materialize_structure().await?;
-        let tx = self
-            .db
-            .transaction_with_behavior(libsql::TransactionBehavior::Immediate)
-            .await?;
+        if let Some(barrier) = &self.read_barrier {
+            let live = barrier.read().await;
+            if let Some(live) = live
+                .as_ref()
+                .filter(|live| live.publication == self.structure_stamp)
+            {
+                self.links = live.links.clone();
+            }
+        }
+        let tx = self.publication_transaction().await?;
         self.verify_source_version(&tx).await?;
         publication::erase_record(&tx, rid).await?;
         tx.execute("INSERT OR REPLACE INTO sync_state VALUES('pending',1)", ())
@@ -3209,10 +3258,7 @@ impl Store {
         self.complete_publication().await
     }
     pub async fn integrity(&self) -> Result<()> {
-        let snapshot = self
-            .db
-            .transaction_with_behavior(libsql::TransactionBehavior::Immediate)
-            .await?;
+        let snapshot = self.publication_transaction().await?;
         migrations::check(&snapshot).await?;
         let mut rows = snapshot.query("PRAGMA quick_check", ()).await?;
         while let Some(row) = rows.next().await? {
@@ -4323,7 +4369,7 @@ mod lookup_tests {
         // A legacy schema may predate the auxiliary index.
         store
             .db
-            .execute_batch("DROP INDEX records_writer_created; DROP INDEX records_writer_expiry; DROP INDEX sections_record; DROP TABLE mesh_pending; DROP TABLE mesh_conflicts; DROP TABLE mesh_roots; DROP TABLE mesh_event_ids; DROP TABLE mesh_successors; DROP TABLE mesh_membership_states; DROP TABLE mesh_events; DROP TABLE mesh_identity; DROP TABLE sync_state; DROP INDEX sync_scope_records; PRAGMA user_version=2;")
+            .execute_batch("DROP INDEX records_writer_created; DROP INDEX records_writer_expiry; DROP INDEX sections_record; DROP TABLE mesh_pending; DROP TABLE mesh_conflicts; DROP TABLE mesh_roots; DROP TABLE mesh_event_ids; DROP TABLE mesh_successors; DROP TABLE mesh_membership_states; DROP TABLE mesh_events; DROP TABLE mesh_identity; DROP TABLE sync_state; DROP INDEX sync_scope_records; DROP TABLE sync_incoming; PRAGMA user_version=2;")
             .await
             .unwrap();
         drop(store);

@@ -52,6 +52,7 @@ pub struct Replica {
     _database: libsql::Database,
     pub(super) db: Connection,
     pub(super) path: PathBuf,
+    pub(crate) read_barrier: Option<super::publication::ReadBarrier>,
 }
 impl Replica {
     pub async fn open(path: &Path) -> Result<Self> {
@@ -75,21 +76,29 @@ impl Replica {
         let database = Builder::new_local(path).build().await?;
         let db = database.connect()?;
         db.execute_batch(
-            "PRAGMA busy_timeout=5000; PRAGMA secure_delete=ON; PRAGMA foreign_keys=ON;",
+            "PRAGMA busy_timeout=5000; PRAGMA secure_delete=ON; PRAGMA foreign_keys=ON; PRAGMA temp_store=MEMORY; PRAGMA cache_size=-2000; PRAGMA mmap_size=0;",
         )
         .await?;
         migrations::apply(&db).await?;
+        super::publication::enable_wal(&db).await?;
+        let mut rows = db.query("SELECT NOT EXISTS(SELECT 1 FROM records) AND NOT EXISTS(SELECT 1 FROM projections WHERE key='structure') AND NOT EXISTS(SELECT 1 FROM sync_state WHERE key='pending')", ()).await?;
+        let initialize = rows.next().await?.unwrap().get::<i64>(0)? != 0;
+        drop(rows);
+        if initialize {
+            Store::open(path).await?;
+        }
         Ok(Self {
             _database: database,
             db,
+            read_barrier: None,
             path: path.to_owned(),
         })
     }
     pub(super) async fn transaction(
         &self,
         behavior: TransactionBehavior,
-    ) -> Result<libsql::Transaction> {
-        let tx = self.db.transaction_with_behavior(behavior).await?;
+    ) -> Result<super::publication::Transaction> {
+        let tx = super::publication::transaction(&self.db, behavior).await?;
         migrations::check(&tx).await?;
         Ok(tx)
     }
@@ -97,7 +106,7 @@ impl Replica {
         let mut rows = self
             .db
             .query(
-                "SELECT (SELECT count(*) FROM records),(SELECT count(*) FROM tombstones)",
+                "SELECT (SELECT count(*) FROM records)+(SELECT count(*) FROM sync_incoming WHERE json_extract(item,'$.envelope') IS NOT NULL),(SELECT count(*) FROM tombstones)+(SELECT count(*) FROM sync_incoming WHERE json_extract(item,'$.envelope') IS NULL)",
                 (),
             )
             .await?;
@@ -115,20 +124,15 @@ impl Replica {
     ) -> Result<Vec<Entry>> {
         let tx = self.transaction(TransactionBehavior::Deferred).await?;
         let after = after.unwrap_or("");
-        let mut rows = if tombstones {
-            tx.query(
-                "SELECT id,NULL FROM tombstones WHERE id>? ORDER BY id LIMIT 256",
-                [after],
-            )
-            .await?
-        } else if let Some(scope) = scope {
-            tx.query("SELECT id,envelope_hash FROM records WHERE original_scope=? COLLATE NOCASE AND id>? ORDER BY id LIMIT 256", params![scope,after]).await?
+        let sql = if tombstones {
+            "SELECT id,NULL FROM (SELECT id FROM tombstones UNION SELECT id FROM sync_incoming WHERE json_extract(item,'$.envelope') IS NULL) WHERE id>? ORDER BY id LIMIT 256"
         } else {
-            tx.query(
-                "SELECT id,envelope_hash FROM records WHERE id>? ORDER BY id LIMIT 256",
-                [after],
-            )
-            .await?
+            "SELECT id,hash FROM (SELECT id,envelope_hash AS hash,original_scope AS scope FROM records WHERE NOT EXISTS(SELECT 1 FROM sync_incoming s WHERE s.id=records.id) UNION ALL SELECT id,json_extract(item,'$.envelope_hash'),json_extract(json_extract(item,'$.envelope'),'$.scope') FROM sync_incoming WHERE json_extract(item,'$.envelope') IS NOT NULL AND NOT EXISTS(SELECT 1 FROM tombstones t WHERE t.id=sync_incoming.id)) WHERE id>? AND (? IS NULL OR scope=? COLLATE NOCASE) ORDER BY id LIMIT 256"
+        };
+        let mut rows = if tombstones {
+            tx.query(sql, [after]).await?
+        } else {
+            tx.query(sql, params![after, scope, scope]).await?
         };
         let mut out = Vec::new();
         while let Some(r) = rows.next().await? {
@@ -141,6 +145,22 @@ impl Replica {
     }
     pub async fn get(&self, id: &str, scope: Option<&str>) -> Result<Option<Item>> {
         let tx = self.transaction(TransactionBehavior::Deferred).await?;
+        let mut rows = tx.query("SELECT item FROM sync_incoming WHERE id=? AND NOT EXISTS(SELECT 1 FROM tombstones WHERE id=?)", params![id,id]).await?;
+        if let Some(row) = rows.next().await? {
+            let item: Item = serde_json::from_slice(&row.get::<Vec<u8>>(0)?)?;
+            let record = item.validate(None)?;
+            if scope.is_some_and(|s| {
+                record.as_ref().is_some_and(|r| {
+                    r.scope
+                        .as_deref()
+                        .is_none_or(|v| !v.eq_ignore_ascii_case(s))
+                })
+            }) {
+                return Ok(None);
+            }
+            return Ok(Some(item));
+        }
+        drop(rows);
         let mut rows = tx
             .query("SELECT id FROM tombstones WHERE id=?", [id])
             .await?;
@@ -170,29 +190,25 @@ impl Replica {
     }
     pub async fn needs(&self, entry: &Entry) -> Result<bool> {
         let tx = self.transaction(TransactionBehavior::Deferred).await?;
-        let mut rows = tx
-            .query("SELECT 1 FROM tombstones WHERE id=?", [entry.id.as_str()])
-            .await?;
-        if rows.next().await?.is_some() {
-            return Ok(false);
-        }
-        if entry.hash.is_none() {
-            return Ok(true);
-        }
-        let mut rows = tx
-            .query(
-                "SELECT envelope_hash FROM records WHERE id=?",
-                [entry.id.as_str()],
-            )
-            .await?;
+        let mut rows = tx.query("SELECT NULL AS hash,0 AS priority FROM tombstones WHERE id=? UNION ALL SELECT json_extract(item,'$.envelope_hash'),1 FROM sync_incoming WHERE id=? UNION ALL SELECT envelope_hash,2 FROM records WHERE id=? ORDER BY priority LIMIT 1", params![entry.id.as_str(),entry.id.as_str(),entry.id.as_str()]).await?;
         match rows.next().await? {
             None => Ok(true),
-            Some(row) if Some(row.get::<String>(0)?) == entry.hash => Ok(false),
-            Some(_) => Err(crate::mesh::failure::Kind::Conflict
-                .error(format!("immutable record conflict: {}", entry.id))),
+            Some(row) => {
+                let hash = row.get::<Option<String>>(0)?;
+                if hash.is_none() {
+                    Ok(false)
+                } else if entry.hash.is_none() {
+                    Ok(true)
+                } else if hash == entry.hash {
+                    Ok(false)
+                } else {
+                    Err(crate::mesh::failure::Kind::Conflict
+                        .error(format!("immutable record conflict: {}", entry.id)))
+                }
+            }
         }
     }
-    pub async fn apply(&self, item: &Item, scope: Option<&str>) -> Result<bool> {
+    async fn apply_published(&self, item: &Item, scope: Option<&str>) -> Result<bool> {
         let record = item.validate(scope)?;
         let tx = self.transaction(TransactionBehavior::Immediate).await?;
         let mut rows = tx
@@ -244,18 +260,151 @@ impl Replica {
         tx.commit().await?;
         Ok(true)
     }
-    pub async fn finish(&self) -> Result<()> {
-        let tx = self.transaction(TransactionBehavior::Deferred).await?;
+    pub async fn apply(&self, item: &Item, scope: Option<&str>) -> Result<bool> {
+        item.validate(scope)?;
+        let tx = self.transaction(TransactionBehavior::Immediate).await?;
         let mut rows = tx
-            .query("SELECT 1 FROM sync_state WHERE key='pending'", ())
+            .query(
+                "SELECT item FROM sync_incoming WHERE id=?",
+                [item.id.as_str()],
+            )
             .await?;
-        let pending = rows.next().await?.is_some();
+        let staged = rows
+            .next()
+            .await?
+            .map(|r| r.get::<Vec<u8>>(0))
+            .transpose()?;
         drop(rows);
-        tx.rollback().await?;
-        if pending {
-            let mut store = Store::open_for_rebuild(&self.path).await?;
+        if let Some(bytes) = staged {
+            let previous: Item = serde_json::from_slice(&bytes)?;
+            if previous.envelope.is_none() || previous.envelope_hash == item.envelope_hash {
+                return Ok(false);
+            }
+            if item.envelope.is_some() {
+                return Err(crate::mesh::failure::Kind::Conflict
+                    .error(format!("immutable record conflict: {}", item.id)));
+            }
+        }
+        // Published tombstones always win; published identical records are no-ops.
+        let mut rows = tx
+            .query("SELECT 1 FROM tombstones WHERE id=?", [item.id.as_str()])
+            .await?;
+        if rows.next().await?.is_some() {
+            return Ok(false);
+        }
+        drop(rows);
+        if item.envelope.is_some() {
+            let mut rows = tx
+                .query(
+                    "SELECT envelope_hash FROM records WHERE id=?",
+                    [item.id.as_str()],
+                )
+                .await?;
+            if let Some(row) = rows.next().await? {
+                return if Some(row.get::<String>(0)?) == item.envelope_hash {
+                    Ok(false)
+                } else {
+                    Err(crate::mesh::failure::Kind::Conflict
+                        .error(format!("immutable record conflict: {}", item.id)))
+                };
+            }
+        }
+        tx.execute(
+            "INSERT OR REPLACE INTO sync_incoming VALUES(?,?)",
+            params![item.id.as_str(), serde_json::to_vec(item)?],
+        )
+        .await?;
+        tx.commit().await?;
+        Ok(true)
+    }
+    pub async fn finish(&self) -> Result<()> {
+        self.publish(false).await
+    }
+    pub(crate) async fn rebuild(&self) -> Result<()> {
+        self.publish(true).await
+    }
+    async fn publish(&self, force: bool) -> Result<()> {
+        // Acquire the writer before opening the reconstruction handle, so all
+        // original changes and every derived publication share one transaction.
+        let tx = self.transaction(TransactionBehavior::Immediate).await?;
+        let mut rows = tx.query("SELECT EXISTS(SELECT 1 FROM sync_state WHERE key='pending'),EXISTS(SELECT 1 FROM sync_state WHERE key='erase-checkpoint')", ()).await?;
+        let row = rows.next().await?.unwrap();
+        let pending = row.get::<i64>(0)? != 0;
+        let mut erased = pending || row.get::<i64>(1)? != 0;
+        drop(row);
+        drop(rows);
+        let mut changed = false;
+        loop {
+            let mut rows = tx
+                .query("SELECT item FROM sync_incoming ORDER BY id LIMIT 256", ())
+                .await?;
+            let mut items = Vec::new();
+            let mut bytes = 0;
+            while let Some(row) = rows.next().await? {
+                let encoded = row.get::<Vec<u8>>(0)?;
+                bytes += encoded.len();
+                items.push(serde_json::from_slice::<Item>(&encoded)?);
+                if bytes >= 4 * 1024 * 1024 {
+                    break;
+                }
+            }
+            drop(rows);
+            if items.is_empty() {
+                break;
+            }
+            // Reuse staging pages inside the transaction. Rollback restores
+            // accepted originals if any merge or publication step fails.
+            for item in &items {
+                tx.execute("DELETE FROM sync_incoming WHERE id=?", [item.id.as_str()])
+                    .await?;
+            }
+            for item in items {
+                let applied = self.apply_published(&item, None).await?;
+                // A discarded staged original may already have a tombstone.
+                erased |= item.envelope.is_none() || !applied;
+                changed |= applied;
+            }
+        }
+        if erased {
+            tx.execute(
+                "INSERT OR REPLACE INTO sync_state VALUES('erase-checkpoint',1)",
+                (),
+            )
+            .await?;
+        }
+        if !force && !changed && !pending && !erased {
+            tx.rollback().await?;
+            return super::publication::settle_wal(&self.db).await;
+        }
+        if force || changed || pending {
+            if let Some(barrier) = &self.read_barrier {
+                let _publication = barrier.write().await;
+                barrier.clear_reader();
+            }
+            let database = Builder::new_local(&self.path).build().await?;
+            let mut store = Store::open_connection(database, self.db.clone(), true).await?;
             store.rebuild().await?;
         }
+        let mut readers = if let Some(barrier) = &self.read_barrier {
+            Some(barrier.write().await)
+        } else {
+            None
+        };
+        tx.commit().await?;
+        if let Some(barrier) = &self.read_barrier {
+            barrier.clear_reader();
+        }
+        if (force || changed || pending)
+            && let Some(readers) = readers.as_mut()
+        {
+            **readers = None;
+        }
+        if erased {
+            super::publication::checkpoint_erasure(&self.db).await?;
+        } else {
+            super::publication::settle_wal(&self.db).await?;
+        }
+        self.db.execute_batch("PRAGMA shrink_memory").await?;
         Ok(())
     }
 }
@@ -359,7 +508,8 @@ mod schema_tests {
                 .unwrap();
             go_tx.send(()).unwrap();
             migration.commit().await.unwrap();
-            assert!(matches!(worker.join().unwrap(), Err(Error::Schema { .. })));
+            let result = worker.join().unwrap();
+            assert!(matches!(result, Err(Error::Schema { .. })), "{result:?}");
             let mut rows = db
                 .query("SELECT count(*) FROM tombstones", ())
                 .await

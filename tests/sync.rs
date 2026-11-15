@@ -67,7 +67,7 @@ async fn immutable_merge_conflicts_deletion_and_recovery() {
     let original = item("one", "Resolver integration evidence.", "org/repo");
     assert!(replica.apply(&original, None).await.unwrap());
     assert!(!replica.apply(&original, None).await.unwrap());
-    assert!(Store::open(&path).await.is_err());
+    Store::open(&path).await.unwrap();
     assert!(
         replica
             .apply(&item("one", "Conflict.", "org/repo"), None)
@@ -271,7 +271,7 @@ async fn rebuild_rejects_conflicting_originals_before_changing_indexes() {
 }
 
 #[tokio::test]
-async fn failed_writes_require_reopen_and_report_committed_publication() {
+async fn failed_writes_require_reopen_and_preserve_the_complete_publication() {
     use linn::storage::record::Record;
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("failed.db");
@@ -319,7 +319,7 @@ async fn failed_writes_require_reopen_and_report_committed_publication() {
             .contains("publication abort")
     );
     drop(store);
-    assert!(Store::open(&path).await.is_err());
+    Store::open(&path).await.unwrap().integrity().await.unwrap();
     assert!(
         Replica::open(&path)
             .await
@@ -327,7 +327,7 @@ async fn failed_writes_require_reopen_and_report_committed_publication() {
             .get("committed", None)
             .await
             .unwrap()
-            .is_some()
+            .is_none()
     );
     conn.execute_batch("DROP TRIGGER abort_publication;")
         .await

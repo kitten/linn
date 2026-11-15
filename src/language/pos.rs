@@ -55,10 +55,7 @@ impl Store {
         if self.pair_lookup_ready().await? {
             return Ok(());
         }
-        let tx = self
-            .db
-            .transaction_with_behavior(libsql::TransactionBehavior::Immediate)
-            .await?;
+        let tx = self.publication_transaction().await?;
         self.verify_source_version(&tx).await?;
         let mut rows = tx.query(
             "SELECT count(*) FROM pos_relations p JOIN sections s ON s.id=p.block AND s.record=p.record JOIN records r ON r.id=p.record AND r.body_hash=p.body_hash WHERE p.identity=? AND p.generation=?",
@@ -393,10 +390,7 @@ impl Store {
         }
         drop(unit_cache);
         drop(existing);
-        let tx = self
-            .db
-            .transaction_with_behavior(libsql::TransactionBehavior::Immediate)
-            .await?;
+        let tx = self.publication_transaction().await?;
         self.verify_source_version(&tx).await?;
         tx.execute(
             "DELETE FROM pos_relations WHERE block NOT IN (SELECT id FROM sections)",

@@ -358,17 +358,19 @@ all structural tables in that same transaction, so forget cannot leave a
 forgotten heading or token in a stale projection. Private secure-delete rules
 apply to these tables too.
 
-After the core write, publish the replacement projection and marker together
-in a separate immediate transaction. A crash between the two leaves an invalid
-projection that is rebuilt once, never trusted. Construction uses prepared
+Publish original changes, lexical indexes, structural/numerical/POS projections,
+catalog and the replacement marker in one immediate transaction. Internal
+publication helpers join the owning transaction; their commits never publish a
+partial replacement. Every helper error propagates to the owner and rolls back
+the complete replacement, preserving the preceding complete publication. Construction uses prepared
 statements reset between bindings. Check the connection's external data version
-under the writer lock before publication; reject a concurrent source change.
-Check that external version before core rebuild/forget writes too, so a stale
-Store cannot overwrite another process's records.
+under the writer lock before reconstruction; reject a concurrent source change.
 These are disposable auxiliary tables governed by their marker version, not
 new immutable envelopes or a second core schema identity.
 
-Open reads the publication identity and scalar totals from one snapshot. Every
+A fresh Store open holds one transaction through publication validation and any
+legacy derived-state repair. Healthy opens remain read-only and read publication
+identity and scalar totals from that snapshot; repair publishes atomically. Every
 agent invocation takes a read snapshot and checks the exact publication marker
 before reading postings. If another process changed the store or heading-tree
 projection, return an error requiring reopen; never combine metadata from one
@@ -378,20 +380,24 @@ remain unchanged; the newly persisted projection uses freshly resolved links
 for subsequent opens, as before.
 
 The LLP 0007 application adapter retains a Store between local requests. It
-checks the connection's source version before reuse and reopens on an external
-commit; errors discard the handle. Search/list/export retain their indexed
+checks publication identity and SQLite's schema cookie before reuse and reopens
+on a replacement publication or schema change; errors discard the handle. Search/list/export retain their indexed
 snapshot checks. Search (including pagination) and show/outline take a pinned
 source snapshot for their complete reference/body/lifecycle read, including
 pointer reads and page construction. Direct agent and list reads check exact
-schema, pending publication and source version in the snapshot too.
-Local writes retain the specified live-instance lifecycle behavior. Import and
-mutating replica requests discard the cached Store; the next ordinary request
-reopens the published state. Read-only replica requests retain the Store and
-reuse the application's Replica handle. Query-specific memos follow the active
+schema, SQLite schema cookie, pending state and publication identity in the
+snapshot too. Staging and membership-only commits preserve query caches.
+Local writes retain the specified live-instance lifecycle behavior. The
+independent reader retains its complete publication during incoming staging and
+reconstruction, then reopens after atomic publication. The commit gate carries a
+shared immutable resolved-link snapshot after local forget, keyed by publication;
+the writer and reader reuse it until rebuild or sync reconstruction replaces it.
+Read-only replica requests retain the Store and reuse the application's Replica
+handle. Query-specific memos follow the active
 query/scope, with clock-dependent eligibility and statistics cleared on clock
 changes under LLP 0007; publication-bound positive data and exact model resources
-remain reusable. Publication failure never grants permission to serve
-old cached bytes. Process-wide immutable model resources survive Store reopen.
+remain reusable. A rolled-back publication leaves the preceding complete state
+valid; legacy pending state never grants permission to serve cached bytes. Process-wide immutable model resources survive Store reopen.
 
 ## Query-independent numerical projections
 
@@ -460,24 +466,35 @@ evaluation callers retain the explicit storage API.
 
 ### Write failure and publication
 
-A successful write publishes both original changes and derived indexes. Originals
-and FTS changes commit atomically with the same durable pending-publication marker
-used by sync. Clear it only after structural, numerical, POS and catalog publication
-succeeds. An interrupted publication blocks ordinary opens; explicit rebuild or
-sync recovers from committed originals. The marker is local operational state,
-not replicated evidence or a retrieval setting.
+A successful write atomically publishes original changes and all derived indexes.
+The legacy pending marker remains a recovery fence for interrupted publications
+from older binaries. New local writes retain the preceding complete publication
+on rollback. Incoming originals are first committed to `sync_incoming` in this
+same database; finish consumes staging in bounded pages, moves originals into
+the published tables and rebuilds all derived state in one immediate transaction. Delete staging rows inside that
+transaction before reconstruction, making their pages reusable. A crash or failed
+publication preserves durable staging and the preceding searchable publication.
+Explicit sync or `index:rebuild` retries staged work; old committed pending state
+still requires recovery before ordinary reads. Staging is operational state, not
+replicated evidence or an additional persistent store.
 
-A failed write may have rolled back, or may have committed originals before an
-index-publication error. Errors must not claim rollback without proof. After any
-rebuild/forget execution error the Store handle refuses further record reads,
-searches and writes: discard and reopen it. SQL integrity diagnostics remain
-available. This prevents a failed add's resident record from leaking into a later
-write. Invalid requests rejected before mutation do not poison the handle.
+Errors must not claim rollback without proof: a commit or post-commit checkpoint
+failure can leave the write durable. After a rebuild/forget execution error the
+Store handle refuses further record reads, searches and writes; discard and reopen
+it. SQL integrity diagnostics remain available. Invalid requests rejected before
+mutation do not poison the handle.
 
 Local and synced forget use the same transactional erasure: insert a permanent
 tombstone, delete record/section/index rows, reset external-content FTS accounting
 with `delete-all` if no sections remain, and optimize FTS segments. In-process
 forget then publishes surviving derived state without re-encoding block vectors.
+Before publication commits, the daemon drains active read execution and original
+response delivery. After erasure commits, truncate/checkpoint WAL before reporting
+success, so old addressable WAL frames cannot retain original bytes. A durable
+`erase-checkpoint` marker survives a crash or checkpoint failure and retries on
+open. An external long-lived reader can prevent erasure completion; report that
+failure rather than acknowledging successful forget. This does not promise secure
+erasure of filesystem snapshots, backups or previously distributed copies.
 
 ### Schema versions and migrations
 
@@ -492,7 +509,7 @@ removes remote configuration under LLP 0008; it preserves publication state and
 original-scope metadata. Version 8 compacts derived membership caches to current
 heads and indexes representative-root history without changing signed receipts.
 Version 9 removes the unused reserved hint table; discovered addresses live only
-in memory.
+in memory. Version 10 adds the private durable incoming-item staging table.
 The legacy `metadata.version` identifies the original format,
 not migration progress.
 
@@ -551,7 +568,7 @@ search never writes them into the persistent store.
 
 ## Connection policy
 
-New stores use 16 KiB pages to pack exact 2,048-byte vectors densely. Opening an
+Ordinary Store creation uses 16 KiB pages to pack exact 2,048-byte vectors densely. Opening an
 existing store preserves its current physical page size; it does not compact,
 rebuild or rewrite the file merely to change layout. Original bytes, vector bits,
 row identities, logical schemas and retrieval arithmetic remain unchanged.
@@ -565,6 +582,13 @@ Initialize connection settings with `execute_batch`, so every statement runs:
 `secure_delete=ON`, `foreign_keys=ON`, `busy_timeout=5000`,
 `temp_store=MEMORY`, `cache_size=-65536` (a 64 MiB pager-cache budget), and
 `mmap_size=268435456` (a 256 MiB mapping limit).
+These are Store settings. The metadata/replica connection retains a 2,000 KiB
+pager budget and disables mmap; reconstruction temporarily uses the same 32 MiB
+writer budget and releases unused pager memory after its outer commit. This
+avoids retaining a second corpus mapping on the idle control connection. The
+daemon releases replica handles after import, explicit rebuild and replica
+finish, discarding reconstruction-only FTS working memory; ordinary chunk checks
+continue reusing their metadata handle.
 The read mapping uses SQLite's file-backed pager and locking; it is neither a
 separate data file nor a preload of all documents. Scratch tokenization stays
 in temporary in-memory tables. The fixed read-cache budget retains native index
@@ -576,10 +600,17 @@ Rebuild and forget temporarily request a 32 MiB pager cache (`cache_size=-32768`
 to reduce page churn during bulk index writes. Save the prior connection setting
 and restore it after success or error, then request unused pager memory release
 with `shrink_memory`. This is a fixed write-time budget, independent of corpus
-size; it adds no table or Rust document index. Preserve all transaction boundaries,
-publication checks, secure deletion and SQL operations. If restoring the cache
+size; it adds no table or Rust document index. Preserve publication checks,
+secure deletion and SQL operations within the atomic publication transaction. If restoring the cache
 fails after successful writes, report that the write completed rather than
 implying it rolled back.
+Use WAL with `synchronous=FULL`, automatic checkpoints every 256 pages and a
+4 MiB reusable-journal limit. Complete publications also attempt a nonwaiting
+truncate checkpoint while the daemon's reader gate is closed. External readers
+may defer that ordinary checkpoint; successful erasure requires truncation.
+Keep read snapshots within one request, never across requests or network waits.
+WAL may temporarily scale with the replacement publication and any external
+snapshot that prevents checkpointing; it is not another durable history.
 Do not weaken synchronous durability or secure deletion for query latency.
 Cache and mapping settings are fixed connection-local performance choices, not
 runtime search algorithm controls. Journal-mode changes also affect writes,

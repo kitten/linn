@@ -12,6 +12,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("0007-retire-remotes.sql"),
     include_str!("0008-membership-cache.sql"),
     include_str!("0009-retire-hints.sql"),
+    include_str!("0010-sync-staging.sql"),
 ];
 pub(super) const VERSION: usize = MIGRATIONS.len();
 
