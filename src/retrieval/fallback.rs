@@ -863,6 +863,7 @@ impl Store {
     }
     async fn agent_inner(&mut self, q: &str, ctx: &Context) -> Result<Vec<Call>> {
         let resolved = self.qualified_suffix_query(q, ctx).await?;
+        let original_query = resolved == q;
         let q = resolved.as_str();
         self.load_surface(&query::content(q)).await?;
         let mut calls = self.lower_fallbacks(q, ctx).await?;
@@ -996,8 +997,15 @@ impl Store {
                 }
             }
         }
-        self.technical_file_stem(q, ctx, &mut calls).await?;
-        self.quoted_filename(q, &mut calls).await?;
+        let mut addressed = HashSet::new();
+        if let Some(record) = self.technical_file_stem(q, ctx, &mut calls).await? {
+            addressed.insert(record);
+        }
+        addressed.extend(self.quoted_filename(q, &mut calls).await?);
+        if original_query {
+            self.refine_record_passages(q, ctx, &addressed, &mut calls)
+                .await?;
+        }
         Ok(calls)
     }
     // @ref LLP 0002#ordered-fallbacks
@@ -1006,9 +1014,9 @@ impl Store {
         raw: &str,
         ctx: &Context,
         calls: &mut Vec<Call>,
-    ) -> Result<()> {
+    ) -> Result<Option<String>> {
         let Ok(q) = query::Query::parse(raw) else {
-            return Ok(());
+            return Ok(None);
         };
         let mut matched = Vec::new();
         for term in q.terms.iter().filter(|t| !t.phrase && t.identifier()) {
@@ -1062,11 +1070,14 @@ impl Store {
         let records: HashSet<_> = matched.iter().map(|id| &self.rows[id].record).collect();
         if records.len() == 1 {
             matched.sort_by_key(|id| (self.rows[id].start, *id));
+            let record = self.rows[&matched[0]].record.clone();
             promote(calls, self.card(matched[0], None));
+            return Ok(Some(record));
         }
-        Ok(())
+        Ok(None)
     }
-    async fn quoted_filename(&mut self, q: &str, calls: &mut Vec<Call>) -> Result<()> {
+    async fn quoted_filename(&mut self, q: &str, calls: &mut Vec<Call>) -> Result<Vec<String>> {
+        let mut addressed = Vec::new();
         let quotes: Vec<_> = query::QUOTE
             .captures_iter(q)
             .map(|c| c[1].to_lowercase())
@@ -1087,6 +1098,7 @@ impl Store {
             let rid = unique.iter().next().unwrap();
             if let Some(id) = self.first_record_block(rid).await? {
                 self.load_blocks([id]).await?;
+                addressed.push(rid.clone());
                 promote(calls, self.card(id, None));
             }
         }
@@ -1095,7 +1107,7 @@ impl Store {
             words.insert(self.porter(&w).await?);
         }
         if words.len() < 2 {
-            return Ok(());
+            return Ok(addressed);
         }
         let mut matches = Vec::new();
         for name in quotes {
@@ -1140,9 +1152,10 @@ impl Store {
             .collect();
         if records.len() == 1 {
             matches.sort_by_key(|id| self.rows[id].start);
+            addressed.push(self.rows[&matches[0]].record.clone());
             promote(calls, self.card(matches[0], None));
         }
-        Ok(())
+        Ok(addressed)
     }
 }
 fn section_means(

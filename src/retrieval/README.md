@@ -4,6 +4,7 @@
 - `lexical.rs`: the two matchers, fusion, card assembly, hints, and navigation.
 - `fallback.rs`: the ordered empty-page procedure and its derived encodings.
 - `ordered.rs`: POS-selected occurrence evidence used by lexical scoring.
+- `passage.rs`: source-bound pair qualification and stable passage coverage ordering.
 - `confidence.rs`: confidence features and the fixed open gate.
 - `hit_order.rs`: posting iteration order.
 - `selection.rs`: compatible top-k partition ordering.

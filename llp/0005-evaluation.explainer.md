@@ -517,3 +517,33 @@ and from 28 to zero on h2. Historical measurements above remain historical.
 The full q4 dev neutral loop reports zero G1 eligibility violations (previously 26).
 Its G4, Q1 and R2 gates still fail; lifecycle correctness does not establish that every
 neutral gate passes.
+
+## Search evaluation boundaries
+
+Unadopted research prototypes do not change ordinary search. Evaluate a passage
+selector alone against ordinary search, and any composed selector against both
+its own frozen upstream control and ordinary search. Improvements relative to an
+upstream control must not conceal that control's regressions. Compare complete
+responses and paired hit transitions on every prepared wording, first-call and
+all-call; report record recall, rank one, cross-scope recall, true silence and
+displayed-source support separately. Report original questions separately from
+paraphrases. Section-only gains do not satisfy the record-retrieval rise rule.
+
+Retain measured configurations and investigate paired divergences when a candidate
+improves some outcomes and worsens others. This does not relax dev selection,
+one-shot holdout confirmation or the prohibition on holdout coefficient repair.
+Reused holdout and previously judged masked packets are development evidence;
+masking them again cannot restore independence. Quality-only saved-response
+replay supplies no fresh physical-integrity or cost measurement. Those require
+actual execution of the frozen implementation and complete ordinary gates.
+
+### Explicit acceptance of record-local passage selection
+
+The operator explicitly authorized the record-local passage stage described in
+LLP 0002 as a permanent native search change. This is a disclosed exception to
+the ordinary record-retrieval rise requirement for this source-selection stage,
+not permission to retune ranking, change admission or treat reused cases as fresh
+confirmation. Verify the integrated stage against its frozen standalone responses
+and execute retrieval and physical neutral evaluations. Supporting-span gains do
+not establish improved primary record retrieval or true silence. The ordinary
+adoption requirements remain in force for future retrieval changes.

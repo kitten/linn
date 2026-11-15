@@ -25,8 +25,8 @@ lexical query. A BM25 score is a rank within one query, not a portable confidenc
 cutoff across corpora. Keep tiers before scores and the diagnostic confidence
 gate open. Cards point to bytes to read; a topical hint is not an answer.
 
-One static model supplies only the hint, neighbor, beam, form, and sentence
-operations below. It does not fuse independent vector rankings into the lexical
+One static model supplies the hint, neighbor, beam, form, sentence and within-record
+passage tie-breaking operations below. It does not fuse independent vector rankings into the lexical
 page. No author-maintained vocabulary, automatic similarity-based record merge,
 model-extracted graph, or second retrieval service is part of this design.
 
@@ -1526,3 +1526,66 @@ records from fills, hints, pointers and filename candidates as well as lexical m
 For basename uniqueness count eligible records, so an expired namesake cannot hide a
 unique eligible record. Numerical scoring, tier order, thresholds and scope penalties
 are unchanged. The operator authorized this correction even where it changes a page.
+
+## Record-local passage selection
+
+The operator explicitly authorized adopting the measured source-bound passage
+selector as a permanent native search stage. It runs after ordered fallbacks and
+source-backed address placement, within the same read snapshot and before final
+lifecycle filtering. It selects supporting bytes within records already returned;
+it does not change record admission, rank order or the five-card maximum. This is
+an explicit adoption decision, not a claim that supporting-span improvements met
+the ordinary record-retrieval rise rule or that reused evaluations became blind.
+
+The input is a complete search response, the original query and native evidence
+for existing eligible blocks within at most five selected records. Only the first
+call's source selection can change. Record identities, card count, record order,
+later calls, hints and related pointers remain unchanged. There are no additional
+records, ingestion sections, models or indexes. Lifecycle and query filters apply
+before candidate bodies are loaded. Evidence comes from original body bytes;
+filenames, labels, ancestor headings and generated previews cannot supply it.
+
+If the native resolved query differs from the input query or query parsing fails,
+preserve the complete response. For each first-call card, preserve it
+when it cannot be aligned to native block evidence, when its record appears more
+than once on that page, or when the native address resolver explicitly selected
+its record. Otherwise apply the following rules independently within its record:
+
+1. Meaningful query terms are the native parsed terms classified as content or
+   hard obligations. Keep their original query indices. For each block, let E be
+   the meaningful indices matched by exact matcher A, S those matched by stem
+   matcher B, and U their union. An alternative must have nonempty U, satisfy all
+   quoted obligations, miss no more hard obligations than the incumbent, and
+   preserve every hard-term identity matched by the incumbent's U.
+2. An alternative also needs a source-bound certificate: two indices i and i+1
+   must both belong to E_alternative minus E_incumbent. These are consecutive
+   original query indices, not indices renumbered after filtering. Their literal
+   query texts must occur in order within the alternative's original byte span,
+   case-insensitively, with Unicode word boundaries at the outside and one or
+   more spaces, tabs, hyphens or underscores between them. A newline or an
+   intervening word does not qualify. Stem-only gains do not qualify. The
+   incumbent remains available without this certificate.
+3. Select by descending size of U, then descending size of E. On equal coverage
+   counts, prefer the incumbent before considering numerical scores. Remaining
+   ties use descending (native BM25L + native POS) / normalizer, descending
+   stored-vector cosine, ascending byte span, then ascending native block ID.
+   POS retains weight 0.75. The normalizer is max(1, 2.2 times the sum of the
+   native scoring-word IDFs over all parsed query terms). All scores retain the
+   accepted model and arithmetic; this is no new fusion or confidence threshold.
+4. Preserve the entire original card whenever record, block ID and byte span
+   are unchanged, including its existing preview. Preserve the original first
+   call's rendered text when all cards are unchanged. When a span changes, use
+   that native candidate card and render the first call from the final cards,
+   one `heading: text` per line. All other call fields remain untouched.
+
+If no alternative qualifies and wins, the result is the complete incumbent
+response. This stage cannot improve note admission, rank one or true silence:
+it only changes the supporting source chosen for an existing lead. Supporting-span
+gains must be reported separately from record-retrieval gains.
+
+Record-local candidate blocks are loaded by indexed keys after eligibility checks.
+Term identities use the native indexed matcher predicates, including existing
+nominal compounds. Coverage and incumbent preference precede numerical scores;
+compute the unchanged BM25L/POS and stored-vector tie breakers only for unresolved
+coverage ties. This omits work that cannot affect the specified result. No
+corpus-wide startup map, persistent derived state or runtime switch is added.

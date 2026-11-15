@@ -407,6 +407,227 @@ impl Store {
         })
     }
 
+    // @ref LLP 0002#record-local-passage-selection
+    pub(super) async fn refine_record_passages(
+        &mut self,
+        text: &str,
+        ctx: &Context,
+        addressed: &HashSet<String>,
+        calls: &mut [Call],
+    ) -> Result<()> {
+        use crate::retrieval::passage::{Evidence, bound_pairs};
+        let Some(first) = calls.first_mut() else {
+            return Ok(());
+        };
+        let q = match Query::parse(text) {
+            Ok(q) if !q.content().is_empty() => q,
+            _ => return Ok(()),
+        };
+        let pairs = bound_pairs(&q);
+        if pairs.is_empty() || first.cards.is_empty() {
+            return Ok(());
+        }
+        let mut counts = HashMap::new();
+        for card in &first.cards {
+            *counts.entry(card.record.clone()).or_insert(0) += 1;
+        }
+        let mut ids = Vec::new();
+        for card in &first.cards {
+            if counts[&card.record] != 1 || addressed.contains(&card.record) {
+                continue;
+            }
+            self.load_record_block_headers(&card.record).await?;
+            if self.record_eligible(&card.record) {
+                let local: Vec<_> = self
+                    .record_blocks(&card.record)
+                    .filter(|b| self.allowed_query(b, &q))
+                    .collect();
+                if local.len() > 1
+                    && local
+                        .iter()
+                        .any(|b| b.id == card.section && [b.start, b.end] == card.span)
+                {
+                    ids.extend(local.iter().map(|b| b.id));
+                }
+            }
+        }
+        ids.sort_unstable();
+        ids.dedup();
+        if ids.is_empty() {
+            return Ok(());
+        }
+        self.load_blocks(ids.iter().copied()).await?;
+        // Use the original matcher predicates, including nominal compounds;
+        // neither a preview nor an inherited heading creates term evidence.
+        let mut exact = Vec::new();
+        let mut stem = Vec::new();
+        for term in &q.terms {
+            let mut a = self
+                .matcher_hits(false, &term.expression(false), &q, ctx)
+                .await?;
+            let mut b = if term.identifier() {
+                self.matcher_hits(false, &term.expression(true), &q, ctx)
+                    .await?
+            } else {
+                a.clone()
+            };
+            if !term.identifier() {
+                b.extend(
+                    self.matcher_hits(true, &query::quote(&term.text), &q, ctx)
+                        .await?,
+                );
+            }
+            let nominal = self.nominal_compound_hits(term, &q, ctx).await?;
+            a.extend(&nominal);
+            b.extend(nominal);
+            exact.push(a);
+            stem.push(b);
+        }
+        let evidence: HashMap<_, _> = ids
+            .iter()
+            .map(|&id| {
+                let hit = |i: usize| exact[i].contains(&id) || stem[i].contains(&id);
+                let meaningful = |i: usize| q.terms[i].content() || q.terms[i].hard();
+                (
+                    id,
+                    Evidence {
+                        id,
+                        exact: (0..q.terms.len())
+                            .filter(|&i| meaningful(i) && exact[i].contains(&id))
+                            .collect(),
+                        union: (0..q.terms.len())
+                            .filter(|&i| meaningful(i) && hit(i))
+                            .collect(),
+                        hard: (0..q.terms.len())
+                            .filter(|&i| q.terms[i].hard() && hit(i))
+                            .collect(),
+                        missing_hard: (0..q.terms.len())
+                            .filter(|&i| q.terms[i].hard() && !hit(i))
+                            .count(),
+                        missing_quoted: (0..q.terms.len())
+                            .filter(|&i| q.terms[i].phrase && !hit(i))
+                            .count(),
+                    },
+                )
+            })
+            .collect();
+        let mut proposals = Vec::new();
+        for (slot, card) in first.cards.iter().enumerate() {
+            let Some(old) = evidence.get(&card.section) else {
+                continue;
+            };
+            let row = &self.rows[&old.id];
+            if row.record != card.record || [row.start, row.end] != card.span {
+                continue;
+            }
+            let mut best = Vec::new();
+            for &id in &ids {
+                let row = &self.rows[&id];
+                let candidate = &evidence[&id];
+                if row.record != card.record || !candidate.qualifies(old, &pairs, &row.text) {
+                    continue;
+                }
+                let order = best
+                    .first()
+                    .map(|id| candidate.coverage_cmp(&evidence[id], old.id));
+                match order {
+                    None | Some(std::cmp::Ordering::Less) => {
+                        best.clear();
+                        best.push(id);
+                    }
+                    Some(std::cmp::Ordering::Equal) => best.push(id),
+                    _ => {}
+                }
+            }
+            if !best.is_empty() && best != [old.id] {
+                proposals.push((slot, best));
+            }
+        }
+        if proposals.is_empty() {
+            return Ok(());
+        }
+        // Only coverage ties need numerical work. A unique winner and the
+        // incumbent-preference rule cannot be affected by these scores.
+        let mut tied: Vec<_> = proposals
+            .iter()
+            .filter(|(_, ids)| ids.len() > 1)
+            .flat_map(|(_, ids)| ids.iter().copied())
+            .collect();
+        tied.sort_unstable();
+        tied.dedup();
+        let mut scores = HashMap::new();
+        let mut cosines = HashMap::new();
+        if !tied.is_empty() {
+            let stats = self.scope_stats(&ctx.now, &q).await?;
+            let mut scoring = Scoring::new(&q, &stats);
+            let idfs = scoring
+                .terms
+                .iter()
+                .flat_map(|(_, words)| words.iter().cloned())
+                .collect();
+            scoring.pairs = self.occurrence_pairs(&q, &idfs).await?;
+            self.load_candidate_frequencies(
+                q.terms
+                    .iter()
+                    .flat_map(|t| query::surface(&t.text))
+                    .map(|w| query::norm(&w)),
+                &tied,
+            )
+            .await?;
+            let bonuses = self.occurrence_bonuses(&tied, &scoring.pairs).await?;
+            let normalizer = (2.2
+                * scoring
+                    .terms
+                    .iter()
+                    .flat_map(|(_, words)| words.iter().map(|(_, idf)| idf))
+                    .sum::<f64>())
+            .max(1.);
+            let query_vector = self.encoder()?.encode(&query::split(text).1);
+            let vectors = self.selected_vectors(&tied).await?;
+            for id in tied {
+                scores.insert(
+                    id,
+                    (scoring.score(&self.rows[&id])
+                        + 0.75 * bonuses.get(&id).copied().unwrap_or(0.))
+                        / normalizer,
+                );
+                cosines.insert(
+                    id,
+                    crate::language::embedding::dot(&vectors[&id], &query_vector),
+                );
+            }
+        }
+        let mut changed = false;
+        for (slot, candidates) in proposals {
+            let id = if candidates.len() == 1 {
+                candidates[0]
+            } else {
+                *candidates
+                    .iter()
+                    .min_by(|a, b| {
+                        scores[b]
+                            .total_cmp(&scores[a])
+                            .then_with(|| cosines[b].total_cmp(&cosines[a]))
+                            .then_with(|| {
+                                let a = &self.rows[a];
+                                let b = &self.rows[b];
+                                [a.start, a.end].cmp(&[b.start, b.end])
+                            })
+                            .then(a.cmp(b))
+                    })
+                    .unwrap()
+            };
+            if id != first.cards[slot].section {
+                first.cards[slot] = self.card(id, Some(&q));
+                changed = true;
+            }
+        }
+        if changed {
+            first.text = card_lines(&first.cards, false);
+        }
+        Ok(())
+    }
+
     async fn nominal_compound_hits(
         &mut self,
         term: &Term,

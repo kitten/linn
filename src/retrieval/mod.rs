@@ -5,6 +5,7 @@ pub(crate) mod fallback;
 pub(crate) mod hit_order;
 pub mod lexical;
 pub(crate) mod ordered;
+mod passage;
 pub mod query;
 pub(crate) mod selection;
 pub(crate) mod similarity;
