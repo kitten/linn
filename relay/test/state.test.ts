@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readState, writeState, deleteState } from "../src/state.ts";
-import { migrateDerivedIndexes } from "../src/control.ts";
+import { ControlPlane, migrateDerivedIndexes } from "../src/control.ts";
 import { MAX_EVENT_BYTES, type Membership } from "../src/membership.ts";
 
 // Enforce the real per-value ceiling while exercising transactional migration.
@@ -79,7 +79,6 @@ test("a newer derived format is rejected without rewriting service data", async 
 });
 
 test("storage failures are unavailable while malformed requests remain bad input", async () => {
-  const { ControlPlane } = await import("../src/control.ts");
   const { canonical, READ_DOMAIN, EVENT_DOMAIN, sign } = await import("../src/membership.ts");
   const { hex } = await import("../src/protocol.ts");
   const store = new Storage();
@@ -134,7 +133,6 @@ test("body bounds include stalled readers and cancellation cannot stall cleanup"
 });
 
 test("busy control requests reject promptly and release capacity after invalid input", async () => {
-  const { ControlPlane } = await import("../src/control.ts");
   const store = new Storage();
   const context = { storage: store.storage(), blockConcurrencyWhile: <T>(fn: () => Promise<T>) => fn() } as unknown as DurableObjectState;
   const plane = new ControlPlane(context, {});
@@ -177,4 +175,50 @@ test("cache deletion enumerates stored chunks instead of trusting a huge count",
   await assert.rejects(readState(store.tx(), "bad"), /incomplete state cache/);
   await deleteState(store.tx(), "bad");
   assert.equal(store.values.size, 0);
+});
+
+test("relay authorization reads both memberships in one storage snapshot", async () => {
+  const store = new Storage();
+  const context = { storage: store.storage(), blockConcurrencyWhile: <T>(fn: () => Promise<T>) => fn() } as unknown as DurableObjectState;
+  const plane = new ControlPlane(context, {});
+  assert.equal((await plane.fetch(new Request("https://mesh.example/v1/service"))).status, 200);
+  store.values.set("active:a", "root");
+  store.values.set("active:b", "root");
+  const get = store.get.bind(store);
+  store.get = async <T>(key: string | string[]) => {
+    assert.deepEqual(key, ["active:a", "active:b"]);
+    return get<T>(key);
+  };
+  assert.equal(await plane.sameGroup("a", "b"), true);
+  store.values.set("active:b", "other");
+  assert.equal(await plane.sameGroup("a", "b"), false);
+  store.values.delete("active:b");
+  assert.equal(await plane.sameGroup("a", "b"), false);
+  store.values.delete("active:a");
+  assert.equal(await plane.sameGroup("a", "b"), false);
+});
+
+test("read authorization must still be unexpired when its storage transaction starts", async () => {
+  const { canonical, READ_DOMAIN, sign } = await import("../src/membership.ts");
+  const { hex } = await import("../src/protocol.ts");
+  const store = new Storage();
+  const context = { storage: store.storage(), blockConcurrencyWhile: <T>(fn: () => Promise<T>) => fn() } as unknown as DurableObjectState;
+  const plane = new ControlPlane(context, {});
+  assert.equal((await plane.fetch(new Request("https://mesh.example/v1/service"))).status, 200);
+  const pair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
+  const key = hex(new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey)));
+  const expires = Math.floor(Date.now() / 1000) + 60;
+  const request = { version: 1, service: "https://mesh.example", key, expires, nonce: "1".repeat(64), after: null, invitation: null };
+  const signed = { request, signature: await sign(pair.privateKey, READ_DOMAIN, request) };
+  const transaction = store.transaction.bind(store);
+  const clock = Date.now;
+  store.transaction = async <T>(fn: (tx: DurableObjectTransaction) => Promise<T>) => {
+    Date.now = () => expires * 1000;
+    return transaction(fn);
+  };
+  try {
+    const response = await plane.fetch(new Request("https://mesh.example/v1/history", { method: "POST", body: canonical(signed) }));
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: "read authorization expired" });
+  } finally { Date.now = clock; }
 });

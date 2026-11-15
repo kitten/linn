@@ -382,7 +382,14 @@ unavailability. A service failure is never reported as definite rejection.
 Authenticate relay endpoints with Iroh's challenge/signature protocol. Use the
 challenge path rather than requiring TLS exporter access behind Cloudflare.
 Endpoint authentication proves key ownership; separately check verified mesh
-membership. Forward packets only within the same authorized component and bind
+membership. Read both endpoints' current membership in one storage snapshot for
+forwarding, before looking up destination presence, and do not forward through
+sockets closed during that read. Cross-mesh packets receive the same denial
+whether the destination is connected or offline. Recheck
+the handshake deadline after asynchronous authentication work, and recheck signed
+history-read expiry when its storage transaction starts. Membership refresh
+must preserve the latest attachment's counters and closure state across awaits.
+Forward packets only within the same authorized component and bind
 the source field to the authenticated socket, never a caller-supplied identity.
 Unregistered WebSockets receive a challenge but cannot forward datagrams before
 endpoint authentication and membership authorization succeed.
@@ -753,14 +760,19 @@ Pending sockets have a ten-second challenge deadline and only
 one in-flight authentication per socket. Admission closes expired pending sockets;
 alarms run by the earliest pending deadline without postponing existing alarms.
 Each authenticated socket has a token budget of 8,192 incoming messages per
-second with a 16,384-message burst. Ping/pong messages additionally share a
-32-per-second budget with a 64-message burst. Exceeding a message budget closes
+second with a 16,384-message burst. Client pings and unsolicited pongs additionally
+share a 32-per-second budget with a 64-message burst. A matching reply to the
+server's outstanding random checkpoint is charged only to the general message
+budget, so server-requested acknowledgments do not throttle normal transfers. Exceeding a message budget closes
 the socket; these budgets survive hibernation and initialize on older
 attachments. Each sender has a 4 MiB/s datagram budget, and
 each receiver has a 256 KiB unconfirmed send window. Ordered protocol Pong
 checkpoints release that window; excess datagrams are dropped for QUIC
 recovery. Protocol pings run at 15-second intervals, with a 30-second
-outstanding-pong limit. Hibernatable attachments preserve identity, deadlines
+outstanding-pong limit. Heartbeats use per-socket deadlines; an earlier pending
+handshake alarm must not send premature heartbeats to authenticated sockets.
+Schedule the next alarm no later than the earliest heartbeat or pending handshake
+deadline. Hibernatable attachments preserve identity, deadlines
 and budgets. These limits bound application queues, not all platform buffering
 or billing.
 

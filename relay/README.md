@@ -102,7 +102,9 @@ headers as the IP identity.
 
 At most 16 of the 128 relay sockets can await authentication, for ten seconds.
 Authenticated sockets allow 8,192 messages/s (16,384 burst), with a separate
-32/s ping/pong budget (64 burst), in addition to the byte/queue limits in the LLP.
+32/s client-ping/unsolicited-pong budget (64 burst), in addition to the byte/queue
+limits in the LLP. Matching replies to server checkpoints use only the general
+message budget.
 Exceeding a message budget disconnects that socket. These guards bound transient
 work; they do not cap durable membership history or guarantee a billing ceiling.
 

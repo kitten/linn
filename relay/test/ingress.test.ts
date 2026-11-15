@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ingress, type IngressEnv } from "../src/ingress.ts";
-import { admitMessage, type MessageBudget } from "../src/limits.ts";
+import { admitMessage, heartbeatDeadline, type MessageBudget } from "../src/limits.ts";
 
 function limits(success = true) {
   const keys: string[] = [];
@@ -58,4 +58,12 @@ test("message budgets permit bursts, bound tiny-message floods and survive wake"
   assert.equal(admitMessage(state, 999, true), false);
   // Old hibernatable attachments without these fields initialize safely.
   assert.equal(admitMessage({}, 2000, false), true);
+});
+
+test("handshake alarms do not advance heartbeats and Pong deadlines are exact", () => {
+  assert.equal(heartbeatDeadline({ pingAt: 15000 }, 10000), 15000);
+  assert.equal(heartbeatDeadline({ awaitingPong: 2500, pingAt: 17500 }, 15000), 32500);
+  assert.equal(heartbeatDeadline({ awaitingPong: 0 }, 10000), 30000);
+  assert.equal(heartbeatDeadline({ pingAt: 17500 }, 16000), 17500);
+  assert.equal(heartbeatDeadline({}, 10000), 10000); // Initialize an older attachment once.
 });

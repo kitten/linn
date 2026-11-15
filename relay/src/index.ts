@@ -1,14 +1,14 @@
 import { DurableObject } from "cloudflare:workers";
 import { authenticate, clientMessage, forward, frame, hex, unhex } from "./protocol.ts";
 import { ingress, type IngressEnv } from "./ingress.ts";
-import { admitMessage, type MessageBudget } from "./limits.ts";
+import { admitMessage, heartbeatDeadline, PING_MS, type Heartbeat, type MessageBudget } from "./limits.ts";
 import { ControlPlane } from "./control.ts";
 
 interface Env extends IngressEnv {
   COORDINATOR: DurableObjectNamespace<RelayCoordinator>;
   BOOTSTRAP_TOKEN?: string;
 }
-interface Attachment extends MessageBudget {
+interface Attachment extends MessageBudget, Heartbeat {
   version: 1;
   challenge: number[];
   deadline: number;
@@ -17,7 +17,6 @@ interface Attachment extends MessageBudget {
   group?: string;
   budget: number;
   budgetAt: number;
-  awaitingPong?: number;
   pongToken?: string;
   queuedBytes?: number;
   checkpointBytes?: number;
@@ -28,7 +27,6 @@ const MAX_PENDING = 16;
 const MAX_BUFFER = 256 * 1024;
 const BYTES_PER_SECOND = 4 * 1024 * 1024;
 const HANDSHAKE_MS = 10_000;
-const PING_MS = 15_000;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -80,7 +78,7 @@ export class RelayCoordinator extends DurableObject<Env> {
       const state = socket.deserializeAttachment() as Attachment;
       if (!state || state.version !== 1) throw new Error("invalid session");
       if (!state.endpoint) {
-        if (Date.now() > state.deadline) throw new Error("authentication timed out");
+        if (Date.now() >= state.deadline) throw new Error("authentication timed out");
         if (state.authenticating) throw new Error("authentication already in progress");
         state.authenticating = true;
         socket.serializeAttachment(state);
@@ -88,6 +86,7 @@ export class RelayCoordinator extends DurableObject<Env> {
         const group = await this.control.group(endpoint);
         if (!group) throw new Error("endpoint not enrolled");
         if (!(socket.deserializeAttachment() as Attachment | null)?.authenticating) return;
+        if (Date.now() >= state.deadline) throw new Error("authentication timed out");
         if (this.find(endpoint)) {
           socket.send(frame(13, new Uint8Array([1])));
           return this.close(socket, 1008, "duplicate endpoint identity");
@@ -96,15 +95,18 @@ export class RelayCoordinator extends DurableObject<Env> {
         state.authenticating = undefined;
         state.group = group;
         state.challenge = [];
+        state.pingAt = Date.now() + PING_MS;
         socket.serializeAttachment(state);
         socket.send(frame(2));
         return;
       }
       const now = Date.now();
       const message = clientMessage(input);
-      if (!admitMessage(state, now, message.type !== "datagram")) throw new Error("message rate exceeded");
-      state.budget = Math.min(BYTES_PER_SECOND, state.budget + (now - state.budgetAt) * BYTES_PER_SECOND / 1000);
-      state.budgetAt = now;
+      const acknowledged = message.type === "pong" && hex(message.payload) === state.pongToken;
+      // Replies to our own checkpoints are paced by us, not unsolicited traffic.
+      if (!admitMessage(state, now, message.type === "ping" || (message.type === "pong" && !acknowledged))) throw new Error("message rate exceeded");
+      state.budget = Math.min(BYTES_PER_SECOND, state.budget + Math.max(0, now - state.budgetAt) * BYTES_PER_SECOND / 1000);
+      state.budgetAt = Math.max(now, state.budgetAt);
       if (message.type === "datagram") {
         if (input.byteLength > state.budget) {
           socket.serializeAttachment(state);
@@ -112,7 +114,7 @@ export class RelayCoordinator extends DurableObject<Env> {
         }
         state.budget -= input.byteLength;
       }
-      if (message.type === "pong" && hex(message.payload) === state.pongToken) {
+      if (acknowledged) {
         state.awaitingPong = undefined;
         state.pongToken = undefined;
         state.queuedBytes = Math.max(0, (state.queuedBytes ?? 0) - (state.checkpointBytes ?? 0));
@@ -121,12 +123,10 @@ export class RelayCoordinator extends DurableObject<Env> {
       socket.serializeAttachment(state);
       if (message.type === "ping") return this.send(socket, frame(10, message.payload));
       if (message.type === "pong") return;
+      if (!await this.control.sameGroup(state.endpoint, message.destination)) throw new Error("mesh authorization denied");
+      if ((socket.deserializeAttachment() as Attachment | null)?.endpoint !== state.endpoint) return;
       const destination = this.find(message.destination);
       if (!destination) return this.send(socket, frame(8, unhex(message.destination)));
-      const target = destination.deserializeAttachment() as Attachment;
-      const sourceGroup = await this.control.group(state.endpoint);
-      const targetGroup = await this.control.group(target.endpoint!);
-      if (!sourceGroup || targetGroup !== sourceGroup) throw new Error("mesh authorization denied");
       this.send(destination, forward(state.endpoint, message));
     } catch {
       // Do not log packet, key, challenge, token or authentication bytes.
@@ -142,8 +142,10 @@ export class RelayCoordinator extends DurableObject<Env> {
       const state = socket.deserializeAttachment() as Attachment | null;
       if (!state?.endpoint) continue;
       const group = await this.control.group(state.endpoint);
+      const current = socket.deserializeAttachment() as Attachment | null;
+      if (current?.endpoint !== state.endpoint) continue;
       if (!group) this.close(socket, 1008, "membership revoked");
-      else { state.group = group; socket.serializeAttachment(state); }
+      else { current.group = group; socket.serializeAttachment(current); }
     }
   }
 
@@ -156,11 +158,9 @@ export class RelayCoordinator extends DurableObject<Env> {
         if (now >= state.deadline) this.close(socket, 1008, "authentication timed out");
         continue;
       }
-      if (state.awaitingPong && now - state.awaitingPong >= 2 * PING_MS) {
-        this.close(socket, 1008, "heartbeat timed out");
-        continue;
-      }
-      if (!state.awaitingPong) this.checkpoint(socket);
+      if (now < heartbeatDeadline(state, now)) continue;
+      if (state.awaitingPong !== undefined) this.close(socket, 1008, "heartbeat timed out");
+      else this.checkpoint(socket);
     }
     await this.armAlarm();
   }
@@ -181,13 +181,14 @@ export class RelayCoordinator extends DurableObject<Env> {
     state.queuedBytes = (state.queuedBytes ?? 0) + data.length;
     socket.serializeAttachment(state);
     try { socket.send(data); } catch { this.close(socket, 1011, "write failed"); }
-    if ((state.queuedBytes ?? 0) >= 16 * 1024 && !state.awaitingPong) this.checkpoint(socket);
+    if ((state.queuedBytes ?? 0) >= 16 * 1024 && state.awaitingPong === undefined) this.checkpoint(socket);
   }
   private checkpoint(socket: WebSocket): void {
     const state = socket.deserializeAttachment() as Attachment | null;
-    if (!state?.endpoint || state.awaitingPong) return;
+    if (!state?.endpoint || state.awaitingPong !== undefined) return;
     const token = crypto.getRandomValues(new Uint8Array(8));
     state.awaitingPong = Date.now();
+    state.pingAt = state.awaitingPong + PING_MS;
     state.pongToken = hex(token);
     state.checkpointBytes = state.queuedBytes ?? 0;
     socket.serializeAttachment(state);
@@ -215,7 +216,7 @@ export class RelayCoordinator extends DurableObject<Env> {
       const state = socket.deserializeAttachment() as Attachment | null;
       if (!state) continue;
       active = true;
-      if (!state.endpoint) next = Math.min(next, state.deadline);
+      next = Math.min(next, state.endpoint ? heartbeatDeadline(state, Date.now()) : state.deadline);
     }
     if (active) {
       const current = await this.ctx.storage.getAlarm();

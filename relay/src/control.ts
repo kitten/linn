@@ -78,6 +78,14 @@ export class ControlPlane {
     return this.ctx.storage.get<string>(`active:${endpoint}`);
   }
 
+  async sameGroup(source: string, target: string): Promise<boolean> {
+    const sourceKey = `active:${source}`;
+    const targetKey = `active:${target}`;
+    const groups = await this.ctx.storage.get<string>([sourceKey, targetKey]);
+    const group = groups.get(sourceKey);
+    return group !== undefined && group === groups.get(targetKey);
+  }
+
   async fetch(request: Request): Promise<Response> {
     if (this.inFlight >= 4) return json({ error: "control service busy" }, 503);
     this.inFlight++;
@@ -180,6 +188,8 @@ export class ControlPlane {
     const publicKey = auth.key;
     // A pinned read transaction prevents concurrent revocation leaking a later page.
     const page = await this.ctx.storage.transaction(async (tx) => {
+      const now = Math.floor(Date.now() / 1000);
+      if ((auth.expires as number) <= now) throw new MembershipError("read authorization expired", 401);
       const delegation = auth.invitation === null ? undefined : await tx.get<{ root: string; invitation: string }>(`invitation-key:${auth.key}`);
       const root = auth.invitation === null ? await tx.get<string>(`member:${auth.key}`) : delegation?.root;
       const head = root ? await tx.get<string>(`root:${root}`) : undefined;
@@ -207,7 +217,7 @@ export class ControlPlane {
         candidates.sort((a, b) => a.cursor.localeCompare(b.cursor));
         candidates.splice(16);
       }
-      const selected = candidates.sort((a, b) => a.cursor.localeCompare(b.cursor)).slice(0, 16);
+      const selected = candidates;
       const events: Acceptance[] = [];
       for (const row of selected) events.push((await tx.get<StoredEvent>(`event:${row.hash}`))!.acceptance);
       const last = selected.at(-1)?.cursor ?? auth.after;

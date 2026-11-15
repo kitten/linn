@@ -28,12 +28,13 @@ test("relay rejects setup without credentials and does not expose an unversioned
 });
 
 test("real Worker authentication, routing, rejection and duplicate-key isolation", async () => {
-  const keys = await Promise.all([0, 1, 2].map(async () => {
+  const keys = await Promise.all([0, 1, 2, 3].map(async () => {
     const pair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
     const publicKey = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
     return { pair, publicKey, id: hex(publicKey) };
   }));
   await enroll(keys.slice(0, 2).map((key) => key.pair));
+  await enroll([keys[3]!.pair]);
   const connect = async (key: typeof keys[number]) => {
     const response = await runtime.dispatchFetch("https://local/relay", {
       headers: { upgrade: "websocket", "sec-websocket-protocol": "iroh-relay-v2" },
@@ -93,6 +94,22 @@ test("real Worker authentication, routing, rejection and duplicate-key isolation
   assert.equal(hex(forwarded.payload.subarray(0, 32)), keys[0]!.id);
   assert.deepEqual(forwarded.payload.subarray(32), packet.subarray(32));
   for (const socket of pending) socket.close();
+  // More than the unsolicited-control burst must still allow requested Pongs.
+  let checkpoints = 0;
+  const acknowledge = (event: { data: ArrayBuffer }) => {
+    const message = decode(event.data);
+    if (message.kind === 9) { checkpoints++; b.socket.send(frame(10, message.payload)); }
+  };
+  b.socket.addEventListener("message", acknowledge);
+  const bulk = new Uint8Array(16 * 1024 + 33);
+  bulk.set(keys[1]!.publicKey);
+  for (let i = 0; i < 192; i++) {
+    const delivered = next(b.socket, 6);
+    a.socket.send(frame(4, bulk));
+    await delivered;
+  }
+  b.socket.removeEventListener("message", acknowledge);
+  assert.ok(checkpoints > 64);
   // A control-message flood is disconnected, while the other member stays usable.
   const flooded = closed(a.socket);
   for (let i = 0; i < 256; i++) a.socket.send(frame(9, new Uint8Array(8)));
@@ -100,6 +117,16 @@ test("real Worker authentication, routing, rejection and duplicate-key isolation
   const pong = next(b.socket, 10);
   b.socket.send(frame(9, new Uint8Array(8)));
   assert.equal(decode(await pong).kind, 10);
+  // Another mesh gets the same denial whether the target is offline or online.
+  for (const target of [keys[0]!, keys[1]!]) {
+    const outsider = await connect(keys[3]!);
+    assert.equal(decode(await outsider.result).kind, 2);
+    const denied = closed(outsider.socket);
+    const packet = new Uint8Array(33);
+    packet.set(target.publicKey);
+    outsider.socket.send(frame(4, packet));
+    assert.equal(await denied, 1008);
+  }
   b.socket.close();
 });
 
