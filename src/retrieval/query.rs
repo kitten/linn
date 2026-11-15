@@ -138,7 +138,11 @@ impl Query {
         }) {
             return Err("Unknown prefix".into());
         }
-        let scan = Regex::new(r#""([^"]+)"|(\S+)"#).unwrap();
+        let scan: &Regex = {
+            static REGEX: std::sync::LazyLock<Regex> =
+                std::sync::LazyLock::new(|| Regex::new(r#""([^"]+)"|(\S+)"#).unwrap());
+            &REGEX
+        };
         let mut terms = Vec::new();
         for c in scan.captures_iter(&rest) {
             if let Some(p) = c.get(1) {
@@ -251,7 +255,11 @@ pub fn rewrite(q: &str, mut f: impl FnMut(&str) -> String) -> String {
     out
 }
 pub fn pieces(s: &str) -> Vec<String> {
-    let re = Regex::new(r"([a-z0-9])([A-Z])").unwrap();
+    let re: &Regex = {
+        static REGEX: std::sync::LazyLock<Regex> =
+            std::sync::LazyLock::new(|| Regex::new(r"([a-z0-9])([A-Z])").unwrap());
+        &REGEX
+    };
     re.replace_all(s, "$1 $2")
         .split(|c: char| !c.is_ascii_alphanumeric())
         .filter(|s| s.len() > 2 && s.chars().all(char::is_alphabetic))

@@ -105,8 +105,17 @@ impl Store {
         Ok(calls)
     }
     async fn rewrites(&mut self, raw: &str, ctx: &Context) -> Result<Vec<Call>> {
-        let camel = Regex::new(r"^[A-Za-z][A-Za-z0-9]*[a-z][A-Z][A-Za-z0-9]*$").unwrap();
-        let boundary = Regex::new(r"([a-z0-9])([A-Z])").unwrap();
+        let camel: &Regex = {
+            static REGEX: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
+                Regex::new(r"^[A-Za-z][A-Za-z0-9]*[a-z][A-Z][A-Za-z0-9]*$").unwrap()
+            });
+            &REGEX
+        };
+        let boundary: &Regex = {
+            static REGEX: std::sync::LazyLock<Regex> =
+                std::sync::LazyLock::new(|| Regex::new(r"([a-z0-9])([A-Z])").unwrap());
+            &REGEX
+        };
         let q = query::rewrite(raw, |t| {
             if !t.contains(':') && camel.is_match(t) && !self.df.contains_key(&t.to_lowercase()) {
                 boundary.replace_all(t, "$1 $2").to_string()
@@ -136,7 +145,11 @@ impl Store {
                 return Ok(kept);
             }
         }
-        let compound = Regex::new(r"^[A-Za-z]{2,}-[A-Za-z]{2,}$").unwrap();
+        let compound: &Regex = {
+            static REGEX: std::sync::LazyLock<Regex> =
+                std::sync::LazyLock::new(|| Regex::new(r"^[A-Za-z]{2,}-[A-Za-z]{2,}$").unwrap());
+            &REGEX
+        };
         let rewrite = query::rewrite(&q, |t| {
             if compound.is_match(t) {
                 t.replace('-', " ")
@@ -189,7 +202,12 @@ impl Store {
             self.form_cache = Some(forms.clone());
             return Ok(forms);
         }
-        let tricky=Regex::new(r"[A-Za-z]+(?:[_-][A-Za-z0-9]+)+|[A-Za-z][A-Za-z0-9]*[a-z][A-Z][A-Za-z0-9]*|[A-Za-z]*\d[A-Za-z0-9]*").unwrap();
+        let tricky: &Regex = {
+            static REGEX: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
+                Regex::new(r"[A-Za-z]+(?:[_-][A-Za-z0-9]+)+|[A-Za-z][A-Za-z0-9]*[a-z][A-Z][A-Za-z0-9]*|[A-Za-z]*\d[A-Za-z0-9]*").unwrap()
+            });
+            &REGEX
+        };
         let mut forms = BTreeMap::<String, (Vec<String>, Vec<usize>, usize)>::new();
         for b in self.rows.values() {
             for m in tricky.find_iter(&format!("{} {}", b.heading, b.text)) {
@@ -547,7 +565,11 @@ impl Store {
                 self.sentence_cache = Some(std::sync::Arc::new((sids, matrix)));
                 return Ok(self.sentence_cache.as_ref().unwrap().clone());
             }
-            let split = Regex::new(r"\n+|[.!?]\s+").unwrap(); // Keep punctuation on the preceding sentence below.
+            let split: &Regex = {
+                static REGEX: std::sync::LazyLock<Regex> =
+                    std::sync::LazyLock::new(|| Regex::new(r"\n+|[.!?]\s+").unwrap());
+                &REGEX
+            }; // Keep punctuation on the preceding sentence below.
             let mut texts = Vec::new();
             let mut sids = Vec::new();
             for block in self.rows.values() {
@@ -851,7 +873,11 @@ impl Store {
                 term.to_owned()
             });
             self.load_vocabulary_terms(probes).await?;
-            let ident = Regex::new(r"[_-]|[a-z][A-Z]|\d").unwrap();
+            let ident: &Regex = {
+                static REGEX: std::sync::LazyLock<Regex> =
+                    std::sync::LazyLock::new(|| Regex::new(r"[_-]|[a-z][A-Z]|\d").unwrap());
+                &REGEX
+            };
             let mut groups = Vec::new();
             let rewritten = query::rewrite(q, |t| {
                 let pcs = query::pieces(t);
@@ -897,7 +923,11 @@ impl Store {
         }
         if !has_cards(&calls) {
             let forms = self.forms().await?;
-            let ident = Regex::new(r"[_-]|\d").unwrap();
+            let ident: &Regex = {
+                static REGEX: std::sync::LazyLock<Regex> =
+                    std::sync::LazyLock::new(|| Regex::new(r"[_-]|\d").unwrap());
+                &REGEX
+            };
             let mut probes = Vec::new();
             let mut seen = HashSet::new();
             for w in query::content(q) {
@@ -1527,7 +1557,12 @@ fn colon_literal_query(raw: &str) -> Option<(String, Vec<String>)> {
     if query::Query::parse(raw).err().as_deref() != Some("Unknown prefix") {
         return None;
     }
-    let re = Regex::new(r"(^|\s)([a-z][a-z-]*):([A-Za-z][A-Za-z0-9_-]*)").unwrap();
+    let re: &Regex = {
+        static REGEX: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
+            Regex::new(r"(^|\s)([a-z][a-z-]*):([A-Za-z][A-Za-z0-9_-]*)").unwrap()
+        });
+        &REGEX
+    };
     let mut spans = Vec::new();
     for cap in re.captures_iter(raw) {
         let key = cap.get(2).unwrap();
