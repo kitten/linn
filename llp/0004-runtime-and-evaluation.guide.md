@@ -67,8 +67,8 @@ Commands are in three groups. An agent that reads memory needs only the first.
 | | `linn index:rebuild` | Rebuild sections and the index from stored bodies and envelopes |
 | | `linn sync` | Run a finite whole-store mesh exchange |
 | | `linn sync:pair` | Create or redeem a mesh invitation; optionally start the first sync |
-| | `linn sync:status`, `linn sync:peers` | Inspect local enrollment and transport state |
-| | `linn sync:revoke <peer-id\|self>`, `linn sync:leave` | Revoke a member or disable and leave this endpoint |
+| | `linn sync:status` | Inspect local enrollment and transport state |
+| | `linn sync:revoke <peer-id>`, `linn sync:leave` | Revoke a member or disable and leave this endpoint |
 | | `linn sync:reset-identity` | Remove a copied store's identity while preserving records |
 
 - **Scope.** The scope of a directory is computed, never configured:
@@ -140,7 +140,8 @@ LLP 0008 owns replica/publication contracts, mesh commands, membership and
 manual whole-store exchange. The interface is
 `linn sync:pair --service <url>` to create an invitation and
 `linn sync:pair --join [invitation]` to redeem it, then `linn sync` to run a finite
-mesh exchange. The owner can serve another member's explicit request while idle;
+mesh exchange. Joining requires `--join`; positional invitation input is rejected.
+The owner can serve another member's explicit request while idle;
 local writes, timers and reconnects do not initiate record synchronization.
 Automatic record synchronization is not enabled. Interactive joining offers an optional first sync;
 scripts select it with `--sync`. Admission is complete before that job begins.
@@ -233,6 +234,9 @@ linn add -      [--label <text>] [--unscoped] [--parent <ref>] [--stale-after <t
   - `add:forget` deletes the record and its index rows with secure delete.
 
 ### Maintaining: `index:check`, `index:rebuild`
+
+Both commands remain callable with their own `--help`, but are hidden from
+top-level help. Recovery diagnostics continue to name `index:rebuild`.
 
 - `index:check` runs SQLite quick-check, validates original body/envelope hashes and
   their ID/body agreement, checks exact block/vector coverage and vector byte length,

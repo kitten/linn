@@ -665,8 +665,8 @@ The public synchronization commands are:
   joining/merging authority, not a record transfer. An existing enrollment cannot silently switch services.
 - `linn sync:pair --join [invitation]` redeems an invitation. An argument value is
   accepted at the user's discretion. With no value, read piped stdin or prompt
-  in a terminal. `-` explicitly selects stdin. Retain positional invitation
-  input as an equivalent convenience. Token input is limited to 32 KiB.
+  in a terminal. `--join -` explicitly selects stdin. Joining requires `--join`;
+  positional invitation input is rejected. Token input is limited to 32 KiB.
 - Admission completes before optional first sync. An interactive join offers
   the first sync (default yes); `--sync` starts it explicitly and `--no-sync`
   skips it. Noninteractive and JSON joins skip the offer unless `--sync` is
@@ -686,10 +686,11 @@ The public synchronization commands are:
   yields the ordinary command error with durable partial progress reported;
   an empty mesh is a successful no-op that still repairs pending publication.
 
-Keep `sync:status` and `sync:peers` for inspection, `sync:revoke <peer-id>` and
+Keep `sync:status` for inspection, `sync:revoke <peer-id>` and
 `sync:leave` for membership changes, `sync:pair --cancel <invitation-id>` for
-an unused invitation, `sync:revoke self` as an explicit self-revocation alias
-for `sync:leave`, and `sync:reset-identity` for an explicitly copied store. Do
+an unused invitation, and `sync:reset-identity` for an explicitly copied store.
+`sync:revoke` requires a full peer ID; use `sync:leave` for this endpoint.
+There is no `sync:peers` command or `sync:revoke self` alias. Do
 not add separate `sync:init`, `sync:invite` or `sync:join` public commands.
 Preserve explicit store selection. Pairing/control operations may exchange
 their signed control state but never make original replication an admission

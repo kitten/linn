@@ -10,9 +10,7 @@ use std::{
 
 #[derive(Args)]
 pub(super) struct PairArgs {
-    #[arg(help = "Redeem an invitation; use - to read it privately from stdin", conflicts_with_all = ["bootstrap_file", "cancel"])]
-    invitation: Option<String>,
-    #[arg(long, num_args = 0..=1, default_missing_value = "", conflicts_with_all = ["invitation", "bootstrap_file", "cancel"], help = "Join using a token argument, piped stdin, or an interactive prompt")]
+    #[arg(long, num_args = 0..=1, default_missing_value = "", conflicts_with_all = ["bootstrap_file", "cancel"], help = "Join using a token argument, piped stdin, or an interactive prompt")]
     join: Option<String>,
     #[arg(
         long,
@@ -39,14 +37,14 @@ impl PairArgs {
     pub(super) fn first_sync(&self) -> Option<bool> {
         if self.sync {
             Some(true)
-        } else if self.no_sync || (self.join.is_none() && self.invitation.is_none()) {
+        } else if self.no_sync || self.join.is_none() {
             Some(false)
         } else {
             None
         }
     }
     pub(super) fn resolve(self) -> Result<Command> {
-        let value = self.join.or(self.invitation);
+        let value = self.join;
         let invitation = match value.as_deref() {
             Some("") if std::io::stdin().is_terminal() => {
                 let token = prompt_invitation()?;

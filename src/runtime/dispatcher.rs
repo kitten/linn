@@ -110,7 +110,7 @@ pub(super) async fn run(
                 if !dispatcher.retired && matches!(job.operation, Operation::Mesh(_)) {
                     if job.reply.is_closed() { continue; }
                     use crate::mesh::pairing::Command;
-                    let limit = if matches!(job.operation, Operation::Mesh(Command::Leave | Command::Reset | Command::Status | Command::Peers)) { 5 } else { 4 };
+                    let limit = if matches!(job.operation, Operation::Mesh(Command::Leave | Command::Reset | Command::Status)) { 5 } else { 4 };
                     if workers.len() >= limit {
                         let _ = job.reply.send(Err(crate::error::ApplicationError::new(Error::Invalid("daemon busy; mesh command not executed".into()), false).into()));
                         continue;

@@ -142,7 +142,7 @@ fn unpaired_status_and_invalid_invitation_do_not_create_identity_or_database() {
     assert!(status["endpoint"].is_null());
     assert!(!fixture.store.exists());
     let invalid = fixture.run(
-        &["sync:pair", "-", "--json"],
+        &["sync:pair", "--join", "-", "--json"],
         Some("not-a-valid-invitation"),
     );
     assert_eq!(invalid.status.code(), Some(2));
@@ -404,7 +404,7 @@ fn daemon_pairing_and_explicit_sync_merge_three_independent_stores() {
         None,
     );
     let token = invite["token"].as_str().unwrap();
-    let joined = b.ok(&["sync:pair", "-", "--json"], Some(token));
+    let joined = b.ok(&["sync:pair", "--join", "-", "--json"], Some(token));
     assert_eq!(joined["status"]["members"].as_array().unwrap().len(), 2);
     assert_ne!(
         a.ok(&["sync:status", "--json"], None)["endpoint"],
@@ -447,7 +447,7 @@ fn daemon_pairing_and_explicit_sync_merge_three_independent_stores() {
     );
     let invite = a.ok(&["sync:pair", "--json"], None);
     let merged = c.ok(
-        &["sync:pair", "-", "--json"],
+        &["sync:pair", "--join", "-", "--json"],
         Some(invite["token"].as_str().unwrap()),
     );
     assert_eq!(merged["status"]["members"].as_array().unwrap().len(), 3);
@@ -493,7 +493,7 @@ fn daemon_pairing_and_explicit_sync_merge_three_independent_stores() {
     // Re-enrollment resumes a reset owner's transport before an immediate sync.
     let invitation = a.ok(&["sync:pair", "--json"], None);
     let rejoined = b.ok(
-        &["sync:pair", "-", "--json"],
+        &["sync:pair", "--join", "-", "--json"],
         Some(invitation["token"].as_str().unwrap()),
     );
     assert_ne!(rejoined["status"]["endpoint"], b_peer);
@@ -536,7 +536,7 @@ fn one_member_approval_admits_and_merges_without_sync_or_online_peers() {
     a.ok(&["daemon:stop", "--json"], None);
     // The sole approver is already offline when its first invitation is redeemed.
     let admitted = b.ok(
-        &["sync:pair", "-", "--json"],
+        &["sync:pair", "--join", "-", "--json"],
         Some(invitation["token"].as_str().unwrap()),
     );
     assert_eq!(admitted["status"]["members"].as_array().unwrap().len(), 2);
@@ -546,12 +546,12 @@ fn one_member_approval_admits_and_merges_without_sync_or_online_peers() {
     b.ok(&["daemon:stop", "--json"], None);
     let other = initialize(&c);
     d.ok(
-        &["sync:pair", "-", "--json"],
+        &["sync:pair", "--join", "-", "--json"],
         Some(other["token"].as_str().unwrap()),
     );
     d.ok(&["daemon:stop", "--json"], None);
     let merged = c.ok(
-        &["sync:pair", "-", "--json"],
+        &["sync:pair", "--join", "-", "--json"],
         Some(invitation["token"].as_str().unwrap()),
     );
     assert_eq!(merged["operation"], "paired");
@@ -601,7 +601,7 @@ fn offline_daemons_rediscover_changed_loopback_ports() {
         None,
     );
     b.ok(
-        &["sync:pair", "-", "--json"],
+        &["sync:pair", "--join", "-", "--json"],
         Some(invite["token"].as_str().unwrap()),
     );
     let history = a.ok(

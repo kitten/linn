@@ -28,7 +28,6 @@ pub enum Command {
         initial_sync: bool,
     },
     Status,
-    Peers,
     Revoke {
         peer: String,
     },
@@ -82,12 +81,12 @@ impl Command {
     }
 
     pub fn mutates(&self) -> bool {
-        !matches!(self, Self::Status | Self::Peers)
+        !matches!(self, Self::Status)
     }
     pub fn accepts(&self, output: &Output) -> bool {
         match (self, output) {
             (Self::Sync, Output::Synced(_)) => true,
-            (Self::Status | Self::Peers, Output::Status(_)) => true,
+            (Self::Status, Output::Status(_)) => true,
             (
                 Self::Pair {
                     invitation: None,
@@ -692,7 +691,7 @@ pub async fn run(store: &impl ControlStore, command: Command) -> Result<Output> 
         Command::Sync => Err(Error::Invalid(
             "record synchronization requires the resident peer transport".into(),
         )),
-        Command::Status | Command::Peers => Ok(Output::Status(status(store).await?)),
+        Command::Status => Ok(Output::Status(status(store).await?)),
         Command::Reset => {
             store.step(Step::Reset).await?;
             Ok(Output::changed(Change::IdentityReset, status(store).await?))

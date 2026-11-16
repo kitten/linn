@@ -41,11 +41,9 @@ enum Command {
         about = "Inspect local mesh enrollment without contacting peers"
     )]
     SyncStatus,
-    #[command(name = "sync:peers", about = "List verified mesh members")]
-    SyncPeers,
     #[command(
         name = "sync:revoke",
-        about = "Permanently revoke a peer; use self to disable this peer and revoke it"
+        about = "Permanently revoke a peer by its full ID"
     )]
     SyncRevoke { peer: String },
     #[command(
@@ -163,11 +161,13 @@ Use --stale-after only for known expiry."#
     Forget { reference: String },
     #[command(
         name = "index:check",
+        hide = true,
         about = "Verify original bytes, database and index integrity"
     )]
     Check,
     #[command(
         name = "index:rebuild",
+        hide = true,
         about = "Rebuild derived indexes from immutable records"
     )]
     Rebuild,
@@ -236,10 +236,6 @@ pub async fn run() -> Result<i32> {
         Command::Rebuild => Op::Rebuild,
         Command::SyncPair(options) => Op::Mesh(options.resolve()?),
         Command::SyncStatus => Op::Mesh(crate::mesh::pairing::Command::Status),
-        Command::SyncPeers => Op::Mesh(crate::mesh::pairing::Command::Peers),
-        Command::SyncRevoke { peer } if peer == "self" => {
-            Op::Mesh(crate::mesh::pairing::Command::Leave)
-        }
         Command::SyncRevoke { peer } => Op::Mesh(crate::mesh::pairing::Command::Revoke { peer }),
         Command::SyncLeave => Op::Mesh(crate::mesh::pairing::Command::Leave),
         Command::SyncReset => Op::Mesh(crate::mesh::pairing::Command::Reset),
