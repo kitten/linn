@@ -7,7 +7,7 @@ import { authenticate, challengeMessage, decode, frame, hex } from "../src/proto
 
 let runtime: Miniflare;
 before(async () => {
-  runtime = await createRuntime();
+  runtime = await createRuntime(true);
 });
 after(async () => { await runtime?.dispose(); });
 
@@ -55,10 +55,16 @@ test("real Worker authentication, routing, rejection and duplicate-key isolation
     socket.send(auth);
     return { socket, result };
   };
+  const inspect = async () => (await runtime.dispatchFetch("https://local/_inspect")).json() as Promise<{
+    alarmOperations: { sets: number; deletes: number };
+    alarm: number | null; sockets: Array<{ endpoint?: string; awaitingPong?: number }>;
+  }>;
   const a = await connect(keys[0]!);
   assert.equal(decode(await a.result).kind, 2);
+  assert.notEqual((await inspect()).alarm, null);
   const b = await connect(keys[1]!);
   assert.equal(decode(await b.result).kind, 2);
+  assert.notEqual((await inspect()).alarm, null);
   await runtime.unsafeEvictDurableObject("relay", "RelayCoordinator", {
     name: "private-mesh-v1", webSockets: "hibernate",
   });
@@ -93,6 +99,59 @@ test("real Worker authentication, routing, rejection and duplicate-key isolation
   assert.equal(hex(forwarded.payload.subarray(0, 32)), keys[0]!.id);
   assert.deepEqual(forwarded.payload.subarray(32), packet.subarray(32));
   for (const socket of pending) socket.close();
+
+  // Delay the first checkpoint acknowledgement while later data fills the
+  // window. Its Pong must checkpoint the residual data, including after wake.
+  const large = new Uint8Array(64 * 1024);
+  large.set(keys[1]!.publicKey);
+  const data = next(b.socket, 6);
+  const checkpoint = next(b.socket, 9);
+  a.socket.send(frame(4, large));
+  await data;
+  const token = decode(await checkpoint).payload;
+  const queued = [60, 60, 60].map(kib => {
+    const packet = new Uint8Array(kib * 1024);
+    packet.set(keys[1]!.publicKey);
+    return packet;
+  });
+  for (const packet of queued) {
+    const delivered = next(b.socket, 6);
+    a.socket.send(frame(4, packet));
+    await delivered;
+  }
+  // An earlier retained alarm must only reconcile deadlines, never expire a
+  // still-live checkpoint or emit another Ping.
+  const outstanding = await (await runtime.dispatchFetch("https://local/_inspect?fire")).json() as Awaited<ReturnType<typeof inspect>>;
+  const receiver = outstanding.sockets.find(s => s.endpoint === keys[1]!.id)!;
+  assert.ok(outstanding.alarm! <= receiver.awaitingPong! + 30_000);
+  await runtime.unsafeEvictDurableObject("relay", "RelayCoordinator", {
+    name: "private-mesh-v1", webSockets: "hibernate",
+  });
+  const residualCheckpoint = next(b.socket, 9);
+  b.socket.send(frame(10, token));
+  const residualToken = decode(await residualCheckpoint).payload;
+  const residual = await inspect();
+  assert.deepEqual(residual.alarmOperations, outstanding.alarmOperations);
+  const pendingReceiver = residual.sockets.find(s => s.endpoint === keys[1]!.id)!;
+  assert.ok(residual.alarm! <= pendingReceiver.awaitingPong! + 30_000);
+  b.socket.send(frame(10, residualToken));
+  // A subsequent ping/pong orders the inspection after the acknowledgement.
+  const barrier = next(b.socket, 10);
+  b.socket.send(frame(9, new Uint8Array(8)));
+  await barrier;
+  assert.notEqual((await inspect()).alarm, null);
+  const reconciled = await (await runtime.dispatchFetch("https://local/_inspect?fire")).json() as { alarm: number | null };
+  assert.equal(reconciled.alarm, null);
+  // A full-sized datagram must fit again once the residual checkpoint clears.
+  const retried = next(b.socket, 6);
+  const retryCheckpoint = next(b.socket, 9);
+  a.socket.send(frame(4, large));
+  assert.equal(decode(await retried).payload.length, large.length);
+  b.socket.send(frame(10, decode(await retryCheckpoint).payload));
+  const retryBarrier = next(b.socket, 10);
+  b.socket.send(frame(9, new Uint8Array(8)));
+  await retryBarrier;
+  assert.notEqual((await inspect()).alarm, null);
   // More than the unsolicited-control burst must still allow requested Pongs.
   let checkpoints = 0;
   const acknowledge = (event: { data: ArrayBuffer }) => {
@@ -100,12 +159,13 @@ test("real Worker authentication, routing, rejection and duplicate-key isolation
     if (message.kind === 9) { checkpoints++; b.socket.send(frame(10, message.payload)); }
   };
   b.socket.addEventListener("message", acknowledge);
-  const bulk = new Uint8Array(16 * 1024 + 33);
+  const bulk = new Uint8Array(64 * 1024);
   bulk.set(keys[1]!.publicKey);
-  for (let i = 0; i < 192; i++) {
+  for (let i = 0; i < 96; i++) {
     const delivered = next(b.socket, 6);
     a.socket.send(frame(4, bulk));
     await delivered;
+    if (i % 16 === 15) await new Promise(resolve => setTimeout(resolve, 125));
   }
   b.socket.removeEventListener("message", acknowledge);
   assert.ok(checkpoints > 64);
