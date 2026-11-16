@@ -85,7 +85,10 @@ enum Command {
     #[command(about = "Export original records as a portable JSONL bundle")]
     Export(bundle::ExportArgs),
     #[command(about = "Merge a trusted Linn bundle, preserving IDs; deletions are permanent")]
-    Import { file: String },
+    Import {
+        #[arg(help = "Bundle file, or - for stdin")]
+        file: String,
+    },
     #[command(
         about = "Collect and distribute records and deletions through the paired mesh",
         after_help = "Sync administration (existing colon-separated commands):\n  linn sync:pair                  Create or redeem an invitation (-y confirms the notice)\n  linn sync:status [--check]      Inspect enrollment; optionally check peer transport reachability\n  linn sync:revoke <peer-id>      Permanently revoke a peer by its full ID\n  linn sync:leave                 Disable local transport and leave the mesh\n  linn sync:reset-identity        Remove a copied store's identity; preserve records and deletions\n\nPeer IDs identify store instances, not machines. Use each command with -h for details.\nEach invocation runs one finite mesh job; automatic sync is deferred.\nPartial progress is durable. Retry interrupted jobs; use index:rebuild to repair incomplete publication."
@@ -123,7 +126,10 @@ Use --json for cards, related pointers, near misses and the next cursor."#
         name = "search:more",
         about = "Read the next results of the same search"
     )]
-    More { cursor: String },
+    More {
+        #[arg(help = "Cursor printed by search")]
+        cursor: String,
+    },
     #[command(about = "Read original bytes; accepts a record id, fetch id, or unique hash prefix")]
     Show {
         reference: String,
@@ -136,7 +142,7 @@ Use --json for cards, related pointers, near misses and the next cursor."#
     #[command(
         name = "show:outline",
         about = "List a document's sections as openable pointers",
-        after_help = "Open an entry with linn show <fetch-id>."
+        after_help = "Up to 20 entries: document start and top two heading levels. Open with linn show <fetch-id>."
     )]
     Outline { reference: String },
     #[command(
@@ -745,7 +751,15 @@ fn render(value: crate::application::Value, json_output: bool, closing: bool) ->
 fn print_call(store: &crate::application::SearchPage, call: &Call) {
     let style = presentation::current().out;
     if call.cards.is_empty() {
-        println!("Nothing qualified.");
+        let guidance = crate::retrieval::lexical::TEXT_REQUIRED_MESSAGE;
+        println!(
+            "{}",
+            if call.text.starts_with(guidance) {
+                guidance
+            } else {
+                "Nothing qualified."
+            }
+        );
     }
     for (i, c) in call.cards.iter().enumerate() {
         if i > 0 {

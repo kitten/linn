@@ -342,15 +342,12 @@ async fn execute_store(
     let value = match op {
         Search { query } => Value::Search(search(store, &query, &ctx, 0).await?),
         More { cursor: token } => {
+            let invalid = || Error::Invalid("invalid search cursor; run linn search again".into());
             let bytes = URL_SAFE_NO_PAD
-                .decode(
-                    token
-                        .strip_prefix("s1.")
-                        .ok_or_else(|| Error::Invalid("invalid cursor".into()))?,
-                )
-                .map_err(|_| Error::Invalid("invalid cursor".into()))?;
+                .decode(token.strip_prefix("s1.").ok_or_else(invalid)?)
+                .map_err(|_| invalid())?;
             let (q, scope, next, now): (String, Option<String>, usize, String) =
-                serde_json::from_slice(&bytes)?;
+                serde_json::from_slice(&bytes).map_err(|_| invalid())?;
             Value::Search(search(store, &q, &Context { scope, now, ..ctx }, next).await?)
         }
         List(options) => {

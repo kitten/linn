@@ -688,6 +688,8 @@ Zero local changes must not be described as a mesh-wide no-op. Incomplete text
 reports name missing peer phases, typed failure categories and recovery actions,
 and explain durable partial progress. Membership-operation results explain the
 outcome, affected peer/invitation where available and whether a first sync ran.
+When no first-sync result exists, suggest `linn sync` without claiming that records
+have never synced; the result describes this command, not transfer history.
 
 `sync:status` remains local by default, explicitly marking remote reachability
 unknown. Optional `--check` tests transport connectivity to known remote peers,

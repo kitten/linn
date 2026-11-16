@@ -10,6 +10,9 @@ use std::{
     sync::Arc,
 };
 
+pub const TEXT_REQUIRED_MESSAGE: &str =
+    "Nothing qualified. Supply text terms, or use show/outline navigation.";
+
 struct Scoring {
     avg: f64,
     pairs: Vec<crate::retrieval::ordered::Pair>,
@@ -1167,7 +1170,7 @@ impl Store {
         if q.content().is_empty() {
             let mut call = Call {
                 text: if q.terms.is_empty() {
-                    "Nothing qualified. Supply text terms, or use show/outline navigation.".into()
+                    TEXT_REQUIRED_MESSAGE.into()
                 } else {
                     "Nothing qualified.".into()
                 },

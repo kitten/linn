@@ -432,8 +432,7 @@ fn close_confirmation_and_filtered_empty_lists_are_unambiguous() {
     }
     let outline_help = command(&db, &["show:outline", "--help"]).output().unwrap();
     assert!(
-        String::from_utf8_lossy(&outline_help.stdout)
-            .contains("Open an entry with linn show <fetch-id>")
+        String::from_utf8_lossy(&outline_help.stdout).contains("Open with linn show <fetch-id>")
     );
     let close_help = command(&db, &["add:close", "--help"]).output().unwrap();
     assert!(

@@ -629,9 +629,7 @@ pub(super) fn render(output: Output, json: bool) -> Result<()> {
                 Change::Paired => {
                     println!("{}", style.title("This store joined the mesh."));
                     if initial_sync.is_none() && initial_sync_error.is_none() {
-                        println!(
-                            "Records have not synced yet. Run linn sync to exchange records and deletions."
-                        );
+                        println!("Run linn sync to exchange records and deletions.");
                     }
                 }
                 Change::Revoked => println!(

@@ -666,3 +666,42 @@ async fn explicit_scope_filters_search_and_replay_by_original_repository() {
     assert!(!String::from_utf8_lossy(&help.stdout).contains("does not narrow"));
     cli(&db, &["daemon:stop"], None);
 }
+
+#[test]
+fn empty_search_and_malformed_cursors_give_concise_next_steps() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = dir.path().join("memory.db");
+    for query in ["kind:note", "scope:missing/repository kind:doc", "", "the"] {
+        let output = cli(&db, &["search", query], None);
+        assert_eq!(output.status.code(), Some(1));
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap(),
+            "Nothing qualified. Supply text terms, or use show/outline navigation.\nNo more results for this search.\n"
+        );
+        assert!(output.stderr.is_empty());
+    }
+    let miss = cli(&db, &["search", "no_such_fixture_991"], None);
+    assert_eq!(
+        miss.stdout,
+        b"Nothing qualified.\nNo more results for this search.\n"
+    );
+    for cursor in ["broken", "s1.!", "s1.e30", "s1.bm90LWpzb24", "s1."] {
+        let output = cli(&db, &["search:more", cursor], None);
+        assert_eq!(output.status.code(), Some(2));
+        assert!(output.stdout.is_empty());
+        assert_eq!(
+            output.stderr,
+            b"linn: invalid search cursor; run linn search again\n"
+        );
+    }
+    for (args, expected) in [
+        (vec!["import", "--help"], "Bundle file, or - for stdin"),
+        (vec!["search:more", "--help"], "Cursor printed by search"),
+        (vec!["show:outline", "--help"], "Up to 20 entries:"),
+    ] {
+        let output = cli(&db, &args, None);
+        assert!(output.status.success());
+        assert!(String::from_utf8_lossy(&output.stdout).contains(expected));
+    }
+    assert!(cli(&db, &["daemon:stop"], None).status.success());
+}

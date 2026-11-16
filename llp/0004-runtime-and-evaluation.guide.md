@@ -200,6 +200,7 @@ Runs `search` (Search algorithms), applies Command structure's CLI rules, and pr
 
 Prints the next call of the search that the cursor names. A call left empty by the CLI's rules is
 skipped. After the last call it prints `No more results for this search.` and exits 1.
+Malformed cursors return exit 2 with a concise instruction to repeat the search.
 
 ### `linn show <ref> [--all]`
 
@@ -219,7 +220,8 @@ of a fetch id, or the whole body for a record id or a hash.
 ### `linn show:outline <ref>`
 
 Prints the outline (Outline) of the record a reference names: numbered entries `[o1]`…, each with its
-heading path, first line and fetch id. A record that is not current prints
+heading path, first line and fetch id. At most 20 entries cover the document start
+and top two heading levels. A record that is not current prints
 `Outline unavailable: the record is not current.` and exits 1; `--json` returns
 `{"status":"not_current","entries":[]}`.
 
