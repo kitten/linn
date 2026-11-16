@@ -61,6 +61,13 @@ Interactive prompt lines end explicitly on stderr after input and on error or
 cancellation; input echo is not evidence that stderr received a newline. Never
 attach a diagnostic or follow-up instruction to a partially written prompt.
 
+Human sync status presents transport, relay and discovery on separate labelled
+lines and places peer status before complete peer IDs. Plain status retains its
+compact line and ID-first peer format. A human close confirmation identifies
+successful closure and labels the returned ID as the close envelope, not the
+target record. Plain close output remains the bare new envelope ID. An empty
+list says `No matching records.` so filters do not imply the store is empty.
+
 JSON values and raw export bytes remain unchanged. Invitation tokens remain
 unstyled, with a heading only in human presentation. Safety notices and essential
 diagnostics remain visible in every mode. Do not interpret original content's
@@ -99,7 +106,7 @@ per-stream capability, environment disables, help/errors, JSON and original-body
 preservation. Corpus-free policy and screen-model tests cover disable precedence,
 shorter updates, coalescing, resize, unknown/narrow width and idempotent cleanup.
 Captured plain output should match the baseline byte-for-byte except documented
-clarity corrections: show/prompt boundaries and command help.
+clarity corrections: show/prompt boundaries, empty-list wording and command help.
 Cursor clocks
 remain context-bearing values rather than a presentation difference. Rendering
 checks do not establish retrieval quality or a broad agent-latency claim.

@@ -477,10 +477,16 @@ fn transport_text(
     } else {
         "unavailable"
     };
-    format!(
-        "{} {ready}; relay {relay}; local discovery {discovery}.",
-        style.title("Local transport:")
-    )
+    if style.0 {
+        format!(
+            "{} {ready}\n{} {relay}\n{} {discovery}",
+            style.title("Local transport:"),
+            style.title("Relay:"),
+            style.title("Local discovery:")
+        )
+    } else {
+        format!("Local transport: {ready}; relay {relay}; local discovery {discovery}.")
+    }
 }
 
 fn peer_text(
@@ -489,8 +495,13 @@ fn peer_text(
     reachability: &str,
     local: bool,
 ) -> String {
-    let _ = style;
-    if local {
+    if style.0 {
+        format!(
+            "  {}  {}",
+            style.title(if local { "this store" } else { reachability }),
+            style.quiet(member)
+        )
+    } else if local {
         format!("  {member} (this store)")
     } else {
         format!("  {member}: {reachability}")
@@ -672,6 +683,41 @@ mod tests {
         status::Job,
     };
 
+    #[test]
+    fn human_status_prioritizes_state_while_plain_status_keeps_its_format() {
+        use super::super::presentation::Style;
+        let transport = crate::mesh::status::Transport {
+            ready: true,
+            relay_connected: false,
+            local_discovery: true,
+            ..Default::default()
+        };
+        assert_eq!(
+            super::transport_text(Style(false), &transport),
+            "Local transport: ready; relay disconnected; local discovery ready."
+        );
+        let human = super::transport_text(Style(true), &transport)
+            .replace("\x1b[1m", "")
+            .replace("\x1b[0m", "");
+        assert_eq!(
+            human,
+            "Local transport: ready\nRelay: disconnected\nLocal discovery: ready"
+        );
+        let id = "a".repeat(64);
+        assert_eq!(
+            super::peer_text(Style(false), &id, "unknown (not checked)", false),
+            format!("  {id}: unknown (not checked)")
+        );
+        assert_eq!(
+            super::peer_text(Style(false), &id, "", true),
+            format!("  {id} (this store)")
+        );
+        let human = super::peer_text(Style(true), &id, "unknown (not checked)", false)
+            .replace("\x1b[1m", "")
+            .replace("\x1b[2m", "")
+            .replace("\x1b[0m", "");
+        assert_eq!(human, format!("  unknown (not checked)  {id}"));
+    }
     #[test]
     fn peer_phase_counts_do_not_imply_record_changes() {
         let report = Report {

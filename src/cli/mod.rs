@@ -319,6 +319,7 @@ async fn parse_args() -> Result<Args> {
 pub async fn run() -> Result<i32> {
     use crate::application::{AddOptions, Caller, Operation as Op};
     let args = parse_args().await?;
+    let closing = matches!(&args.command, Command::Close { .. });
     let style = presentation::current().out;
     let path = paths::store_path(args.store)?;
     if matches!(args.command, Command::DaemonStatus | Command::DaemonStop) {
@@ -519,7 +520,7 @@ pub async fn run() -> Result<i32> {
         })
     );
     if joined && first_sync.is_none() && !args.json && mesh::offer_sync()? {
-        render(reply.value, false)?;
+        render(reply.value, false, closing)?;
         let reply = crate::runtime::execute_with_progress(
             &path,
             Op::Mesh(crate::mesh::pairing::Command::Sync),
@@ -533,11 +534,11 @@ pub async fn run() -> Result<i32> {
         )
         .await?;
         progress.finish();
-        return render(reply.value, false);
+        return render(reply.value, false, closing);
     }
-    render(reply.value, args.json)
+    render(reply.value, args.json, closing)
 }
-fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
+fn render(value: crate::application::Value, json_output: bool, closing: bool) -> Result<i32> {
     use crate::application::Value;
     let style = presentation::current().out;
     match value {
@@ -668,7 +669,7 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
                     }
                 }
                 if empty {
-                    println!("No records.");
+                    println!("No matching records.");
                 }
                 if let Some(next) = next {
                     println!(
@@ -682,6 +683,12 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
         Value::Added(id) => {
             if json_output {
                 println!("{}", json!({"record":id}));
+            } else if closing && style.0 {
+                println!(
+                    "{} {} {id}",
+                    style.success("Closed."),
+                    style.quiet("Envelope:")
+                );
             } else {
                 println!("{}", style.title(&id));
             }

@@ -347,3 +347,104 @@ fn show_separates_notices_without_rewriting_original_text() {
             .success()
     );
 }
+
+#[test]
+fn close_confirmation_and_filtered_empty_lists_are_unambiguous() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = dir.path().join("memory.db");
+    for mode in ["plain", "human", "json"] {
+        let mut child = command(&db, &["add", "-", "--label", "Target", "--json"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(b"Original closure fixture.")
+            .unwrap();
+        let added = child.wait_with_output().unwrap();
+        assert!(added.status.success());
+        let id = serde_json::from_slice::<serde_json::Value>(&added.stdout).unwrap()["record"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        // A filtered list can be empty even though a current note exists.
+        let empty = command(&db, &["list", "--kind", "doc"]).output().unwrap();
+        assert_eq!(empty.status.code(), Some(1));
+        assert_eq!(empty.stdout, b"No matching records.\n");
+        let empty_json = command(&db, &["list", "--kind", "doc", "--json"])
+            .output()
+            .unwrap();
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&empty_json.stdout).unwrap(),
+            serde_json::json!({"records":[],"next":null})
+        );
+        let mut args = vec!["add:close", &id, "--reason", "correct"];
+        if mode == "json" {
+            args.push("--json");
+        }
+        let output = if mode == "plain" {
+            command(&db, &args).output().unwrap()
+        } else {
+            terminal(command(&db, &args), true)
+        };
+        assert!(output.status.success());
+        let text = String::from_utf8(output.stdout).unwrap();
+        match mode {
+            "plain" => {
+                assert!(text.starts_with("close-") && text.ends_with('\n'));
+                assert_eq!(text.split_whitespace().count(), 1);
+                assert!(!text.contains('\x1b'));
+            }
+            "human" => {
+                assert!(text.starts_with("\x1b[32mClosed.\x1b[0m"));
+                assert!(text.contains("Envelope:") && text.contains("close-"));
+                assert!(
+                    !text.contains(&id),
+                    "returned envelope ID must not be confused with target ID"
+                );
+            }
+            _ => {
+                assert!(!text.contains('\x1b'));
+                let value: serde_json::Value = serde_json::from_str(&text).unwrap();
+                assert_eq!(value.as_object().unwrap().len(), 1);
+                assert!(value["record"].as_str().unwrap().starts_with("close-"));
+            }
+        }
+    }
+    let status_help = command(&db, &["sync:status", "--help"]).output().unwrap();
+    let status_help = String::from_utf8(status_help.stdout).unwrap();
+    assert!(status_help.contains("optionally check peer reachability"));
+    assert!(!status_help.contains("without contacting peers"));
+    let add_help = command(&db, &["add", "--help"]).output().unwrap();
+    assert!(String::from_utf8_lossy(&add_help.stdout).contains("UTC expiry timestamp"));
+    for args in [
+        vec!["show", "--help"],
+        vec!["help", "show"],
+        vec!["--json", "show", "--help"],
+    ] {
+        let help = command(&db, &args).output().unwrap();
+        let help = String::from_utf8(help.stdout).unwrap();
+        assert!(help.contains("Usage: linn show"), "{help}");
+        assert!(help.contains("entire referenced span"));
+    }
+    let outline_help = command(&db, &["show:outline", "--help"]).output().unwrap();
+    assert!(
+        String::from_utf8_lossy(&outline_help.stdout)
+            .contains("Open an entry with linn show <fetch-id>")
+    );
+    let close_help = command(&db, &["add:close", "--help"]).output().unwrap();
+    assert!(
+        String::from_utf8_lossy(&close_help.stdout)
+            .contains("Existing replacement record reference")
+    );
+    assert!(
+        command(&db, &["daemon:stop"])
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+}
