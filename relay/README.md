@@ -116,7 +116,13 @@ receiver and a 4 MiB/s per-sender datagram budget. A matching random protocol Po
 confirms delivery of all earlier frames on the ordered WebSocket, allowing its
 window to advance. Excess UDP datagrams are dropped for QUIC loss recovery;
 relay queues do not grow without bound and rate limiting does not reset a valid
-QUIC session. Protocol heartbeat timeout disconnects unavailable endpoints.
+QUIC session. Native clients use WebSocket control heartbeats, answered by the runtime without
+waking the coordinator. Native heartbeat cadence and response timeouts retain
+the pinned upstream defaults. The coordinator retains earlier
+alarms across acknowledgements and reconciles deadlines when they fire, allowing
+one trailing wake after traffic instead of per-checkpoint alarm writes. Application
+checkpoints start at 64 KiB in the 256 KiB window; their 30-second timeout
+disconnects stalled receivers. Authentication deadlines also use alarms.
 These transport budgets change no retrieval arithmetic or stored record bytes.
 
 Socket attachments retain authenticated identity, challenge phase, window and

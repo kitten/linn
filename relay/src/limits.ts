@@ -16,12 +16,11 @@ export function admitMessage(state: MessageBudget, now: number, control: boolean
   return true;
 }
 
-export const PING_MS = 15_000;
+export const CHECKPOINT_TIMEOUT_MS = 30_000;
 export interface Heartbeat {
   awaitingPong?: number;
-  pingAt?: number;
 }
 
-export function heartbeatDeadline(state: Heartbeat, now: number): number {
-  return state.awaitingPong !== undefined ? state.awaitingPong + 2 * PING_MS : state.pingAt ?? now;
+export function heartbeatDeadline(state: Heartbeat): number {
+  return state.awaitingPong !== undefined ? state.awaitingPong + CHECKPOINT_TIMEOUT_MS : Infinity;
 }

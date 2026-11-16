@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { authenticate, clientMessage, forward, frame, hex, unhex } from "./protocol.ts";
 import { ingress, type IngressEnv } from "./ingress.ts";
-import { admitMessage, heartbeatDeadline, PING_MS, type Heartbeat, type MessageBudget } from "./limits.ts";
+import { admitMessage, heartbeatDeadline, type Heartbeat, type MessageBudget } from "./limits.ts";
 import { ControlPlane } from "./control.ts";
 
 interface Env extends IngressEnv {
@@ -24,6 +24,7 @@ interface Attachment extends MessageBudget, Heartbeat {
 const MAX_SOCKETS = 128;
 const MAX_PENDING = 16;
 const MAX_BUFFER = 256 * 1024;
+const CHECKPOINT_BYTES = 64 * 1024;
 const BYTES_PER_SECOND = 4 * 1024 * 1024;
 const HANDSHAKE_MS = 10_000;
 
@@ -94,7 +95,6 @@ export class RelayCoordinator extends DurableObject<Env> {
         state.authenticating = undefined;
         state.group = group;
         state.challenge = [];
-        state.pingAt = Date.now() + PING_MS;
         socket.serializeAttachment(state);
         socket.send(frame(2));
         return;
@@ -121,7 +121,12 @@ export class RelayCoordinator extends DurableObject<Env> {
       }
       socket.serializeAttachment(state);
       if (message.type === "ping") return this.send(socket, frame(10, message.payload));
-      if (message.type === "pong") return;
+      if (message.type === "pong") {
+        if (acknowledged) {
+          if ((state.queuedBytes ?? 0) >= CHECKPOINT_BYTES) this.checkpoint(socket);
+        }
+        return;
+      }
       if (!await this.control.sameGroup(state.endpoint, message.destination)) throw new Error("mesh authorization denied");
       if ((socket.deserializeAttachment() as Attachment | null)?.endpoint !== state.endpoint) return;
       const destination = this.find(message.destination);
@@ -157,9 +162,8 @@ export class RelayCoordinator extends DurableObject<Env> {
         if (now >= state.deadline) this.close(socket, 1008, "authentication timed out");
         continue;
       }
-      if (now < heartbeatDeadline(state, now)) continue;
+      if (now < heartbeatDeadline(state)) continue;
       if (state.awaitingPong !== undefined) this.close(socket, 1008, "heartbeat timed out");
-      else this.checkpoint(socket);
     }
     await this.armAlarm();
   }
@@ -176,21 +180,24 @@ export class RelayCoordinator extends DurableObject<Env> {
     // Workers exposes no awaitable send backpressure. A matching protocol Pong
     // confirms all earlier frames crossed the ordered WebSocket. Bound the
     // unconfirmed window; dropping relay datagrams lets QUIC retransmit them.
-    if ((state.queuedBytes ?? 0) + data.length > MAX_BUFFER) return;
+    if ((state.queuedBytes ?? 0) + data.length > MAX_BUFFER) {
+      this.checkpoint(socket);
+      return;
+    }
     state.queuedBytes = (state.queuedBytes ?? 0) + data.length;
     socket.serializeAttachment(state);
     try { socket.send(data); } catch { this.close(socket, 1011, "write failed"); }
-    if ((state.queuedBytes ?? 0) >= 16 * 1024 && state.awaitingPong === undefined) this.checkpoint(socket);
+    if ((state.queuedBytes ?? 0) >= CHECKPOINT_BYTES && state.awaitingPong === undefined) this.checkpoint(socket);
   }
   private checkpoint(socket: WebSocket): void {
     const state = socket.deserializeAttachment() as Attachment | null;
     if (!state?.endpoint || state.awaitingPong !== undefined) return;
     const token = crypto.getRandomValues(new Uint8Array(8));
     state.awaitingPong = Date.now();
-    state.pingAt = state.awaitingPong + PING_MS;
     state.pongToken = hex(token);
     state.checkpointBytes = state.queuedBytes ?? 0;
     socket.serializeAttachment(state);
+    this.ctx.waitUntil(this.armAlarm());
     try { socket.send(frame(9, token)); } catch { this.close(socket, 1011, "write failed"); }
   }
   private close(socket: WebSocket, code: number, reason: string): void {
@@ -198,6 +205,7 @@ export class RelayCoordinator extends DurableObject<Env> {
     // Clear before notifications so a closing socket cannot be selected again.
     socket.serializeAttachment(null);
     try { socket.close(code, reason); } catch { /* Already closed. */ }
+    this.ctx.waitUntil(this.armAlarm(true));
     if (state?.endpoint) {
       for (const other of this.ctx.getWebSockets()) {
         if (other === socket) continue;
@@ -208,18 +216,20 @@ export class RelayCoordinator extends DurableObject<Env> {
       }
     }
   }
-  private async armAlarm(): Promise<void> {
-    let next = Date.now() + PING_MS;
-    let active = false;
-    for (const socket of this.ctx.getWebSockets()) {
-      const state = socket.deserializeAttachment() as Attachment | null;
-      if (!state) continue;
-      active = true;
-      next = Math.min(next, state.endpoint ? heartbeatDeadline(state, Date.now()) : state.deadline);
-    }
-    if (active) {
-      const current = await this.ctx.storage.getAlarm();
-      if (current === null || current > next) await this.ctx.storage.setAlarm(next);
-    }
+  private async armAlarm(clearIdle = false): Promise<void> {
+    await this.ctx.storage.transaction(async (storage) => {
+      const current = await storage.getAlarm();
+      let next = Infinity;
+      for (const socket of this.ctx.getWebSockets()) {
+        const state = socket.deserializeAttachment() as Attachment | null;
+        if (!state) continue;
+        next = Math.min(next, state.endpoint ? heartbeatDeadline(state) : state.deadline);
+      }
+      if (Number.isFinite(next)) {
+        if (current === null || current > next) await storage.setAlarm(next);
+      } else if (clearIdle && current !== null) {
+        await storage.deleteAlarm();
+      }
+    });
   }
 }

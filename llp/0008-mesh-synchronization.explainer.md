@@ -820,12 +820,33 @@ the socket; these budgets survive hibernation and initialize on older
 attachments. Each sender has a 4 MiB/s datagram budget, and
 each receiver has a 256 KiB unconfirmed send window. Ordered protocol Pong
 checkpoints release that window; excess datagrams are dropped for QUIC
-recovery. Protocol pings run at 15-second intervals, with a 30-second
-outstanding-pong limit. Heartbeats use per-socket deadlines; an earlier pending
-handshake alarm must not send premature heartbeats to authenticated sockets.
-Schedule the next alarm no later than the earliest heartbeat or pending handshake
-deadline. Hibernatable attachments preserve identity, deadlines
-and budgets. These limits bound application queues, not all platform buffering
+recovery. Native clients send WebSocket control health pings every 15 seconds,
+using the existing Iroh health tracker and timeout. The cadence is private to
+the upstream Iroh actor; changing it would require another dependency patch.
+Keep the current dependency boundary and do not suppress checks or invent replies. The relay sends no periodic
+idle application pings. It sends random application Ping checkpoints when the
+unconfirmed window reaches 64 KiB; matching application Pongs alone release the
+checkpoint's earlier bytes. After a matching Pong, immediately checkpoint any
+remaining unconfirmed window of at least 64 KiB. Before dropping a datagram that
+would exceed the window, ensure a checkpoint is outstanding. This also recovers
+older attachments with a full window and no outstanding checkpoint; recovery
+must not depend on another successful data send or periodic idle alarm.
+The 64 KiB threshold retains headroom for in-flight data. Local 8 MiB echo
+spot checks with a 100 ms round-trip TCP delay compared 16, 64 and 128 KiB:
+64 KiB reduced checkpoint replies with similar elapsed time; 128 KiB further
+reduced replies but was slower. The 256 KiB cap and 30-second outstanding
+checkpoint timeout remain unchanged. These are local transport measurements,
+not production billing or WAN validation.
+Control Pongs cannot release this window. Arm an alarm no later than the earliest
+pending handshake or outstanding checkpoint deadline, retaining an already-earlier
+alarm. Acknowledgements and successful authentication do not move or delete it.
+When it fires, reconcile current socket deadlines and rearm only if any remain;
+a stale earlier alarm must never send idle pings or close a not-yet-expired socket.
+This allows one trailing wake after traffic, not a recurring idle loop. Closure
+can remove an alarm when no deadlines remain. Deadline computation and alarm
+updates share a storage transaction, and hibernation does not postpone deadlines. Older idle `pingAt`
+attachment fields are ignored. Hibernatable attachments preserve identity,
+deadlines and budgets. These limits bound application queues, not all platform buffering
 or billing.
 
 Relay tests enroll endpoints through the same device-signed membership protocol
