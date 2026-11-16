@@ -41,8 +41,11 @@ model-extracted graph, or second retrieval service is part of this design.
   `(?<!\S)([a-z][a-z\-]*):("([^"]*)"|\S+)`. A quoted value is the inside of the quotes. An unquoted
   value runs to the next whitespace and keeps any punctuation. `Scope:` is not a filter, because
   the name is not lowercase.
-  - `scope:` accepted, and compared with the stored scope. In this store the stored scope is null, so
-    the filter matches every row (Eligibility). It does not narrow the search.
+  - `scope:` matches the original repository scope exactly, case-insensitively.
+    Missing/null original scopes do not match. Repeated filters are ANDed. This
+    explicit query constraint applies to cards, near misses and related pointers
+    on every call, including cursor replay; it does not narrow corpus statistics
+    or change the caller-scope penalty. Without it, searches remain shared.
   - `writer:` exact, case-sensitive stored writer value; absent/null never matches
     an email. It is a metadata constraint, not a scoring term. Multiple filters
     are ANDed. The CLI also applies it to every card, hint and related pointer,
@@ -507,8 +510,9 @@ Structural membership is built from accepted, non-close, non-closed, non-superse
 records whose bodies are non-empty after stripping whitespace. Expiry is deliberately
 not applied at ingestion: a historical query must still be able to use those trees.
 At query time exclude records expired at the caller's clock before choosing winners.
-Membership is always shared: original scope does not exclude a record. There is no
-null-scope-only mode. Word-search scope and its penalty remain unchanged.
+Membership is always shared: original scope does not exclude a record at ingestion.
+Explicit `scope:` query filters constrain results. There is no null-scope-only mode.
+The caller-scope penalty remains unchanged.
 
 #### Step 1. Extra rows, then five records
 
@@ -534,7 +538,7 @@ already in that ranking or chosen as the one-under section. A tree qualifies
 when its union contains every hard term and at least `need` of the content terms. A hard phrase is
 the whole quoted string after `norm`, not its separate words, so it is absent from the union
 unless the phrase is a single token. The same is true of a content phrase. Skip a block that fails
-the query's filters (Query language); `scope:` still does not reject, because the stored scope is null. The
+the query's filters (Query language), including explicit original-scope constraints. The
 tree's section is the block with the most content terms in its own words, then the lower section
 id. One row per record. Walk direct trees first, then deep trees. Replace the record's row only
 when the new block contains strictly more content terms. An equal count keeps the earlier tree, so

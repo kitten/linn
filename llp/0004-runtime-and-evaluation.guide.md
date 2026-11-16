@@ -101,8 +101,8 @@ Commands are in three groups. An agent that reads memory needs only the first.
   Cursor replay uses its encoded scope/clock and does not rediscover caller scope.
 
   **What a search sees.** The current records of every repository: knowledge is shared (operator,
-  2026-11-07). Search has no `--scope` option. A `scope:` term is parsed and, in this store, does not
-  remove rows (Eligibility). The caller's repository names a new record's scope and decides the penalty
+  2026-11-07). Search has no `--scope` option. An explicit `scope:` filter narrows
+  results to the original repository scope, compared case-insensitively. The caller's repository names a new record's scope and decides the penalty
   of 7 (Scoring (BM25 over the searched rows)). It is not printed on a call-1 card. The store does not inspect cwd; the CLI derives caller scope from Git as above.
 - **Output.** Plain text by default. `--json` prints one JSON object (schema in JSON output (`--json`)).
 - **Search is deterministic.** `linn search` prints a cursor, which `search:more` takes. A cursor is
@@ -166,9 +166,9 @@ Runs `search` (Search algorithms), applies Command structure's CLI rules, and pr
   misses (not results):`. Each shows its label, heading path, `matched:` and `missing:` words, the
   excerpt and a fetch id. A query with filters and no words prints `Nothing qualified. Supply text
   terms, or use show/outline navigation.`
-- **`scope:<org/repo>`.** Accepted by the parser. In this store it does not narrow BM25, the
-  ranking, near misses, or related pointers, because every record is stored with a null scope
-  (Eligibility). The original scope is used only for the penalty of 7 (Scoring (BM25 over the searched rows)).
+- **`scope:<org/repo>`.** Matches the original repository scope exactly, case-insensitively.
+  Missing/null scopes do not match. Applies to every page, near miss and related pointer.
+  Corpus statistics and the caller-scope penalty of 7 remain unchanged.
 - **Query errors.** An unknown filter or an unclosed quote prints `Query error: <reason>` and exits
   2.
 
@@ -216,7 +216,7 @@ linn add -      [--label <text>] [--unscoped] [--parent <ref>] [--stale-after <t
   linked-record navigation.
 - **Scope.** The record gets the scope of the repository you are in (Command structure); `--unscoped` ties it to
   none. Either way it is found from every repository. The original scope is the penalty of 7
-  (Scoring (BM25 over the searched rows)). It is not a call-1 card field, and `scope:` does not filter (Eligibility). The short-page
+  (Scoring (BM25 over the searched rows)). It is not a call-1 card field, and explicit `scope:` filters match it (Eligibility). The short-page
   fills do not apply the penalty (Call-1 page).
 - **New records.** A record is searchable at once, with no review
   step. The scored word search still requires `state` accepted (Eligibility). A wrong note is closed

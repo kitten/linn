@@ -73,10 +73,12 @@ The word search returns a row only when every SQL condition holds:
    stricter test: after stripping whitespace the body must be non-empty.
 
 Scope is not a SQL condition in this store. At ingest every record is stored with `scope` null, and
-the original scope is kept beside the index for the penalty in Scoring (BM25 over the searched rows). The clause
-`(scope IS NULL OR scope = ?)` therefore matches every row, and a `scope:` filter does not remove
-rows either: a stored null scope is treated as matching any `scope:` value. The original scope
-supplies the penalty of 7. Heading-tree membership is always shared and never excludes a record by original scope; see LLP 0002.
+the original scope is kept beside the index for the penalty in Scoring (BM25 over the searched rows)
+and explicit `scope:` query constraints. Such a filter matches the original scope exactly,
+case-insensitively; missing/null original scopes do not match. Without an explicit filter,
+records remain shared across repositories. The original scope supplies the penalty of 7.
+Heading-tree membership is always shared; explicit query filters still apply to selected
+results. See LLP 0002.
 
 ### Identifiers and references
 

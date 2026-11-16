@@ -117,6 +117,10 @@ impl Store {
     pub fn allowed(&self, b: &Block, filters: &[(String, String)]) -> bool {
         let r = &self.records[&b.record];
         filters.iter().all(|(k, v)| match k.as_str() {
+            "scope" => r
+                .scope
+                .as_ref()
+                .is_some_and(|scope| scope.to_lowercase() == v.to_lowercase()),
             "kind" => r.kind == *v,
             "writer" => r.writer.as_ref().and_then(|v| v.as_deref()) == Some(v.as_str()),
             "state" => v == "open" || v == "accepted",

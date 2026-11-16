@@ -18,7 +18,7 @@ use std::{
 #[command(
     name = "linn",
     about = "Search private notes and documents. Results are pointers; open a section before relying on it.",
-    after_help = "Typical use:\n  linn search '\"git send\" allowed prefixes'\n  linn show <fetch-id>\n  linn search:more <cursor>\n  linn show:outline <ref>\n\nSearches cover every repository. scope: is accepted and does not narrow this store.\nA related topic, a different package or version, or shared words is not an answer.\nNear misses are hints, not results. An honest Nothing qualified is a successful miss.\nSave reusable engineering discoveries; see linn add --help.\n\nExit codes: 0 results/success, 1 no results/not current, 2 command error, 3 damaged index."
+    after_help = "Typical use:\n  linn search '\"git send\" allowed prefixes'\n  linn show <fetch-id>\n  linn search:more <cursor>\n  linn show:outline <ref>\n\nSearches cover every repository by default.\nA related topic, a different package or version, or shared words is not an answer.\nNear misses are hints, not results. An honest Nothing qualified is a successful miss.\nSave reusable engineering discoveries; see linn add --help.\n\nExit codes: 0 results/success, 1 no results/not current, 2 command error, 3 damaged index."
 )]
 struct Args {
     #[arg(long, global = true, help = "Override the account's local store file")]
@@ -87,7 +87,7 @@ enum Command {
         after_help = r#"Use specific words expected in the answer; keep identifiers exact.
 Add context when needed to distinguish the result.
 "double quotes" keep an exact phrase or name together. Do not add the repository name.
-Searches cover all repositories. Open results with linn show <ref> before relying
+Searches cover all repositories by default. Open results with linn show <ref> before relying
 on them. Related pointers and near misses are hints; no qualifying result is OK.
 Continue with linn search:more <cursor>, try another query, or stop.
 
@@ -98,7 +98,7 @@ Filters:
   under:"heading"   heading path contains the value
   id:<ref>           the record a reference names
   writer:<email>     exact stored writer
-  scope:<org/repo>   accepted; does not narrow this shared-search store
+  scope:<org/repo>   exact repository scope (case-insensitive)
 
 A reference is a record id, a fetch id, or a unique body-hash prefix of at least
 8 hex digits. show:outline lists openable sections of that reference's document.

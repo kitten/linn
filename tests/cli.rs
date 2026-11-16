@@ -542,3 +542,98 @@ async fn writer_filters_list_search_and_replay_without_reassigning_unknowns() {
         }
     }
 }
+
+#[tokio::test]
+async fn explicit_scope_filters_search_and_replay_by_original_repository() {
+    use linn::storage::Store;
+    let tmp = tempfile::tempdir().unwrap();
+    let db = tmp.path().join("scopes.db");
+    let records = (0..14).map(|i| serde_json::from_value(serde_json::json!({
+        "id":format!("record-{i:02}"),
+        "body":format!("# Routing marker\nRouting marker integration number {i}.\n\n## Routing details\nRouting marker integration details number {i}.\n"),
+        "kind":"doc",
+        "scope":match i { 12 => None, 13 => Some(""), n if n % 2 == 0 => Some("Owner/Repo"), _ => Some("other/repo") },
+        "created":"2026-11-10T00:00:00Z"
+    })).unwrap()).collect();
+    drop(Store::build(&db, records).await.unwrap());
+    let search = |query: &str| {
+        let out = cli(&db, &["search", query, "--json"], None);
+        assert!(
+            matches!(out.status.code(), Some(0 | 1)),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        serde_json::from_slice::<Value>(&out.stdout).unwrap()
+    };
+    for query in [
+        "routing marker scope:owner/repo",
+        "routing marker scope:\"OWNER/REPO\"",
+        "routing marker scope:owner/repo kind:doc",
+        "routing absent scope:owner/repo",
+    ] {
+        let mut page = search(query);
+        if !query.contains("absent") {
+            assert!(!page["cards"].as_array().unwrap().is_empty());
+        }
+        loop {
+            for key in ["cards", "hints", "related"] {
+                for item in page[key].as_array().into_iter().flatten() {
+                    let number = item["record"]
+                        .as_str()
+                        .unwrap()
+                        .strip_prefix("record-")
+                        .unwrap()
+                        .parse::<usize>()
+                        .unwrap();
+                    assert!(number < 12 && number % 2 == 0, "{query}: {item}");
+                }
+            }
+            let Some(cursor) = page["cursor"].as_str() else {
+                break;
+            };
+            let out = cli(&db, &["search:more", cursor, "--json"], None);
+            assert!(matches!(out.status.code(), Some(0 | 1)));
+            page = serde_json::from_slice(&out.stdout).unwrap();
+        }
+    }
+    for query in [
+        "routing marker scope:missing/repo",
+        "routing marker scope:owner/repo scope:other/repo",
+    ] {
+        let page = search(query);
+        for key in ["cards", "hints", "related"] {
+            assert!(page[key].as_array().is_none_or(Vec::is_empty));
+        }
+    }
+    for (scope, id) in [("Owner/Repo", "record-00"), ("other/repo", "record-01")] {
+        assert!(
+            !search(&format!("routing marker scope:{scope}"))["cards"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+        assert!(
+            !search(&format!("routing marker id:{id}"))["cards"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+    }
+    for id in ["record-12", "record-13"] {
+        assert!(
+            !search(&format!("routing marker id:{id}"))["cards"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+        assert!(
+            search(&format!("routing marker id:{id} scope:owner/repo"))["cards"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+    }
+    let help = cli(&db, &["search", "--help"], None);
+    assert!(!String::from_utf8_lossy(&help.stdout).contains("does not narrow"));
+    cli(&db, &["daemon:stop"], None);
+}
