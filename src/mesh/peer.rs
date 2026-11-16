@@ -16,7 +16,7 @@ use crate::{
     sync::protocol::{Request, Response},
 };
 use iroh::{
-    Endpoint, EndpointAddr, PublicKey, RelayMode, RelayUrl,
+    Endpoint, EndpointAddr, NetReportConfig, PublicKey, RelayConfig, RelayMap, RelayMode, RelayUrl,
     address_lookup::memory::MemoryLookup,
     endpoint::{Connection, RecvStream, SendStream, presets},
 };
@@ -158,7 +158,11 @@ impl Peer {
             .alpns(vec![ALPN.to_vec()])
             .clear_address_lookup()
             .address_lookup(lookup.clone())
-            .relay_mode(RelayMode::custom([relay.clone()]))
+            .relay_mode(RelayMode::Custom(RelayMap::from_iter([RelayConfig::new(
+                relay.clone(),
+                None,
+            )])))
+            .net_report_config(NetReportConfig::minimal())
             .bind()
             .await
             .map_err(|_| protocol("could not bind peer endpoint"))?;

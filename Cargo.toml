@@ -46,10 +46,11 @@ strip = "symbols"
 
 [workspace]
 members = ["evals"]
-exclude = ["vendor/libsql", "vendor/iroh-relay"]
+exclude = ["vendor/libsql", "vendor/iroh-relay", "vendor/iroh"]
 resolver = "3"
 
 [patch.crates-io]
+iroh = { path = "vendor/iroh" }
 libsql = { path = "vendor/libsql" }
 iroh-relay = { path = "vendor/iroh-relay" }
 

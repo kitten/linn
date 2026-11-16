@@ -83,6 +83,9 @@ must own and stop the service.
 
 `GET /health` returns the relay protocol marker; `/ping` is the Iroh latency
 probe; both are answered by the Worker without waking the coordinator.
+Current native daemons select the single relay directly, with HTTP latency and
+captive-portal probes disabled. The Iroh patch also permits startup without those
+probes; WebSocket handshakes and control heartbeats still verify reachability.
 The Worker rejects invalid routes, methods, relay protocols and declared oversized
 bodies before forwarding. Per-IP rate-limit bindings allow 1,200 valid HTTP
 requests and 120 relay connection attempts per minute, independently. Limits

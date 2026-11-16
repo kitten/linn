@@ -1,5 +1,8 @@
 //! Native, patched-Iroh interoperability gate. Never contacts a public default relay.
-use iroh::{Endpoint, EndpointAddr, RelayMode, RelayUrl, SecretKey, endpoint::presets};
+use iroh::{
+    Endpoint, EndpointAddr, NetReportConfig, RelayConfig, RelayMap, RelayMode, RelayUrl, SecretKey,
+    Watcher, endpoint::presets,
+};
 use linn::mesh::{
     client::ControlClient,
     membership::{Action, Event, Membership, Proposal, endpoint as key_id, random_id},
@@ -13,6 +16,31 @@ use tokio::time::timeout;
 type TestResult<T = ()> = Result<T, Box<dyn Error + Send + Sync>>;
 const ALPN: &[u8] = b"linn/relay-interop/1";
 const PAYLOAD_BYTES: usize = 8 * 1024 * 1024;
+
+#[tokio::test]
+async fn selecting_one_relay_does_not_claim_a_successful_connection() -> TestResult {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0")?;
+    let relay: RelayUrl = format!("http://{}/", listener.local_addr()?).parse()?;
+    let endpoint = endpoint(SecretKey::generate(), relay.clone()).await?;
+    assert!(
+        timeout(Duration::from_secs(1), endpoint.online())
+            .await
+            .is_err()
+    );
+    let statuses = endpoint.home_relay_status().get();
+    assert_eq!(
+        statuses.len(),
+        1,
+        "the sole relay should be selected without a probe"
+    );
+    assert_eq!(statuses[0].url(), &relay);
+    assert!(
+        !statuses[0].is_connected(),
+        "a pending handshake is not online"
+    );
+    endpoint.close().await;
+    Ok(())
+}
 
 /// Run against a local or staging Worker using ordinary signed enrollment.
 #[tokio::test]
@@ -52,7 +80,43 @@ async fn relay_roundtrip(peer_count: usize) -> TestResult {
             timeout(Duration::from_secs(30), endpoint.online()).await?;
         }
         // Exercise control heartbeats and hibernation/wake before any QUIC data.
-        tokio::time::sleep(Duration::from_secs(35)).await;
+        let mut status = server.home_relay_status();
+        let stable = async {
+            loop {
+                let statuses = status.updated().await.map_err(|_| "relay watcher closed")?;
+                if !statuses.iter().any(|s| s.is_connected()) {
+                    return Err::<(), _>("relay disconnected during idle");
+                }
+            }
+        };
+        assert!(
+            timeout(Duration::from_secs(35), stable).await.is_err(),
+            "idle relay must stay connected"
+        );
+        if std::env::var_os("LINN_RELAY_TEST_INSPECT").is_some() {
+            let disconnected = async {
+                loop {
+                    let statuses = status.updated().await.map_err(|_| "relay watcher closed")?;
+                    if !statuses.iter().any(|s| s.is_connected()) {
+                        return Ok::<_, &str>(());
+                    }
+                }
+            };
+            let disconnect = async {
+                reqwest::get(relay.join("/_inspect?disconnect")?.as_str())
+                    .await?
+                    .error_for_status()?;
+                Ok::<_, Box<dyn Error + Send + Sync>>(())
+            };
+            let (lost, requested) = timeout(Duration::from_secs(10), async {
+                tokio::join!(disconnected, disconnect)
+            })
+            .await?;
+            lost?;
+            requested?;
+            timeout(Duration::from_secs(15), server.online()).await?;
+            timeout(Duration::from_secs(15), client.online()).await?;
+        }
         let receive = async {
             let connection = server
                 .accept()
@@ -112,7 +176,10 @@ async fn endpoint(
         .alpns(vec![ALPN.to_vec()])
         .clear_ip_transports()
         .clear_address_lookup()
-        .relay_mode(RelayMode::custom([relay]))
+        .relay_mode(RelayMode::Custom(RelayMap::from_iter([RelayConfig::new(
+            relay, None,
+        )])))
+        .net_report_config(NetReportConfig::minimal())
         .bind()
         .await?)
 }

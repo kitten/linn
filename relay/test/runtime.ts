@@ -22,6 +22,7 @@ export async function createRuntime(inspect = false): Promise<Miniflare> {
           mainModule: "index.js",
           modules: { "index.js": { type: "esm", contents: contents + (inspect ? `
 const heartbeatTraffic = { applicationPings: 0, applicationPongs: 0 };
+const probeTraffic = { https: 0, captivePortal: 0 };
 const originalMessage = RelayCoordinator.prototype.webSocketMessage;
 RelayCoordinator.prototype.webSocketMessage = function (socket, input) {
   const tag = typeof input === "string" ? -1 : new Uint8Array(input)[0];
@@ -32,16 +33,22 @@ RelayCoordinator.prototype.webSocketMessage = function (socket, input) {
 const originalObjectFetch = RelayCoordinator.prototype.fetch;
 RelayCoordinator.prototype.fetch = async function (request) {
   if (new URL(request.url).pathname === "/_inspect") {
+    if (new URL(request.url).searchParams.has("disconnect")) {
+      for (const socket of this.ctx.getWebSockets()) socket.close(1012, "test reconnect");
+    }
     if (new URL(request.url).searchParams.has("fire")) {
       await this.ctx.storage.deleteAlarm();
       await this.alarm();
     }
-    return Response.json({ alarmOperations, heartbeatTraffic, alarm: await this.ctx.storage.getAlarm(), sockets: this.ctx.getWebSockets().map(s => s.deserializeAttachment()) });
+    return Response.json({ alarmOperations, heartbeatTraffic, probeTraffic, alarm: await this.ctx.storage.getAlarm(), sockets: this.ctx.getWebSockets().map(s => s.deserializeAttachment()) });
   }
   return originalObjectFetch.call(this, request);
 };
 const originalWorkerFetch = index_default.fetch;
 index_default.fetch = function (request, env) {
+  const path = new URL(request.url).pathname;
+  if (path === "/ping") probeTraffic.https++;
+  if (path === "/generate_204") probeTraffic.captivePortal++;
   if (new URL(request.url).pathname === "/_inspect") {
     return env.COORDINATOR.get(env.COORDINATOR.idFromName("private-mesh-v1")).fetch(request);
   }

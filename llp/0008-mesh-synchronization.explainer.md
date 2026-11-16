@@ -838,9 +838,16 @@ attachments. Each sender has a 4 MiB/s datagram budget, and
 each receiver has a 256 KiB unconfirmed send window. Ordered protocol Pong
 checkpoints release that window; excess datagrams are dropped for QUIC
 recovery. Native clients send WebSocket control health pings every 15 seconds,
-using the existing Iroh health tracker and timeout. The cadence is private to
-the upstream Iroh actor; changing it would require another dependency patch.
-Keep the current dependency boundary and do not suppress checks or invent replies. The relay sends no periodic
+using the existing Iroh health tracker, cadence and timeout unchanged.
+Do not suppress health checks or invent replies. Native endpoints configure the
+single service relay without QUIC address discovery, HTTPS latency probes or
+captive-portal checks. The Worker has no QUIC address-discovery listener, and a
+single relay needs no latency ranking. The pinned Iroh patch selects the sole
+configured relay when HTTPS probes are disabled; the existing WebSocket handshake,
+authentication, connection-status reporting, reconnect backoff and control health
+checks establish actual reachability. It changes neither multi-relay selection nor
+selection with HTTPS probes enabled. Direct peer IP transports remain enabled.
+The relay retains `/ping` for older clients. The relay sends no periodic
 idle application pings. It sends random application Ping checkpoints when the
 unconfirmed window reaches 64 KiB; matching application Pongs alone release the
 checkpoint's earlier bytes. After a matching Pong, immediately checkpoint any

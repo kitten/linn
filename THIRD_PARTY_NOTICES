@@ -1825,3 +1825,11 @@ Linn vendors iroh-relay 1.4.1 (MIT OR Apache-2.0) in vendor/iroh-relay.
 Its native client WebSocket adapter uses control frames for health checks;
 see vendor/iroh-relay/PATCH.md. Upstream: https://github.com/n0-computer/iroh/tree/v1.4.1
 The inherited BSD notice is retained in vendor/iroh-relay/LICENSE-BSD3.
+
+Patched Iroh endpoint
+
+Linn vendors iroh 1.4.1 (MIT OR Apache-2.0) in vendor/iroh to support
+single-relay selection with HTTPS probes disabled; see vendor/iroh/PATCH.md.
+Upstream: https://github.com/n0-computer/iroh/tree/v1.4.1
+The licenses are retained in vendor/iroh/LICENSE-MIT and LICENSE-APACHE.
+The inherited BSD notice is retained in vendor/iroh/LICENSE-BSD3.
