@@ -728,6 +728,7 @@ async fn admission_progress_preserves_typed_success_when_the_sync_reply_is_lost(
                 wire::send(
                     &mut server,
                     &Frame::Progress(Progress::Admitted(Status {
+                        reachability: None,
                         transport: Default::default(),
                         endpoint: Some("1".repeat(64)),
                         service: Some("https://mesh.example".into()),

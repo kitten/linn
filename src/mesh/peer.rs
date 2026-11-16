@@ -418,6 +418,11 @@ impl Peer {
         Ok(())
     }
 
+    pub(crate) async fn check_transport(self: &Arc<Self>, peer: &str) -> Result<()> {
+        let link = self.connect(peer).await?;
+        drop(link);
+        Ok(())
+    }
     async fn connect(self: &Arc<Self>, peer: &str) -> Result<Arc<Connected>> {
         let permit = self
             .connections
@@ -1238,6 +1243,28 @@ mod tests {
                 } else {
                     assert_eq!(Kind::of(&outcome.err().unwrap()), Kind::Authentication);
                 }
+            })
+            .await
+            .unwrap();
+            // A transport probe authenticates the endpoint but opens no record or
+            // membership stream, even when the endpoint is not a mesh member.
+            let address = remote
+                .bound_sockets()
+                .into_iter()
+                .find(|s| s.is_ipv4())
+                .unwrap();
+            peer.lookup
+                .set_endpoint_info(EndpointAddr::new(remote.id()).with_ip_addr(address));
+            tokio::time::timeout(Duration::from_secs(5), async {
+                let remote_id = remote.id().to_string();
+                let (probe, ()) = tokio::join!(peer.check_transport(&remote_id), async {
+                    let connection = remote.accept().await.unwrap().await.unwrap();
+                    assert!(
+                        connection.accept_bi().await.is_err(),
+                        "probe must not open application streams"
+                    );
+                });
+                probe.unwrap();
             })
             .await
             .unwrap();

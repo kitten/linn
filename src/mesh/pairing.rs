@@ -27,6 +27,7 @@ pub enum Command {
         initial_sync: bool,
     },
     Status,
+    CheckStatus,
     Revoke {
         peer: String,
     },
@@ -76,12 +77,12 @@ impl Command {
     }
 
     pub fn mutates(&self) -> bool {
-        !matches!(self, Self::Status)
+        !matches!(self, Self::Status | Self::CheckStatus)
     }
     pub fn accepts(&self, output: &Output) -> bool {
         match (self, output) {
             (Self::Sync, Output::Synced(_)) => true,
-            (Self::Status, Output::Status(_)) => true,
+            (Self::Status | Self::CheckStatus, Output::Status(_)) => true,
             (
                 Self::Pair {
                     invitation: None,
@@ -156,6 +157,8 @@ impl Command {
 pub struct Status {
     #[serde(default)]
     pub transport: super::status::Transport,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reachability: Option<std::collections::BTreeMap<String, String>>,
     pub endpoint: Option<String>,
     pub service: Option<String>,
     pub head: Option<String>,
@@ -295,6 +298,7 @@ pub async fn status(store: &impl ControlStore) -> Result<Status> {
     };
     Ok(Status {
         transport: Default::default(),
+        reachability: None,
         endpoint: identity.as_ref().map(|id| endpoint(&id.key)),
         service: identity.as_ref().map(|id| id.service.clone()),
         head: identity.as_ref().and_then(|id| id.head.clone()),
@@ -670,7 +674,7 @@ pub async fn run(store: &impl ControlStore, command: Command) -> Result<Output> 
         Command::Sync => Err(Error::Invalid(
             "record synchronization requires the resident peer transport".into(),
         )),
-        Command::Status => Ok(Output::Status(status(store).await?)),
+        Command::Status | Command::CheckStatus => Ok(Output::Status(status(store).await?)),
         Command::Reset => {
             store.step(Step::Reset).await?;
             Ok(Output::changed(Change::IdentityReset, status(store).await?))

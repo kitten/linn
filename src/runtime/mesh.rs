@@ -118,6 +118,7 @@ async fn execute(
     };
     let mutating = command.mutates();
     let pairing = matches!(command, Command::Pair { .. });
+    let check_status = matches!(command, Command::CheckStatus);
     if matches!(command, Command::Reset | Command::Leave) {
         // Keep leave intent durable even if draining transport or publication fails.
         let intent = store
@@ -158,6 +159,67 @@ async fn execute(
             status.transport = transport.status()
         }
         _ => (),
+    }
+    if check_status && let Output::Status(status) = &mut output {
+        let mut checks: std::collections::BTreeMap<_, _> = status
+            .members
+            .iter()
+            .filter(|id| Some(*id) != status.endpoint.as_ref())
+            .map(|id| {
+                (
+                    id.clone(),
+                    "unknown (not checked before deadline)".to_owned(),
+                )
+            })
+            .collect();
+        if status.is_admitted() {
+            let _ = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+                let Some(peer) = transport.ensure().await? else {
+                    return Ok::<_, Error>(());
+                };
+                let slots = std::sync::Arc::new(tokio::sync::Semaphore::new(8));
+                let mut pending = tokio::task::JoinSet::new();
+                for id in checks.keys() {
+                    let id = id.clone();
+                    let peer = peer.clone();
+                    let slots = slots.clone();
+                    pending.spawn(async move {
+                        let _slot = slots
+                            .acquire_owned()
+                            .await
+                            .expect("probe slots remain open");
+                        let result = peer.check_transport(&id).await;
+                        (
+                            id,
+                            match result {
+                                Ok(()) => "reachable (transport only)".into(),
+                                Err(error) => {
+                                    use crate::mesh::failure::Kind;
+                                    if matches!(Kind::of(&error), Kind::Offline | Kind::Timeout) {
+                                        format!("unreachable: {error}")
+                                    } else {
+                                        format!("unknown (check failed): {error}")
+                                    }
+                                }
+                            },
+                        )
+                    });
+                }
+                while let Some(result) = pending.join_next().await {
+                    if let Ok((id, result)) = result {
+                        checks.insert(id, result);
+                    }
+                }
+                Ok(())
+            })
+            .await;
+        } else {
+            for result in checks.values_mut() {
+                *result = "unknown (local transport is not authorized)".into();
+            }
+        }
+        status.transport = transport.status();
+        status.reachability = Some(checks);
     }
     Ok(output)
 }

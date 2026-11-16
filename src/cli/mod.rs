@@ -40,7 +40,13 @@ enum Command {
         name = "sync:status",
         about = "Inspect local mesh enrollment without contacting peers"
     )]
-    SyncStatus,
+    SyncStatus {
+        #[arg(
+            long,
+            help = "Check peer transport reachability (at most ten seconds; no record exchange)"
+        )]
+        check: bool,
+    },
     #[command(
         name = "sync:revoke",
         about = "Permanently revoke a peer by its full ID"
@@ -235,7 +241,11 @@ pub async fn run() -> Result<i32> {
         Command::Check => Op::Check,
         Command::Rebuild => Op::Rebuild,
         Command::SyncPair(options) => Op::Mesh(options.resolve()?),
-        Command::SyncStatus => Op::Mesh(crate::mesh::pairing::Command::Status),
+        Command::SyncStatus { check } => Op::Mesh(if check {
+            crate::mesh::pairing::Command::CheckStatus
+        } else {
+            crate::mesh::pairing::Command::Status
+        }),
         Command::SyncRevoke { peer } => Op::Mesh(crate::mesh::pairing::Command::Revoke { peer }),
         Command::SyncLeave => Op::Mesh(crate::mesh::pairing::Command::Leave),
         Command::SyncReset => Op::Mesh(crate::mesh::pairing::Command::Reset),

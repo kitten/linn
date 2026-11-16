@@ -26,7 +26,7 @@ Migration 7 removes remote configuration; migration 8 compacts derived
 membership caches and indexes root history. Migration 9 removes the unused hint
 table. Migration 10 adds durable incoming-item staging for atomic publication.
 Original records, history and tombstones survive these migrations. Local
-RPC compatibility is 4, mesh job/ALPN profile is 1, and signed membership
+RPC compatibility is 6, mesh job/ALPN profile is 1, and signed membership
 event/receipt profile is 1.
 
 Address discovery consists of IPv4 LAN/loopback mDNS and Iroh's connection
@@ -654,6 +654,17 @@ jobs and repairs publication before releasing store ownership. Verified enabled
 enrollment resumes passive transport on daemon restart. Uncertain membership
 proposals retry through explicit control operations, not startup. The daemon
 creates no OS boot service and does not wake sleeping hardware.
+
+`sync:status` remains local by default, explicitly marking remote reachability
+unknown. Optional `--check` tests transport connectivity to known remote peers,
+with at most eight concurrent checks and a ten-second probe deadline. Queued or
+unfinished peers remain unknown; a connection failure is reported as unreachable
+at check time. This is an authenticated endpoint transport snapshot, not proof
+of membership authorization or successful record exchange. No records transfer,
+no membership refresh is requested and no mesh job begins. Reachability results
+are returned only for checked status, as an optional JSON `reachability` map;
+ordinary status JSON is unchanged. The additional local check-status request is
+fenced by application compatibility 6; the mesh wire profile is unchanged.
 
 The public synchronization commands are:
 

@@ -217,9 +217,12 @@ pub(super) fn render(output: Output, json: bool) -> Result<()> {
         }
         Output::Status(status) => {
             if let Some(endpoint) = status.endpoint {
-                println!("Peer: {endpoint}");
+                println!("This store's peer ID: {endpoint}");
+                if let Some(service) = status.service {
+                    println!("Mesh service: {service}");
+                }
                 if let Some(head) = status.head {
-                    println!("Membership: {head}");
+                    println!("Membership revision: {head}");
                 } else {
                     println!("Enrollment incomplete.");
                 }
@@ -227,10 +230,14 @@ pub(super) fn render(output: Output, json: bool) -> Result<()> {
                     println!("Conflicting signed histories; network authorization suspended.");
                 }
                 if status.pending_leave {
-                    println!("Local transport disabled; remote revocation outstanding.");
+                    println!(
+                        "Local transport disabled; remote revocation outstanding. Retry linn sync:leave when the service is available."
+                    );
+                } else if !status.enabled {
+                    println!("Local transport disabled.");
                 }
                 println!(
-                    "Transport: {}; relay {}; loopback discovery {}.",
+                    "Local transport: {}; relay {}; local discovery {}.",
                     if status.transport.ready {
                         "ready"
                     } else {
@@ -245,19 +252,34 @@ pub(super) fn render(output: Output, json: bool) -> Result<()> {
                         "ready"
                     } else {
                         "unavailable"
-                    },
+                    }
                 );
                 if let Some(error) = status.transport.error {
                     eprintln!("Transport: {error}");
                 }
+                println!("Peers (IDs identify store instances, not machines):");
                 for member in status.members {
+                    let reachability = status
+                        .reachability
+                        .as_ref()
+                        .and_then(|r| r.get(&member))
+                        .map(String::as_str)
+                        .unwrap_or("unknown (not checked)");
+                    if member == endpoint {
+                        println!("  {member} (this store)");
+                    } else {
+                        println!("  {member}: {reachability}");
+                    }
+                }
+                if status.reachability.is_none() {
+                    println!("Use linn sync:status --check to check peer transport reachability.");
+                } else {
                     println!(
-                        "{member}{}",
-                        if member == endpoint { " (self)" } else { "" }
+                        "Reachability is a transport snapshot; it does not guarantee a successful sync."
                     );
                 }
             } else {
-                println!("Not paired.");
+                println!("This store has not joined a mesh. Pair with linn sync:pair.");
             }
         }
         Output::Changed {
