@@ -42,7 +42,7 @@ pub(crate) struct Control {
 }
 impl Control {
     pub(crate) fn new(send: SendStream, recv: RecvStream, store: Handle, peer: String) -> Self {
-        Self::with_idle(send, recv, store, peer, Duration::from_secs(300))
+        Self::with_idle(send, recv, store, peer, Duration::from_secs(60))
     }
     pub(crate) fn with_idle(
         mut send: SendStream,

@@ -450,8 +450,9 @@ Connections belong to individual job branches and close when those branches are
 dropped. At most 32 inbound and outbound connections combined are admitted per
 store; excess dials fail with capacity errors. Inbound connections without active
 application streams close after 30 seconds. Eight handshake slots and two slots
-per transfer direction have 30-second acquisition deadlines. Membership handshakes
-have a five-minute total deadline, and an accepted connection must begin its job
+per transfer direction have 30-second acquisition deadlines. Incoming membership handshakes
+have a five-minute total defensive deadline; outgoing sync admission has the
+ten-second budget specified below, and an accepted connection must begin its job
 within 30 seconds of authorization. Independent jobs can contact the same peer; there is no elected dial
 owner or cross-job connection cache. The frozen cohort determines traversal
 order. Establishing a connection does not itself exchange records.
@@ -479,6 +480,14 @@ Freeze the job's membership cohort, visit each reached peer at most once per
 phase and report unreachable/failed branches. Membership changes and concurrent
 writes can require another explicit run; a sync must not chase a moving mesh or
 wait forever for quiescence. Keep at most four active jobs per store. Each job
+probes at most eight next cohort peers concurrently, with one three-second
+connection attempt after at most one second of local discovery readiness. Sleeping
+and unreachable peers are expected; report them as unavailable for this run,
+retain successful publications, and do not retry them repeatedly in the same run.
+A prefetched connection that closes during an earlier child transfer is redialed
+once when its turn arrives. Probe tasks and retained probe connections are owned by the collection future and
+are cancelled or dropped with it. Admission (stream opening, membership negotiation,
+Begin and Accepted) has a ten-second total deadline. Each job
 collects children sequentially in sorted cohort order and retains successful
 child controls for distribution. The daemon admits at most four CLI mesh
 workers, plus the reserved local-control slot described below, and rejects excess
@@ -488,8 +497,8 @@ elsewhere. The completion result distinguishes collection failures,
 distribution failures and peers not reached; it is not a claim that every mesh
 member has converged.
 
-Retry transient connections only within the active job, with bounded attempts
-and backoff. No periodic repair round or post-command reconnect-to-sync loop is
+A later explicit sync retries currently unavailable peers; there is no second
+connection attempt or backoff wait for a sleeping peer within the active job. No periodic repair round or post-command reconnect-to-sync loop is
 part of this delivery. Cancellation/initiator loss stops scheduling delegated
 work, completes or recovers accepted publication, releases transport leases and
 retires the run state. Bound active run bookkeeping and its retention; run IDs
@@ -517,7 +526,14 @@ source streams when their job becomes terminal. Use two incoming and two
 outgoing transfer slots per store. Publish after 256 changed items or 4 MiB of
 changed envelopes, and at successful or failed phase completion. Control-stream
 reading and heartbeat writing continue independently of original-item transfers
-and delegated work. A control wait expires after five minutes without application
+and delegated work. Sync's optional signed coordinator reads use a five-second per-request timeout;
+on unavailability, continue using verified cached membership, never unverified state.
+Membership mutations retain their existing timeout and uncertain-outcome behavior.
+A partial run whose only missing branches are explicitly reported Offline reaches
+the terminal complete job phase and exits successfully, while its JSON `complete` remains false. Authentication, conflicts,
+protocol errors and stalled accepted jobs remain failures. Human output calls
+expected unavailable-only results partial, not complete. A later run retries them.
+A control wait expires after one minute without application
 progress; repeated control messages do not count. Heartbeats carry monotonic progress
 revisions from actual replica bytes and cohort traversal. Child progress can
 advance its parent's revision; parent progress only refreshes a child's wait,
@@ -722,7 +738,8 @@ The public synchronization commands are:
   the first sync (default yes); `--sync` starts it explicitly and `--no-sync`
   skips it. Noninteractive and JSON joins skip the offer unless `--sync` is
   supplied. Show progress on stderr. A failed first sync leaves membership
-  admitted, returns incomplete/failure status and can be retried with
+  admitted, returns a partial report (successful exit for unavailable-only peers,
+otherwise failure) and can be retried with
   `linn sync`; it never rolls admission back. JSON joins with `--sync` return
   one typed admission object with `initial_sync` or `initial_sync_error` attached.
   The daemon performs explicitly requested first sync after committing admission,

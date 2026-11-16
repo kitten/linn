@@ -373,7 +373,12 @@ fn summary(report: &crate::mesh::jobs::Report) -> String {
         )
     } else {
         format!(
-            "Sync incomplete: collected from {}/{} peers; distributed to {}/{} peers (includes this peer).",
+            "Sync {}: collected from {}/{} peers; distributed to {}/{} peers (includes this peer).",
+            if report.unavailable_only() {
+                "partial"
+            } else {
+                "incomplete"
+            },
             report.collected.len(),
             report.cohort.len(),
             report.distributed.len(),
@@ -401,6 +406,8 @@ fn render_report(report: &crate::mesh::jobs::Report) {
     let complete = report.complete || report.cohort.is_empty();
     let label = if complete {
         "Sync complete"
+    } else if report.unavailable_only() {
+        "Sync partial"
     } else {
         "Sync incomplete"
     };

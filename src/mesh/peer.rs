@@ -21,7 +21,7 @@ use iroh::{
     endpoint::{Connection, RecvStream, SendStream, presets},
 };
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, VecDeque},
     future::Future,
     pin::Pin,
     sync::{
@@ -449,44 +449,27 @@ impl Peer {
                 tokio::time::sleep(Duration::from_millis(20)).await;
             }
         }
-        let mut last = Kind::Offline.error("peer unreachable after bounded connection attempts");
-        for attempt in 0..2 {
-            if self.stopped.load(Ordering::Acquire) {
-                return Err(Kind::Cancelled.error("mesh peer: peer transport stopped"));
-            }
-            let mut address = EndpointAddr::new(id).with_relay_url(self.relay.clone());
-            if let Some(info) = self.lookup.get_endpoint_info(id) {
-                address.addrs.extend(info.to_endpoint_addr().addrs);
-            }
-            let result = tokio::time::timeout(
-                Duration::from_secs(10),
-                self.endpoint.connect(address, ALPN),
-            )
-            .await;
-            if let Ok(Ok(connection)) = result {
-                let server_peer = self.clone();
-                let server_connection = connection.clone();
-                let server = tokio::spawn(async move {
-                    server_peer.serve_connection(server_connection, false).await;
-                });
-                return Ok(Arc::new(Connected {
-                    connection,
-                    server,
-                    _permit: permit,
-                }));
-            }
-            last = match result {
-                Ok(Err(error)) => Kind::connect(error),
-                _ => Kind::Offline.error("peer unreachable before connection deadline"),
-            };
-            if !matches!(Kind::of(&last), Kind::Offline | Kind::Timeout) {
-                return Err(last);
-            }
-            if attempt == 0 {
-                tokio::time::sleep(Duration::from_millis(250)).await;
-            }
+        let mut address = EndpointAddr::new(id).with_relay_url(self.relay.clone());
+        if let Some(info) = self.lookup.get_endpoint_info(id) {
+            address.addrs.extend(info.to_endpoint_addr().addrs);
         }
-        Err(last)
+        let connection =
+            tokio::time::timeout(Duration::from_secs(3), self.endpoint.connect(address, ALPN))
+                .await
+                .map_err(|_| {
+                    Kind::Offline.error("peer is not reachable now; it may be asleep or offline")
+                })?
+                .map_err(Kind::connect)?;
+        let server_peer = self.clone();
+        let server_connection = connection.clone();
+        let server = tokio::spawn(async move {
+            server_peer.serve_connection(server_connection, false).await;
+        });
+        Ok(Arc::new(Connected {
+            connection,
+            server,
+            _permit: permit,
+        }))
     }
 
     async fn serve_connection(self: Arc<Self>, connection: Connection, inbound: bool) {
@@ -617,15 +600,14 @@ impl Peer {
         job.verify(&frozen, &current)
     }
 
-    async fn child(self: &Arc<Self>, peer: &str, job: &SignedRun) -> Result<Option<Child>> {
-        let link = self.connect(peer).await?;
+    async fn child(
+        self: &Arc<Self>,
+        peer: &str,
+        job: &SignedRun,
+        link: Arc<Connected>,
+    ) -> Result<Option<Child>> {
         let (mut send, mut recv) = link.connection.open_bi().await.map_err(Kind::connection)?;
-        tokio::time::timeout(
-            Duration::from_secs(300),
-            self.handshake_client(&mut send, &mut recv, peer),
-        )
-        .await
-        .map_err(|_| Kind::Timeout.error("membership handshake timed out"))??;
+        self.handshake_client(&mut send, &mut recv, peer).await?;
         let mut control = Control::new(send, recv, self.store.clone(), peer.into());
         control.track(self.progress(&job.run.id)?, true);
         control.send(Frame::Begin(job.clone())).await?;
@@ -652,6 +634,24 @@ impl Peer {
         Box::pin(async move {
             let mut report = Report::new(&job.run, &self.local);
             let mut children = Vec::new();
+            let mut targets: VecDeque<_> = job
+                .run
+                .cohort
+                .iter()
+                .filter(|peer| {
+                    !job.path.contains(peer) && job.path.len() <= usize::from(job.run.max_hops)
+                })
+                .cloned()
+                .collect();
+            let mut probes = JoinSet::new();
+            let mut ready = BTreeMap::new();
+            for target in targets.drain(..targets.len().min(8)) {
+                let owner = self.clone();
+                probes.spawn(async move {
+                    let result = owner.connect(&target).await;
+                    (target, result)
+                });
+            }
             for peer in &job.run.cohort {
                 if let Ok(progress) = self.progress(&job.run.id) {
                     progress.advance();
@@ -675,8 +675,39 @@ impl Peer {
                     ));
                     continue;
                 }
+                let link = loop {
+                    if let Some(result) = ready.remove(peer) {
+                        break result;
+                    }
+                    match probes.join_next().await {
+                        Some(Ok((target, result))) => {
+                            ready.insert(target, result);
+                        }
+                        Some(Err(_)) => continue,
+                        None => break Err(Kind::Cancelled.error("peer connection probe stopped")),
+                    }
+                };
+                if let Some(target) = targets.pop_front() {
+                    let owner = self.clone();
+                    probes.spawn(async move {
+                        let result = owner.connect(&target).await;
+                        (target, result)
+                    });
+                }
                 let result = async {
-                    let Some(mut child) = self.child(peer, job).await? else {
+                    let mut link = link?;
+                    if link.connection.close_reason().is_some() {
+                        drop(link);
+                        link = self.connect(peer).await?;
+                    }
+                    let Some(mut child) =
+                        tokio::time::timeout(Duration::from_secs(10), self.child(peer, job, link))
+                            .await
+                            .map_err(|_| {
+                                Kind::Timeout
+                            .error("peer did not accept the sync job before the admission deadline")
+                            })??
+                    else {
                         return Ok(None);
                     };
                     if let Some(entry) = self.runs.lock().unwrap().get_mut(&job.run.id) {
@@ -770,7 +801,7 @@ impl Peer {
         self.store.step(Step::Finish).await?;
         self.phase(
             &job.run.id,
-            if report.complete {
+            if report.complete || report.unavailable_only() {
                 Phase::Complete
             } else {
                 Phase::Failed

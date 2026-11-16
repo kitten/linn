@@ -245,7 +245,7 @@ async fn synchronize(
         if !identity.enabled || identity.pending_leave {
             return Err(Kind::Authentication.error("mesh transport is disabled"));
         }
-        let client = crate::mesh::client::ControlClient::new(&identity.service)?;
+        let client = crate::mesh::client::ControlClient::for_sync(&identity.service)?;
         match crate::mesh::pairing::refresh(store, &client, &identity.key, None).await {
             Ok(_) | Err(Error::MeshControl(crate::mesh::client::ControlError::Unavailable)) => (),
             Err(error) => return Err(error),

@@ -232,14 +232,19 @@ impl Output {
             initial_sync_error: None,
         }
     }
-    pub fn complete(&self) -> bool {
+    pub fn successful(&self) -> bool {
         match self {
-            Self::Synced(report) => report.complete,
+            Self::Synced(report) => report.complete || report.unavailable_only(),
             Self::Changed {
                 initial_sync,
                 initial_sync_error,
                 ..
-            } => initial_sync_error.is_none() && initial_sync.as_ref().is_none_or(|r| r.complete),
+            } => {
+                initial_sync_error.is_none()
+                    && initial_sync
+                        .as_ref()
+                        .is_none_or(|r| r.complete || r.unavailable_only())
+            }
             _ => true,
         }
     }

@@ -310,7 +310,7 @@ fn joining_supports_arguments_prompt_first_sync_failure_and_self_revocation() {
     );
     assert_eq!(
         output.status.code(),
-        Some(2),
+        Some(0),
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
@@ -320,7 +320,17 @@ fn joining_supports_arguments_prompt_first_sync_failure_and_self_revocation() {
     assert_eq!(joined["initial_sync"]["complete"], false);
     assert_eq!(c.ok(&["sync:status", "--json"], None)["enabled"], true);
     a.ok(&["sync:status", "--json"], None);
-    assert_eq!(c.ok(&["sync", "--json"], None)["complete"], true);
+    // Starting a daemon does not mean its routes are already discoverable.
+    // Each explicit run is a bounded availability snapshot; retry after wake.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(12);
+    loop {
+        let retried = c.ok(&["sync", "--json"], None);
+        if retried["complete"] == true {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "{retried}");
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
     let invite = a.ok(&["sync:pair", "-y", "--json"], None);
     let output = d.prompt_join(invite["token"].as_str().unwrap());
     assert!(
@@ -875,4 +885,67 @@ fn invitation_input_errors_do_not_attach_to_the_prompt() {
         assert!(stderr.contains(message), "{stderr}");
         assert!(!fixture.store.exists());
     }
+}
+
+#[test]
+#[ignore = "requires an explicitly configured Worker"]
+fn sleeping_peers_do_not_block_available_peer_sync() {
+    let service = std::env::var("LINN_RELAY_TEST_URL").unwrap();
+    let a = Fixture::new();
+    let b = Fixture::new();
+    let sleeping = [Fixture::new(), Fixture::new()];
+    a.ok(
+        &[
+            "sync:pair",
+            "-y",
+            "--service",
+            service.trim_end_matches('/'),
+            "--json",
+        ],
+        None,
+    );
+    for peer in [&b, &sleeping[0], &sleeping[1]] {
+        let invitation = a.ok(&["sync:pair", "-y", "--json"], None);
+        peer.ok(
+            &[
+                "sync:pair",
+                "-y",
+                "--join",
+                invitation["token"].as_str().unwrap(),
+                "--no-sync",
+                "--json",
+            ],
+            None,
+        );
+    }
+    for peer in &sleeping {
+        peer.ok(&["daemon:stop", "--json"], None);
+    }
+    let id = b.ok(
+        &["add", "-", "--unscoped", "--json"],
+        Some("Reachable peers still exchange originals."),
+    )["record"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let started = std::time::Instant::now();
+    let report = a.ok(&["sync", "--json"], None);
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(12),
+        "sleeping peers held up sync: {:?}",
+        started.elapsed()
+    );
+    assert_eq!(report["complete"], false);
+    assert_eq!(report["collected"].as_array().unwrap().len(), 2);
+    assert!(
+        report["failures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|failure| failure["kind"] == "offline")
+    );
+    assert_eq!(
+        a.ok(&["show", &id, "--all", "--json"], None)["text"],
+        "Reachable peers still exchange originals."
+    );
 }

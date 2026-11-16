@@ -742,7 +742,7 @@ fn render(value: crate::application::Value, json_output: bool, closing: bool) ->
             }
         }
         Value::Mesh(output) => {
-            let incomplete = !output.complete();
+            let incomplete = !output.successful();
             mesh::render(output, json_output)?;
             if incomplete {
                 if json_output {

@@ -131,6 +131,19 @@ impl Report {
         self.failures.extend(other.failures.iter().cloned());
         self.normalize();
     }
+    pub fn unavailable_only(&self) -> bool {
+        !self.complete
+            && !self.failures.is_empty()
+            && self
+                .failures
+                .iter()
+                .all(|failure| failure.kind == super::failure::Kind::Offline)
+            && self
+                .cohort
+                .iter()
+                .filter(|peer| !self.collected.contains(peer) || !self.distributed.contains(peer))
+                .all(|peer| self.failures.iter().any(|failure| &failure.peer == peer))
+    }
     pub fn normalize(&mut self) {
         self.collected.sort();
         self.collected.dedup();
@@ -157,6 +170,39 @@ impl Report {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn expected_unavailability_never_hides_other_failures_or_unaccounted_peers() {
+        use super::super::failure::Kind;
+        let mut report = Report {
+            cohort: vec!["local".into(), "sleeping".into()],
+            collected: vec!["local".into()],
+            distributed: vec!["local".into()],
+            failures: vec![Failure {
+                peer: "sleeping".into(),
+                phase: Phase::Collecting,
+                kind: Kind::Offline,
+                message: "unavailable".into(),
+            }],
+            ..Default::default()
+        };
+        assert!(report.unavailable_only());
+        for kind in [
+            Kind::Authentication,
+            Kind::Conflict,
+            Kind::Timeout,
+            Kind::Protocol,
+            Kind::Capacity,
+            Kind::Cancelled,
+        ] {
+            report.failures[0].kind = kind;
+            assert!(!report.unavailable_only());
+        }
+        report.failures[0].kind = Kind::Offline;
+        report.cohort.push("unaccounted".into());
+        assert!(!report.unavailable_only());
+        report.failures.clear();
+        assert!(!report.unavailable_only());
+    }
     #[test]
     fn forwarding_paths_are_unique_authorized_and_hop_bounded() {
         let keys: Vec<_> = (0..20).map(|_| SecretKey::generate()).collect();

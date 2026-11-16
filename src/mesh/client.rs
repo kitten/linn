@@ -62,10 +62,18 @@ pub struct ControlClient {
 }
 impl ControlClient {
     pub fn new(origin: &str) -> crate::error::Result<Self> {
+        Self::with_timeout(origin, Duration::from_secs(30))
+    }
+
+    pub(crate) fn for_sync(origin: &str) -> crate::error::Result<Self> {
+        Self::with_timeout(origin, Duration::from_secs(5))
+    }
+
+    fn with_timeout(origin: &str, timeout: Duration) -> crate::error::Result<Self> {
         Ok(Self {
             origin: crate::storage::mesh::service_origin(origin)?,
             http: reqwest::Client::builder()
-                .timeout(Duration::from_secs(30))
+                .timeout(timeout)
                 .redirect(reqwest::redirect::Policy::none())
                 .build()
                 .map_err(|_| ControlError::Unavailable)?,
