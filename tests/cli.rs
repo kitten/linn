@@ -705,3 +705,28 @@ fn empty_search_and_malformed_cursors_give_concise_next_steps() {
     }
     assert!(cli(&db, &["daemon:stop"], None).status.success());
 }
+
+#[test]
+fn help_guides_bounded_source_navigation_without_opening_a_store() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = dir.path().join("help-only.db");
+    for args in [&["-h"][..], &["search", "-h"][..]] {
+        let output = cli(&db, args, None);
+        assert!(output.status.success());
+        assert!(output.stderr.is_empty());
+        let help = String::from_utf8(output.stdout).unwrap();
+        for navigation in [
+            "linn show <fetch-id>",
+            "linn show:outline <ref>",
+            "linn search:more <cursor>",
+            "another section in that document",
+            "same query",
+            "Stop when you have enough evidence",
+        ] {
+            assert!(help.contains(navigation), "missing {navigation}: {help}");
+        }
+        assert!(!help.contains("--all"));
+        assert!(!help.contains('\x1b'));
+    }
+    assert!(!db.exists());
+}

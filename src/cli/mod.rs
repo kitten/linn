@@ -22,7 +22,7 @@ use std::{
     disable_version_flag = true,
     arg(clap::Arg::new("version").short('v').long("version").help("Print version").action(clap::ArgAction::Version)),
     about = "Search private notes and documents. Results are pointers; open a section before relying on it.",
-    after_help = "Typical use:\n  linn search '\"git send\" allowed prefixes'\n  linn show <fetch-id>\n  linn search:more <cursor>\n  linn show:outline <ref>\n\nSearches cover every repository by default.\nA related topic, a different package or version, or shared words is not an answer.\nNear misses are hints, not results. An honest Nothing qualified is a successful miss.\nSave reusable engineering discoveries; see linn add --help.\n\nExit codes: 0 results/success, 1 no results/not current, 2 command error, 3 damaged index."
+    after_help = "Find and read (follow up as needed):\n  linn search '\"git send\" allowed prefixes'\n  linn show <fetch-id>       open selected text\n  linn show:outline <ref>    another section in that document\n  linn search:more <cursor>  more hits for the same query\n\nSearches cover every repository by default.\nA related topic, a different package or version, or shared words is not an answer.\nNear misses are hints, not results. Stop when you have enough evidence; a miss is OK.\nSave reusable engineering discoveries; see linn add --help.\n\nExit codes: 0 results/success, 1 no results/not current, 2 command error, 3 damaged index."
 )]
 struct Args {
     #[arg(long, global = true, help = "Override the account's local store file")]
@@ -101,12 +101,16 @@ enum Command {
     List(listing::ListArgs),
     #[command(
         about = "Find sections in notes and documents",
-        after_help = r#"Use specific words expected in the answer; keep identifiers exact.
-Add context when needed to distinguish the result.
-"double quotes" keep an exact phrase or name together. Do not add the repository name.
-Searches cover all repositories by default. Open results with linn show <ref> before relying
-on them. Related pointers and near misses are hints; no qualifying result is OK.
-Continue with linn search:more <cursor>, try another query, or stop.
+        after_help = r#"Use specific source words; keep identifiers exact.
+Add distinguishing context when needed.
+"double quotes" keep a phrase or name together. Do not add the repository name.
+Searches cover all repositories by default.
+
+Scan headings and excerpts; open a promising result with linn show <fetch-id> before relying on it.
+Use linn show:outline <ref> only for another section in that document.
+Use linn search:more <cursor> only for more hits on the same query.
+Stop when you have enough evidence; otherwise refine the query or accept a miss.
+Related pointers and near misses are hints, not results.
 
 Filters:
   path:<glob>        source path; use when the task names a file or directory
@@ -118,7 +122,7 @@ Filters:
   scope:<org/repo>   exact repository scope (case-insensitive)
 
 A reference is a record id, a fetch id, or a unique body-hash prefix of at least
-8 hex digits. show:outline lists openable sections of that reference's document.
+8 hex digits.
 Use --json for cards, related pointers, near misses and the next cursor."#
     )]
     Search { query: String },

@@ -40,12 +40,21 @@ The README agent prompt recommends command help when syntax or behavior is
 unclear, rather than a mandatory help call each session. Top-level help supports
 command discovery and retains brief workflow and evidence-use guidance. Hide the
 redundant `help` command entry; `-h`/`--help` stay visible and the help verb
-remains accepted. Search and add help are self-contained for their tasks: search includes shared-store
-scope, opening results and distinguishing hints; add includes original findings,
-sources and corrections. Search help expands syntax, filters, references and
-pagination without requiring fetch-ID citations. Query guidance favors specific source
-words and exact identifiers, with distinguishing context as needed, rather than
-a prescribed word count.
+remains accepted. Search and add help are self-contained for their tasks: search
+includes shared-store scope, opening results and distinguishing hints; add
+includes original findings, sources and corrections. Search help expands syntax,
+filters, references and pagination without requiring fetch-ID citations. Query
+guidance favors specific source words and exact identifiers, with distinguishing
+context as needed, rather than a prescribed word count.
+
+Help describes conditional navigation: scan headings and excerpts, then open a
+promising fetch reference before relying on its original text. Use outline to
+locate another section in the same document, or pagination for more candidates
+on the same query. These are optional branches, not a checklist to exhaust.
+Stop once evidence is sufficient; otherwise refine the query or accept a miss.
+Keep full-span expansion guidance at the truncation notice rather than promoting
+`--all` in introductory help. Do not repeat this workflow on every search card
+or expand retrieval output to compensate for unclear navigation.
 
 Daemon text status identifies the selected store and, when running, its PID and
 reported Linn release. JSON status retains running/PID and adds optional runtime
