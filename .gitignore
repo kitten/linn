@@ -15,3 +15,6 @@ __pycache__/
 /relay/.interop-*
 /relay/coverage/
 /relay/dist/
+
+/vendor/iroh-relay/target/
+/vendor/iroh-relay/Cargo.lock

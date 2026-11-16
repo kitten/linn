@@ -398,13 +398,17 @@ endpoint authentication and membership authorization succeed.
 The relay implements the pinned wire protocol: WebSocket subprotocol
 negotiation, binary datagrams and batches, ping/pong, endpoint-gone/status
 messages, frame validation and duplicate connection behavior. The TypeScript
-adapter interoperates with the pinned stock Rust Iroh client; Iroh's transport
-and cryptographic implementations remain upstream dependencies.
+adapter interoperates with stock Rust Iroh clients. The pinned native client uses
+`vendor/iroh-relay` to translate its application health pings into WebSocket control
+pings and translate eight-byte control Pongs back into health-tracker replies.
+Only native client connections enable this translation; server connections and
+browser clients retain upstream behavior. Application Ping/Pong remains supported
+for stock peers and ordered send-window checkpoints. Cryptography is unchanged.
 
 Use accepted hibernatable sockets and per-socket attachments for authenticated
 identity and control state. Reconstruct routing after wake; in-memory maps are
-never the only membership authority. Protocol-level keepalives may wake the
-object even when WebSocket-level automatic responses are possible. Measure idle
+never the only membership authority. Client control pings receive runtime control Pongs without waking the object.
+Control Pongs prove transport liveness, never application delivery. Measure idle
 cost with the real client rather than assuming hibernation makes it free.
 
 Signed membership and public invitation-consumption state live in Durable

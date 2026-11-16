@@ -46,11 +46,12 @@ strip = "symbols"
 
 [workspace]
 members = ["evals"]
-exclude = ["vendor/libsql"]
+exclude = ["vendor/libsql", "vendor/iroh-relay"]
 resolver = "3"
 
 [patch.crates-io]
 libsql = { path = "vendor/libsql" }
+iroh-relay = { path = "vendor/iroh-relay" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cblas = "0.5"

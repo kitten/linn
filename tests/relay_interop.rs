@@ -1,4 +1,4 @@
-//! Native, stock-Iroh interoperability gate. Never contacts a public default relay.
+//! Native, patched-Iroh interoperability gate. Never contacts a public default relay.
 use iroh::{Endpoint, EndpointAddr, RelayMode, RelayUrl, SecretKey, endpoint::presets};
 use linn::mesh::{
     client::ControlClient,
@@ -17,7 +17,7 @@ const PAYLOAD_BYTES: usize = 8 * 1024 * 1024;
 /// Run against a local or staging Worker using ordinary signed enrollment.
 #[tokio::test]
 #[ignore = "requires an explicitly configured Worker"]
-async fn stock_iroh_relay_only_roundtrip() -> TestResult {
+async fn native_iroh_relay_only_roundtrip() -> TestResult {
     for peer_count in [2, 10] {
         relay_roundtrip(peer_count).await?;
     }
@@ -51,7 +51,7 @@ async fn relay_roundtrip(peer_count: usize) -> TestResult {
         for endpoint in &idle {
             timeout(Duration::from_secs(30), endpoint.online()).await?;
         }
-        // Exercise protocol heartbeats and hibernation/wake before any QUIC data.
+        // Exercise control heartbeats and hibernation/wake before any QUIC data.
         tokio::time::sleep(Duration::from_secs(35)).await;
         let receive = async {
             let connection = server

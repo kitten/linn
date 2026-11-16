@@ -27,8 +27,8 @@ nix develop -c npm --prefix relay run test:offline
 The Worker tests execute in workerd, including challenge verification, rejection,
 source-bound datagram routing, duplicate identity isolation and a hibernation/
 wake cycle. The interoperability runner starts an isolated local Worker and uses
-the pinned, unmodified native Iroh client with all IP transports and public
-discovery removed. It exercises 2 and 10 relay connections, idle heartbeats, and
+the pinned native Iroh client with the control-heartbeat patch, with all IP
+transports and public discovery removed. It exercises 2 and 10 relay connections, idle heartbeats, and
 an 8 MiB bidirectional transfer, then closes endpoints and the runtime. It is a
 development test; the packaged Linn CLI never requires Node or Wrangler.
 
