@@ -666,6 +666,15 @@ are returned only for checked status, as an optional JSON `reachability` map;
 ordinary status JSON is unchanged. The additional local check-status request is
 fenced by application compatibility 6; the mesh wire profile is unchanged.
 
+Sync progress is on stderr, deduplicated when unchanged, and updates a single
+line on terminals. Peer collection/distribution counts include this peer and
+show cohort denominators. Completion appears once on stdout; JSON retains the
+structured report without a second human completion summary. Applied-change
+counts describe this store's records and deletions, not mesh-wide transfers.
+Zero local changes must not be described as a mesh-wide no-op. Incomplete text
+reports name missing peer phases, typed failure categories and recovery actions,
+and explain durable partial progress.
+
 The public synchronization commands are:
 
 - `linn sync:pair` creates an invitation, initializing a genesis mesh if

@@ -278,7 +278,8 @@ fn joining_supports_arguments_prompt_first_sync_failure_and_self_revocation() {
     let joined: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(joined["operation"], "paired");
     assert_eq!(joined["initial_sync"]["complete"], true);
-    assert!(String::from_utf8_lossy(&output.stderr).contains("Sync complete"));
+    assert!(!String::from_utf8_lossy(&output.stderr).contains("Sync complete"));
+    assert!(joined["initial_sync"]["complete"].is_boolean());
     assert_eq!(
         b.ok(&["show", &original, "--all", "--json"], None)["text"],
         "Initial sync transfers this original."
@@ -672,4 +673,34 @@ fn offline_daemons_rediscover_changed_loopback_ports() {
     );
     assert!(unpaired.ok(&["sync:status", "--json"], None)["head"].is_null());
     drop(held);
+}
+
+#[test]
+fn no_op_sync_has_one_completion_and_outline_failure_is_json() {
+    let fixture = Fixture::new();
+    let output = fixture.run(&["sync"], None);
+    assert!(output.status.success());
+    let text = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(text.matches("Sync complete").count(), 1);
+    assert!(text.contains("No changes applied to this store"));
+    assert!(!String::from_utf8_lossy(&output.stderr).contains("Sync complete"));
+    let record = fixture.ok(
+        &["add", "-", "--json"],
+        Some("Original note to close for an outline test."),
+    )["record"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    fixture.ok(
+        &["add:close", &record, "--reason", "correct", "--json"],
+        None,
+    );
+    let output = fixture.run(&["show:outline", &record, "--json"], None);
+    assert_eq!(output.status.code(), Some(1));
+    let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(value["status"], "not_current");
+    let output = fixture.run(&["daemon:status"], None);
+    let text = String::from_utf8_lossy(&output.stdout);
+    assert!(text.contains("Store:"));
+    assert!(text.contains("PID"));
 }

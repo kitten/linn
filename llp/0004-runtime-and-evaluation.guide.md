@@ -30,8 +30,9 @@ Native Windows delivery remains specified but unimplemented in LLP 0007.
 
 Routine internal debug statistics, including POS projection publication counts
 and elapsed time, are not printed by default. Existing explicit timing and trace
-diagnostics remain opt-in. Routine indexing, rebuild, sync and export progress
-messages are omitted; warnings and errors stay on stderr.
+diagnostics remain opt-in. Routine indexing, rebuild and export progress
+messages are omitted; explicit sync uses the bounded, labelled progress
+presentation in LLP 0008. Warnings and errors stay on stderr.
 
 The README agent prompt recommends command help when syntax or behavior is
 unclear, rather than a mandatory help call each session. Top-level help supports
@@ -42,6 +43,11 @@ sources and corrections. Search help expands syntax, filters, references and
 pagination without requiring fetch-ID citations. Query guidance favors specific source
 words and exact identifiers, with distinguishing context as needed, rather than
 a prescribed word count.
+
+Daemon text status identifies the selected store and, when running, its PID.
+Import text summaries distinguish applied record/deletion changes from items
+already present. A non-current outline returns exit 1 with contextual text or
+`{"status":"not_current","entries":[]}` under `--json`.
 
 ## Command structure
 
@@ -194,8 +200,9 @@ of a fetch id, or the whole body for a record id or a hash.
 ### `linn show:outline <ref>`
 
 Prints the outline (Outline) of the record a reference names: numbered entries `[o1]`…, each with its
-heading path, first line and fetch id. A record that is not current prints `Nothing qualified.` and
-exits 1.
+heading path, first line and fetch id. A record that is not current prints
+`Outline unavailable: the record is not current.` and exits 1; `--json` returns
+`{"status":"not_current","entries":[]}`.
 
 ### Writing: `add`, `add:close`, `add:forget`
 

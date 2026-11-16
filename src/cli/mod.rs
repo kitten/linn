@@ -189,7 +189,14 @@ pub async fn run() -> Result<i32> {
         if args.json {
             println!("{}", serde_json::to_value(&state)?);
         } else {
-            println!("{}", if state.running { "Running" } else { "Stopped" });
+            println!("Store: {}", path.display());
+            match state.pid.filter(|_| state.running) {
+                Some(pid) => println!("Background process: running (PID {pid})."),
+                None => println!(
+                    "Background process: {}.",
+                    if state.running { "running" } else { "stopped" }
+                ),
+            }
         }
         return Ok(0);
     }
@@ -301,13 +308,10 @@ pub async fn run() -> Result<i32> {
     if let Some(input) = &mut input {
         input.seek(SeekFrom::Start(0))?;
     }
-    let reply = match crate::runtime::execute_with_progress(
-        &path,
-        op,
-        caller,
-        input,
-        mesh::render_progress,
-    )
+    let mut progress = mesh::ProgressRenderer::default();
+    let reply = match crate::runtime::execute_with_progress(&path, op, caller, input, |event| {
+        progress.render(event)
+    })
     .await
     {
         Ok(r) => r,
@@ -320,6 +324,7 @@ pub async fn run() -> Result<i32> {
             return Ok(3);
         }
         Err(e) => {
+            progress.finish();
             if let Error::Application(error) = &e {
                 for line in &error.diagnostics {
                     eprintln!("{line}");
@@ -328,6 +333,7 @@ pub async fn run() -> Result<i32> {
             return Err(e);
         }
     };
+    progress.finish();
     for warning in reply.warnings {
         eprintln!("{warning}");
     }
@@ -352,9 +358,10 @@ pub async fn run() -> Result<i32> {
                 diagnostics: Default::default(),
             },
             None,
-            mesh::render_progress,
+            |event| progress.render(event),
         )
         .await?;
+        progress.finish();
         return render(reply.value, false);
     }
     render(reply.value, args.json)
@@ -420,7 +427,11 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
             return Ok(if s.reason.is_some() { 1 } else { 0 });
         }
         Value::OutlineNotCurrent => {
-            println!("Nothing qualified.");
+            if json_output {
+                println!("{}", json!({"status":"not_current","entries":[]}));
+            } else {
+                println!("Outline unavailable: the record is not current.");
+            }
             return Ok(1);
         }
         Value::Outline(cards) => {
@@ -504,14 +515,21 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
             if json_output {
                 println!("{}", serde_json::to_string(&c)?);
             } else {
-                println!("Imported {} items; {} unchanged.", c.changed, c.unchanged);
+                println!(
+                    "Import complete: {} record/deletion changes applied; {} items already present.",
+                    c.changed, c.unchanged
+                );
             }
         }
         Value::Mesh(output) => {
             let incomplete = !output.complete();
             mesh::render(output, json_output)?;
             if incomplete {
-                eprintln!("Mesh sync incomplete; accepted progress is durable.");
+                if json_output {
+                    eprintln!(
+                        "Sync incomplete; accepted partial progress is durable. Inspect the JSON report for peer failures and retry with linn sync."
+                    );
+                }
                 return Ok(2);
             }
         }

@@ -141,45 +141,161 @@ pub(super) fn offer_sync() -> Result<bool> {
     ))
 }
 
-pub(super) fn render_progress(progress: &crate::mesh::status::Progress) {
-    match progress {
-        crate::mesh::status::Progress::Admitted(_) => {
-            eprintln!("Admitted. Starting the requested first sync.")
+#[derive(Default)]
+pub(super) struct ProgressRenderer {
+    last: Option<String>,
+    active: bool,
+}
+impl ProgressRenderer {
+    pub(super) fn render(&mut self, progress: &crate::mesh::status::Progress) {
+        let line = match progress {
+            crate::mesh::status::Progress::Admitted(_) => {
+                "Joined the mesh. Starting the requested first sync.".into()
+            }
+            crate::mesh::status::Progress::Sync(job) => progress_line(job),
+        };
+        if self.last.as_ref() == Some(&line) {
+            return;
         }
-        crate::mesh::status::Progress::Sync(job) => eprintln!(
-            "Sync {:?}: {} collected, {} distributed; {} received here",
-            job.phase,
-            job.report.collected.len(),
-            job.report.distributed.len(),
-            job.report.received
-        ),
+        if std::io::stderr().is_terminal() {
+            eprint!("\r\x1b[2K{line}");
+            let _ = std::io::stderr().flush();
+            self.active = true;
+        } else {
+            eprintln!("{line}");
+        }
+        self.last = Some(line);
+    }
+    pub(super) fn finish(&mut self) {
+        if self.active {
+            eprint!("\r\x1b[2K");
+            self.active = false;
+        }
+        self.last = None;
+    }
+}
+impl Drop for ProgressRenderer {
+    fn drop(&mut self) {
+        self.finish();
+    }
+}
+fn phase_name(phase: crate::mesh::jobs::Phase) -> &'static str {
+    use crate::mesh::jobs::Phase::*;
+    match phase {
+        Collecting => "Collecting from peers",
+        Collected => "Collection finished",
+        Distributing => "Distributing to peers",
+        Complete => "Finishing sync",
+        Failed => "Sync failed",
+        Cancelled => "Sync cancelled",
+    }
+}
+fn progress_line(job: &crate::mesh::status::Job) -> String {
+    use crate::mesh::jobs::Phase;
+    let r = &job.report;
+    let (action, count) = match job.phase {
+        Phase::Collecting => ("Collecting", r.collected.len()),
+        Phase::Collected => ("Collected", r.collected.len()),
+        Phase::Distributing => ("Distributing", r.distributed.len()),
+        Phase::Complete => ("Finishing sync", r.distributed.len()),
+        Phase::Failed => ("Sync failed", r.distributed.len()),
+        Phase::Cancelled => ("Sync cancelled", r.distributed.len()),
+    };
+    format!(
+        "{action}: {count}/{} peers (includes this peer); local changes: {}",
+        r.cohort.len(),
+        r.received
+    )
+}
+
+fn counted(count: usize, singular: &str, plural: &str) -> String {
+    format!("{count} {}", if count == 1 { singular } else { plural })
+}
+
+fn summary(report: &crate::mesh::jobs::Report) -> String {
+    let mut text = if report.cohort.is_empty() {
+        "Sync complete: no enrolled peers to sync with.".into()
+    } else if report.complete {
+        format!(
+            "Sync complete across {}, including this peer.",
+            counted(report.cohort.len(), "peer", "peers")
+        )
+    } else {
+        format!(
+            "Sync incomplete: collected from {}/{} peers; distributed to {}/{} peers (includes this peer).",
+            report.collected.len(),
+            report.cohort.len(),
+            report.distributed.len(),
+            report.cohort.len()
+        )
+    };
+    if report.received == 0 {
+        text.push_str("\nNo changes applied to this store.");
+    } else {
+        text.push_str(&format!(
+            "\n{} {} applied to this store (records and deletions).",
+            report.received,
+            if report.received == 1 {
+                "change"
+            } else {
+                "changes"
+            }
+        ));
+    }
+    text
+}
+fn render_report(report: &crate::mesh::jobs::Report) {
+    println!("{}", summary(report));
+    if !report.complete {
+        for peer in &report.cohort {
+            let collected = report.collected.contains(peer);
+            let distributed = report.distributed.contains(peer);
+            if !collected || !distributed {
+                eprintln!(
+                    "Peer ID {peer}: collection {}; distribution {}.",
+                    if collected {
+                        "complete"
+                    } else {
+                        "not completed"
+                    },
+                    if distributed {
+                        "complete"
+                    } else {
+                        "not completed"
+                    }
+                );
+            }
+        }
+        for failure in &report.failures {
+            let kind = serde_json::to_value(failure.kind).expect("failure kind serializes");
+            eprintln!(
+                "Peer ID {} — {} [{}]: {}",
+                failure.peer,
+                phase_name(failure.phase),
+                kind.as_str().unwrap(),
+                failure.message
+            );
+            use crate::mesh::failure::Kind;
+            match failure.kind {
+                Kind::Publication => {
+                    eprintln!("Repair publication with linn index:rebuild before retrying.")
+                }
+                Kind::Version => {
+                    eprintln!("Use compatible Linn versions on both peers before retrying.")
+                }
+                Kind::Authentication | Kind::Conflict => eprintln!(
+                    "Inspect enrollment with linn sync:status; resolve the authorization or history conflict before retrying."
+                ),
+                _ => (),
+            }
+        }
+        eprintln!(
+            "Accepted partial progress is durable. Retry with linn sync when peers are available."
+        );
     }
 }
 
 pub(super) fn render(output: Output, json: bool) -> Result<()> {
-    let report = match &output {
-        Output::Synced(report) => Some(report),
-        Output::Changed {
-            initial_sync: Some(report),
-            ..
-        } => Some(report.as_ref()),
-        _ => None,
-    };
-    if let Some(report) = report
-        && (json || matches!(output, Output::Synced(_)))
-    {
-        eprintln!(
-            "Sync {}: {} collected, {} distributed; {} received here",
-            if report.complete {
-                "complete"
-            } else {
-                "incomplete"
-            },
-            report.collected.len(),
-            report.distributed.len(),
-            report.received
-        );
-    }
     if let Output::Changed {
         initial_sync_error: Some(error),
         ..
@@ -192,17 +308,7 @@ pub(super) fn render(output: Output, json: bool) -> Result<()> {
         return Ok(());
     }
     match output {
-        Output::Synced(report) => {
-            println!(
-                "Mesh sync: {} collected, {} distributed; {} received here.",
-                report.collected.len(),
-                report.distributed.len(),
-                report.received
-            );
-            for failure in report.failures {
-                eprintln!("{} {:?}: {}", failure.peer, failure.phase, failure.message);
-            }
-        }
+        Output::Synced(report) => render_report(&report),
         Output::Invitation {
             token,
             invitation,
@@ -298,4 +404,53 @@ pub(super) fn render(output: Output, json: bool) -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mesh::{
+        jobs::{Phase, Report},
+        status::Job,
+    };
+
+    #[test]
+    fn peer_phase_counts_do_not_imply_record_changes() {
+        let report = Report {
+            cohort: vec!["local".into(), "remote".into()],
+            collected: vec!["local".into(), "remote".into()],
+            distributed: vec!["local".into(), "remote".into()],
+            complete: true,
+            ..Default::default()
+        };
+        let text = summary(&report);
+        assert!(text.contains("across 2 peers"));
+        assert!(text.contains("No changes applied to this store"));
+        assert!(!text.contains("up to date"));
+        let line = progress_line(&Job {
+            id: String::new(),
+            phase: Phase::Collecting,
+            report,
+        });
+        assert!(line.contains("Collecting: 2/2 peers"));
+        assert!(line.contains("includes this peer"));
+        assert!(line.contains("local changes: 0"));
+    }
+
+    #[test]
+    fn incomplete_and_unpaired_summaries_are_distinct() {
+        let mut report = Report {
+            complete: true,
+            ..Default::default()
+        };
+        assert!(summary(&report).contains("no enrolled peers"));
+        report.cohort = vec!["local".into(), "offline".into()];
+        report.collected = vec!["local".into()];
+        report.complete = false;
+        report.received = 3;
+        let text = summary(&report);
+        assert!(text.contains("Sync incomplete"));
+        assert!(text.contains("1/2 peers"));
+        assert!(text.contains("3 changes applied to this store (records and deletions)"));
+    }
 }
