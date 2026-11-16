@@ -2096,7 +2096,7 @@ dependencies = [
 
 [[package]]
 name = "linn"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "aho-corasick 0.7.20",
  "base64 0.22.1",
