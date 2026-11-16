@@ -24,6 +24,7 @@ try {
     assert.equal(state.heartbeatTraffic.applicationPings, 0, "native health pings must not reach Worker JavaScript");
     assert.ok(state.heartbeatTraffic.applicationPongs > 0, "transfers must acknowledge application checkpoints");
     console.log("relay alarm operations:", JSON.stringify(state.alarmOperations));
+    assert.ok(state.alarmOperations.sets > 0, "alarm instrumentation must observe scheduling");
     assert.ok(state.alarmOperations.sets < 100, "alarm persistence must be coalesced across transfer checkpoints");
     assert.equal(state.alarm, null, "closed native endpoints must leave no alarm");
   }

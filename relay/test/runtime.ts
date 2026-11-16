@@ -1,9 +1,11 @@
+import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 
 export function instrumentAlarmOperations(source: string): string {
   for (const [operation, counter] of [["setAlarm(next)", "sets"], ["deleteAlarm()", "deletes"]] as const) {
     const target = `await storage.${operation}`;
+    assert.equal(source.split(target).length - 1, 1, `expected exactly one alarm instrumentation target: ${operation}`);
     source = source.replace(target, `(alarmOperations.${counter}++, ${target})`);
   }
   return "let alarmOperations = { sets: 0, deletes: 0 };\n" + source;
