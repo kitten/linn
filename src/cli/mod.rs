@@ -179,6 +179,28 @@ Use --stale-after only for known expiry."#
     Rebuild,
 }
 
+async fn enrollment(path: &std::path::Path) -> Result<Option<crate::mesh::pairing::Status>> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let reply = crate::runtime::execute(
+        path,
+        crate::application::Operation::Mesh(crate::mesh::pairing::Command::Status),
+        crate::application::Caller {
+            scope: None,
+            writer: None,
+            diagnostics: Default::default(),
+        },
+        None,
+    )
+    .await?;
+    match reply.value {
+        crate::application::Value::Mesh(crate::mesh::pairing::Output::Status(status)) => {
+            Ok(Some(status))
+        }
+        _ => Err(Error::Invalid("unexpected enrollment response".into())),
+    }
+}
 pub async fn run() -> Result<i32> {
     use crate::application::{AddOptions, Caller, Operation as Op};
     let args = Args::parse();
@@ -221,6 +243,19 @@ pub async fn run() -> Result<i32> {
         } else {
             None
         },
+    };
+    if let Command::SyncPair(options) = &args.command {
+        let enrolled = if options.needs_confirmation() && path.exists() {
+            enrollment(&path).await?.is_some_and(|s| s.head.is_some())
+        } else {
+            false
+        };
+        options.confirm(enrolled)?;
+    }
+    let mesh_context = match &args.command {
+        Command::SyncRevoke { peer } => Some(format!("Revoked peer ID: {peer}")),
+        Command::SyncPair(options) => options.cancel_context(),
+        _ => None,
     };
     let first_sync = if let Command::SyncPair(options) = &args.command {
         options.first_sync()
@@ -334,6 +369,15 @@ pub async fn run() -> Result<i32> {
         }
     };
     progress.finish();
+    if !args.json
+        && matches!(
+            &reply.value,
+            crate::application::Value::Mesh(crate::mesh::pairing::Output::Changed { .. })
+        )
+        && let Some(context) = mesh_context
+    {
+        println!("{context}");
+    }
     for warning in reply.warnings {
         eprintln!("{warning}");
     }

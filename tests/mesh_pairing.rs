@@ -12,6 +12,13 @@ struct Fixture {
 }
 impl Fixture {
     fn prompt_join(&self, token: &str) -> Output {
+        self.prompt_command(
+            &["sync:pair", "-y", "--join", "--no-sync", "--json"],
+            b"Invitation: ",
+            token,
+        )
+    }
+    fn prompt_command(&self, args: &[&str], expected_prompt: &[u8], answer: &str) -> Output {
         use std::{
             fs::File,
             io::Read,
@@ -41,7 +48,7 @@ impl Fixture {
         let mut child = Command::new(env!("CARGO_BIN_EXE_linn"))
             .arg("--store")
             .arg(&self.store)
-            .args(["sync:pair", "--join", "--no-sync", "--json"])
+            .args(args)
             .env("XDG_RUNTIME_DIR", self.root.path())
             .env("HOME", self.root.path())
             .env("XDG_CONFIG_HOME", self.root.path().join("config"))
@@ -52,10 +59,13 @@ impl Fixture {
             .spawn()
             .unwrap();
         let mut stderr = child.stderr.take().unwrap();
-        let mut prompt = [0; 12];
-        stderr.read_exact(&mut prompt).unwrap();
-        assert_eq!(&prompt, b"Invitation: ");
-        master.write_all(format!("{token}\n").as_bytes()).unwrap();
+        let mut prompt = Vec::new();
+        while !prompt.ends_with(expected_prompt) {
+            let mut byte = [0];
+            stderr.read_exact(&mut byte).unwrap();
+            prompt.push(byte[0]);
+        }
+        master.write_all(format!("{answer}\n").as_bytes()).unwrap();
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(45);
         while child.try_wait().unwrap().is_none() {
             if std::time::Instant::now() > deadline {
@@ -142,7 +152,7 @@ fn unpaired_status_and_invalid_invitation_do_not_create_identity_or_database() {
     assert!(status["endpoint"].is_null());
     assert!(!fixture.store.exists());
     let invalid = fixture.run(
-        &["sync:pair", "--join", "-", "--json"],
+        &["sync:pair", "-y", "--join", "-", "--json"],
         Some("not-a-valid-invitation"),
     );
     assert_eq!(invalid.status.code(), Some(2));
@@ -194,6 +204,7 @@ fn failed_sync_reports_partial_durable_progress_and_retry_does_not_double_count(
     let invite = a.ok(
         &[
             "sync:pair",
+            "-y",
             "--service",
             service.trim_end_matches('/'),
             "--json",
@@ -203,6 +214,7 @@ fn failed_sync_reports_partial_durable_progress_and_retry_does_not_double_count(
     b.ok(
         &[
             "sync:pair",
+            "-y",
             "--join",
             invite["token"].as_str().unwrap(),
             "--no-sync",
@@ -254,6 +266,7 @@ fn joining_supports_arguments_prompt_first_sync_failure_and_self_revocation() {
     let invite = a.ok(
         &[
             "sync:pair",
+            "-y",
             "--service",
             service.trim_end_matches('/'),
             "--json",
@@ -263,6 +276,7 @@ fn joining_supports_arguments_prompt_first_sync_failure_and_self_revocation() {
     let output = b.run(
         &[
             "sync:pair",
+            "-y",
             "--join",
             invite["token"].as_str().unwrap(),
             "--sync",
@@ -288,10 +302,10 @@ fn joining_supports_arguments_prompt_first_sync_failure_and_self_revocation() {
     let revoked = b.ok(&["sync:revoke", endpoint, "--json"], None);
     assert_eq!(revoked["status"]["enabled"], false);
     assert_eq!(revoked["status"]["pending_leave"], false);
-    let invite = a.ok(&["sync:pair", "--json"], None);
+    let invite = a.ok(&["sync:pair", "-y", "--json"], None);
     a.ok(&["daemon:stop", "--json"], None);
     let output = c.run(
-        &["sync:pair", "--join", "--sync", "--json"],
+        &["sync:pair", "-y", "--join", "--sync", "--json"],
         Some(invite["token"].as_str().unwrap()),
     );
     assert_eq!(
@@ -307,7 +321,7 @@ fn joining_supports_arguments_prompt_first_sync_failure_and_self_revocation() {
     assert_eq!(c.ok(&["sync:status", "--json"], None)["enabled"], true);
     a.ok(&["sync:status", "--json"], None);
     assert_eq!(c.ok(&["sync", "--json"], None)["complete"], true);
-    let invite = a.ok(&["sync:pair", "--json"], None);
+    let invite = a.ok(&["sync:pair", "-y", "--json"], None);
     let output = d.prompt_join(invite["token"].as_str().unwrap());
     assert!(
         output.status.success(),
@@ -344,9 +358,9 @@ fn daemon_pairing_and_explicit_sync_merge_three_independent_stores() {
         .as_str()
         .unwrap()
         .to_owned();
-    let invite = a.ok(&["sync:pair", "--service", &service, "--json"], None);
+    let invite = a.ok(&["sync:pair", "-y", "--service", &service, "--json"], None);
     let token = invite["token"].as_str().unwrap();
-    let joined = b.ok(&["sync:pair", "--join", "-", "--json"], Some(token));
+    let joined = b.ok(&["sync:pair", "-y", "--join", "-", "--json"], Some(token));
     assert_eq!(joined["status"]["members"].as_array().unwrap().len(), 2);
     assert_ne!(
         a.ok(&["sync:status", "--json"], None)["endpoint"],
@@ -376,10 +390,10 @@ fn daemon_pairing_and_explicit_sync_merge_three_independent_stores() {
         "Original B remains private until an explicit sync."
     );
 
-    c.ok(&["sync:pair", "--service", &service, "--json"], None);
-    let invite = a.ok(&["sync:pair", "--json"], None);
+    c.ok(&["sync:pair", "-y", "--service", &service, "--json"], None);
+    let invite = a.ok(&["sync:pair", "-y", "--json"], None);
     let merged = c.ok(
-        &["sync:pair", "--join", "-", "--json"],
+        &["sync:pair", "-y", "--join", "-", "--json"],
         Some(invite["token"].as_str().unwrap()),
     );
     assert_eq!(merged["status"]["members"].as_array().unwrap().len(), 3);
@@ -406,7 +420,7 @@ fn daemon_pairing_and_explicit_sync_merge_three_independent_stores() {
             .iter()
             .any(|key| key == b_peer)
     );
-    let refreshed = c.ok(&["sync:pair", "--json"], None);
+    let refreshed = c.ok(&["sync:pair", "-y", "--json"], None);
     assert_eq!(refreshed["members"].as_array().unwrap().len(), 2);
     a.ok(&["daemon:stop", "--json"], None);
     let restored = a.ok(&["sync:status", "--json"], None);
@@ -423,9 +437,9 @@ fn daemon_pairing_and_explicit_sync_merge_three_independent_stores() {
         "Original B remains private until an explicit sync."
     );
     // Re-enrollment resumes a reset owner's transport before an immediate sync.
-    let invitation = a.ok(&["sync:pair", "--json"], None);
+    let invitation = a.ok(&["sync:pair", "-y", "--json"], None);
     let rejoined = b.ok(
-        &["sync:pair", "--join", "-", "--json"],
+        &["sync:pair", "-y", "--join", "-", "--json"],
         Some(invitation["token"].as_str().unwrap()),
     );
     assert_ne!(rejoined["status"]["endpoint"], b_peer);
@@ -454,6 +468,7 @@ fn one_member_approval_admits_and_merges_without_sync_or_online_peers() {
         peer.ok(
             &[
                 "sync:pair",
+                "-y",
                 "--service",
                 service.trim_end_matches('/'),
                 "--json",
@@ -465,22 +480,22 @@ fn one_member_approval_admits_and_merges_without_sync_or_online_peers() {
     a.ok(&["daemon:stop", "--json"], None);
     // The sole approver is already offline when its first invitation is redeemed.
     let admitted = b.ok(
-        &["sync:pair", "--join", "-", "--json"],
+        &["sync:pair", "-y", "--join", "-", "--json"],
         Some(invitation["token"].as_str().unwrap()),
     );
     assert_eq!(admitted["status"]["members"].as_array().unwrap().len(), 2);
     assert_eq!(admitted["status"]["enabled"], true);
     // A later member can approve another admission without the founder's participation.
-    let invitation = b.ok(&["sync:pair", "--json"], None);
+    let invitation = b.ok(&["sync:pair", "-y", "--json"], None);
     b.ok(&["daemon:stop", "--json"], None);
     let other = initialize(&c);
     d.ok(
-        &["sync:pair", "--join", "-", "--json"],
+        &["sync:pair", "-y", "--join", "-", "--json"],
         Some(other["token"].as_str().unwrap()),
     );
     d.ok(&["daemon:stop", "--json"], None);
     let merged = c.ok(
-        &["sync:pair", "--join", "-", "--json"],
+        &["sync:pair", "-y", "--join", "-", "--json"],
         Some(invitation["token"].as_str().unwrap()),
     );
     assert_eq!(merged["operation"], "paired");
@@ -520,6 +535,7 @@ fn offline_daemons_rediscover_changed_loopback_ports() {
     let invite = a.ok(
         &[
             "sync:pair",
+            "-y",
             "--service",
             service.trim_end_matches('/'),
             "--json",
@@ -527,7 +543,7 @@ fn offline_daemons_rediscover_changed_loopback_ports() {
         None,
     );
     b.ok(
-        &["sync:pair", "--join", "-", "--json"],
+        &["sync:pair", "-y", "--join", "-", "--json"],
         Some(invite["token"].as_str().unwrap()),
     );
     let history = a.ok(
@@ -662,6 +678,7 @@ fn offline_daemons_rediscover_changed_loopback_ports() {
             .run(
                 &[
                     "sync:pair",
+                    "-y",
                     "--service",
                     service.trim_end_matches('/'),
                     "--json"
@@ -673,6 +690,36 @@ fn offline_daemons_rediscover_changed_loopback_ports() {
     );
     assert!(unpaired.ok(&["sync:status", "--json"], None)["head"].is_null());
     drop(held);
+}
+
+#[test]
+fn pairing_confirmation_is_explicit_before_membership_mutation() {
+    let fixture = Fixture::new();
+    for args in [
+        vec!["sync:pair"],
+        vec!["sync:pair", "--join", "-", "--json"],
+    ] {
+        let output = fixture.run(&args, None);
+        assert_eq!(output.status.code(), Some(2));
+        assert!(String::from_utf8_lossy(&output.stderr).contains("pass -y"));
+        assert!(output.stdout.is_empty());
+        assert!(!fixture.store.exists());
+    }
+    for answer in ["", "n"] {
+        let output =
+            fixture.prompt_command(&["sync:pair"], b"Continue with pairing? [y/N] ", answer);
+        assert_eq!(output.status.code(), Some(2));
+        assert!(String::from_utf8_lossy(&output.stderr).contains("pairing cancelled"));
+        assert!(!fixture.store.exists());
+    }
+    let output = fixture.prompt_command(
+        &["sync:pair", "--join", "invalid-token", "--no-sync"],
+        b"Continue with pairing? [y/N] ",
+        "y",
+    );
+    assert_eq!(output.status.code(), Some(2));
+    assert!(!String::from_utf8_lossy(&output.stderr).contains("pairing cancelled"));
+    assert!(!fixture.store.exists());
 }
 
 #[test]

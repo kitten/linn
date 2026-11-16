@@ -97,12 +97,9 @@ pub(super) async fn run(
     if suspending {
         transport.release_gate();
     }
-    let result = result.map(|output| {
-        let invitation = matches!(output, crate::mesh::pairing::Output::Invitation { .. });
-        let mut reply = Reply::from(Value::Mesh(output));
-        if invitation { reply.warnings.push("This invitation grants access to the whole store and merges both meshes, including their offline members. It expires after ten minutes.".into()); }
-        reply
-    }).map_err(|error| crate::error::ApplicationError::new(error, mutating).into());
+    let result = result
+        .map(|output| Reply::from(Value::Mesh(output)))
+        .map_err(|error| crate::error::ApplicationError::new(error, mutating).into());
     (job, result)
 }
 

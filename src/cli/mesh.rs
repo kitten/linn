@@ -10,6 +10,12 @@ pub(super) struct PairArgs {
     #[arg(long, num_args = 0..=1, default_missing_value = "", conflicts_with = "cancel", help = "Join using a token argument, piped stdin, or an interactive prompt")]
     join: Option<String>,
     #[arg(
+        short = 'y',
+        long,
+        help = "Confirm whole-store invitation creation or redemption without prompting"
+    )]
+    yes: bool,
+    #[arg(
         long,
         conflicts_with = "no_sync",
         help = "Run the first sync after successful admission"
@@ -37,6 +43,43 @@ impl PairArgs {
             Some(false)
         } else {
             None
+        }
+    }
+    pub(super) fn cancel_context(&self) -> Option<String> {
+        self.cancel
+            .as_ref()
+            .map(|id| format!("Cancelled invitation ID: {id}"))
+    }
+    pub(super) fn needs_confirmation(&self) -> bool {
+        self.cancel.is_none()
+    }
+    pub(super) fn confirm(&self, enrolled: bool) -> Result<()> {
+        if !self.needs_confirmation() {
+            return Ok(());
+        }
+        eprintln!("{PAIR_NOTICE}");
+        if enrolled {
+            eprintln!(
+                "This store already belongs to a mesh. Pairing can invite another peer or merge meshes. For a copied store that must run alongside its original, use linn sync:reset-identity first; it removes local enrollment while preserving records and deletions."
+            );
+        }
+        if self.yes {
+            return Ok(());
+        }
+        if !std::io::stdin().is_terminal() {
+            return Err(Error::Invalid("pairing requires confirmation; pass -y to confirm when using piped input or running unattended".into()));
+        }
+        use std::io::BufRead;
+        eprint!("Continue with pairing? [y/N] ");
+        std::io::stderr().flush()?;
+        let mut answer = String::new();
+        std::io::stdin().lock().read_line(&mut answer)?;
+        if matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes") {
+            Ok(())
+        } else {
+            Err(Error::Invalid(
+                "pairing cancelled; no invitation created or redeemed".into(),
+            ))
         }
     }
     pub(super) fn resolve(self) -> Result<Command> {
@@ -131,15 +174,22 @@ pub(super) fn offer_sync() -> Result<bool> {
     if !std::io::stdin().is_terminal() {
         return Ok(false);
     }
-    eprint!("Admitted. Start the first sync now? [Y/n] ");
-    std::io::stderr().flush()?;
-    let mut answer = String::new();
-    std::io::stdin().lock().read_line(&mut answer)?;
-    Ok(!matches!(
-        answer.trim().to_ascii_lowercase().as_str(),
-        "n" | "no"
-    ))
+    loop {
+        eprint!("This store joined the mesh. Start the first sync now? [Y/n] ");
+        std::io::stderr().flush()?;
+        let mut answer = String::new();
+        if std::io::stdin().lock().read_line(&mut answer)? == 0 {
+            return Ok(false);
+        }
+        match answer.trim().to_ascii_lowercase().as_str() {
+            "" | "y" | "yes" => return Ok(true),
+            "n" | "no" => return Ok(false),
+            _ => eprintln!("Enter yes or no."),
+        }
+    }
 }
+
+const PAIR_NOTICE: &str = "An invitation authorizes merging both entire stores and their meshes, including offline members. Share it only with a trusted peer. Pairing does not itself transfer records.";
 
 #[derive(Default)]
 pub(super) struct ProgressRenderer {
@@ -301,7 +351,7 @@ pub(super) fn render(output: Output, json: bool) -> Result<()> {
         ..
     } = &output
     {
-        eprintln!("Admitted; initial sync failed: {error}. Retry with linn sync.");
+        eprintln!("Joined the mesh; initial sync failed: {error}. Retry with linn sync.");
     }
     if json {
         println!("{}", serde_json::to_string(&output)?);
@@ -315,9 +365,26 @@ pub(super) fn render(output: Output, json: bool) -> Result<()> {
             expires,
             members,
         } => {
-            eprintln!("Invitation {invitation}; expires at Unix time {expires}. Known members:");
+            eprintln!("{PAIR_NOTICE}");
+            let expiry = i64::try_from(expires)
+                .ok()
+                .and_then(|t| time::OffsetDateTime::from_unix_timestamp(t).ok())
+                .and_then(|t| {
+                    t.format(&time::format_description::well_known::Rfc3339)
+                        .ok()
+                })
+                .unwrap_or_else(|| format!("Unix time {expires}"));
+            eprintln!(
+                "Invitation ID: {invitation}\nExpires: {expiry} (single use)\nKnown peer IDs (store instances, not machines):"
+            );
             for member in members {
                 eprintln!("  {member}");
+            }
+            eprintln!(
+                "On the other installation, run linn sync:pair --join and paste the invitation token."
+            );
+            if std::io::stdout().is_terminal() {
+                println!("\nInvitation token:");
             }
             println!("{token}");
         }
@@ -392,14 +459,44 @@ pub(super) fn render(output: Output, json: bool) -> Result<()> {
             operation,
             status,
             initial_sync,
-            initial_sync_error: _,
+            initial_sync_error,
         } => {
-            println!("{operation}");
+            use crate::mesh::pairing::Change;
+            match operation {
+                Change::Paired => {
+                    println!("This store joined the mesh.");
+                    if initial_sync.is_none() && initial_sync_error.is_none() {
+                        println!(
+                            "Records have not synced yet. Run linn sync to exchange records and deletions."
+                        );
+                    }
+                }
+                Change::Revoked => println!(
+                    "Peer revoked from the mesh. Offline peers learn the revocation when they reconnect."
+                ),
+                Change::Left => {
+                    println!("This store's peer transport is disabled.");
+                    if status.pending_leave {
+                        println!(
+                            "Remote revocation is outstanding. Retry linn sync:leave when the service is available."
+                        );
+                    } else {
+                        println!("This store's peer ID has been revoked from the mesh.");
+                    }
+                }
+                Change::Cancelled => println!("Unused invitation cancelled."),
+                Change::IdentityReset => println!(
+                    "This store's identity and local enrollment were removed. Records and deletions were preserved. Enroll as a new peer with linn sync:pair."
+                ),
+            }
+            if let Some(endpoint) = status.endpoint {
+                println!("This store's peer ID: {endpoint}");
+            }
             if let Some(head) = status.head {
-                println!("Membership: {head}");
+                println!("Membership revision: {head}");
             }
             if let Some(report) = initial_sync {
-                render(Output::Synced(*report), false)?;
+                render_report(&report);
             }
         }
     }

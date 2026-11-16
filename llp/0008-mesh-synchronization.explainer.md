@@ -673,7 +673,23 @@ structured report without a second human completion summary. Applied-change
 counts describe this store's records and deletions, not mesh-wide transfers.
 Zero local changes must not be described as a mesh-wide no-op. Incomplete text
 reports name missing peer phases, typed failure categories and recovery actions,
-and explain durable partial progress.
+and explain durable partial progress. Membership-operation results explain the
+outcome, affected peer/invitation where available and whether a first sync ran.
+
+Creating or redeeming an invitation requires a notice that both entire stores
+and meshes, including offline members, can merge. Prompt with default no before
+reading a token or issuing a membership mutation. `-y` / `--yes` bypasses the
+prompt; noninteractive callers (including JSON and piped tokens) must pass it.
+Cancellation of an unused invitation does not require this prompt. Existing
+mesh enrollment is legitimate for invitations and merging; explain that fact.
+Suggest `sync:reset-identity` specifically for a copied store intended to run
+alongside its original, explaining that records and deletions survive.
+
+Invitation presentation labels invitation ID, known peer IDs and readable UTC
+expiry, explains single use and gives the join/paste next step. Label the token
+on terminal stdout; redirected stdout remains the raw token. JSON remains one
+typed result. Notices and instructions go to stderr. Peer IDs identify
+account-owned store instances, not machines.
 
 The public synchronization commands are:
 
