@@ -655,26 +655,13 @@ enrollment resumes passive transport on daemon restart. Uncertain membership
 proposals retry through explicit control operations, not startup. The daemon
 creates no OS boot service and does not wake sleeping hardware.
 
-`sync:status` remains local by default, explicitly marking remote reachability
-unknown. Optional `--check` tests transport connectivity to known remote peers,
-with at most eight concurrent checks and a ten-second probe deadline. Queued or
-unfinished peers remain unknown; a connection failure is reported as unreachable
-at check time. This is an authenticated endpoint transport snapshot, not proof
-of membership authorization or successful record exchange. No records transfer,
-no membership refresh is requested and no mesh job begins. Reachability results
-are returned only for checked status, as an optional JSON `reachability` map;
-ordinary status JSON is unchanged. The additional local check-status request is
-fenced by application compatibility 6; the mesh wire profile is unchanged.
-
-Sync progress is on stderr, deduplicated when unchanged, and updates a single
-line on terminals. Peer collection/distribution counts include this peer and
-show cohort denominators. Completion appears once on stdout; JSON retains the
-structured report without a second human completion summary. Applied-change
-counts describe this store's records and deletions, not mesh-wide transfers.
-Zero local changes must not be described as a mesh-wide no-op. Incomplete text
-reports name missing peer phases, typed failure categories and recovery actions,
-and explain durable partial progress. Membership-operation results explain the
-outcome, affected peer/invitation where available and whether a first sync ran.
+CLI presentation keeps colon-separated command names. Top-level help hides
+`sync:*` administration commands, except `sync:pair` when the selected store
+has no registered mesh. `sync -h` documents all of them; individual command
+help remains available. Determine enrollment through the daemon, never by
+opening SQL in the CLI. Missing stores need no daemon lookup. Bound help's
+lookup to two seconds; if enrollment cannot be determined, omit `sync:pair`
+from top-level help while retaining it in `sync -h`.
 
 Creating or redeeming an invitation requires a notice that both entire stores
 and meshes, including offline members, can merge. Prompt with default no before
@@ -690,6 +677,27 @@ expiry, explains single use and gives the join/paste next step. Label the token
 on terminal stdout; redirected stdout remains the raw token. JSON remains one
 typed result. Notices and instructions go to stderr. Peer IDs identify
 account-owned store instances, not machines.
+
+Sync progress is on stderr, deduplicated when unchanged, and updates a single
+line on terminals. Peer collection/distribution counts include this peer and
+show cohort denominators. Completion appears once on stdout; JSON retains the
+structured report without a second human completion summary. Applied-change
+counts describe this store's records and deletions, not mesh-wide transfers.
+Zero local changes must not be described as a mesh-wide no-op. Incomplete text
+reports name missing peer phases, typed failure categories and recovery actions,
+and explain durable partial progress. Membership-operation results explain the
+outcome, affected peer/invitation where available and whether a first sync ran.
+
+`sync:status` remains local by default, explicitly marking remote reachability
+unknown. Optional `--check` tests transport connectivity to known remote peers,
+with at most eight concurrent checks and a ten-second probe deadline. Queued or
+unfinished peers remain unknown; a connection failure is reported as unreachable
+at check time. This is an authenticated endpoint transport snapshot, not proof
+of membership authorization or successful record exchange. No records transfer,
+no membership refresh is requested and no mesh job begins. Reachability results
+are returned only for checked status, as an optional JSON `reachability` map;
+ordinary status JSON is unchanged. The additional local check-status request is
+fenced by application compatibility 6; the mesh wire profile is unchanged.
 
 The public synchronization commands are:
 

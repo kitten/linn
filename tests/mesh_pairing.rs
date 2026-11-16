@@ -723,6 +723,98 @@ fn pairing_confirmation_is_explicit_before_membership_mutation() {
 }
 
 #[test]
+fn help_discovers_sync_administration_without_creating_a_store() {
+    let fixture = Fixture::new();
+    for args in [vec!["--help"], vec!["-h"], vec!["help"]] {
+        let output = fixture.run(&args, None);
+        assert!(output.status.success());
+        let help = String::from_utf8(output.stdout).unwrap();
+        assert!(help.contains("sync:pair"));
+        for command in [
+            "sync:status",
+            "sync:revoke",
+            "sync:leave",
+            "sync:reset-identity",
+        ] {
+            assert!(!help.contains(command));
+        }
+        assert!(!fixture.store.exists());
+    }
+    let output = fixture.run(&["sync", "-h"], None);
+    assert!(output.status.success());
+    let help = String::from_utf8(output.stdout).unwrap();
+    for command in [
+        "sync:pair",
+        "sync:status",
+        "sync:revoke",
+        "sync:leave",
+        "sync:reset-identity",
+    ] {
+        assert!(help.contains(command));
+    }
+    let output = fixture.run(&["sync:pair", "-h"], None);
+    assert!(String::from_utf8(output.stdout).unwrap().contains("--yes"));
+    assert!(!fixture.store.exists());
+}
+
+#[test]
+fn enrolled_help_hides_pair_and_copied_store_hint_is_contextual() {
+    let fixture = Fixture::new();
+    tokio::runtime::Runtime::new().unwrap().block_on(async {
+        use linn::{
+            mesh::membership::{Acceptance, Action, Event, Proposal, endpoint, random_id},
+            storage::sync::Replica,
+        };
+        let store = Replica::open_private_mesh(&fixture.store).await.unwrap();
+        let identity = store
+            .mesh_create_identity("http://127.0.0.1:1")
+            .await
+            .unwrap();
+        let receipt = iroh::SecretKey::generate();
+        let receipt_key = endpoint(&receipt);
+        store.mesh_pin_receipt_key(&receipt_key).await.unwrap();
+        let proposal = Proposal::sign(
+            Event {
+                version: 1,
+                service: identity.service,
+                id: random_id(),
+                heads: vec![],
+                action: Action::Genesis {
+                    actor: endpoint(&identity.key),
+                    root: random_id(),
+                    receipt_key,
+                },
+            },
+            &[&identity.key],
+        )
+        .unwrap();
+        store
+            .mesh_accept(&Acceptance::sign(proposal, 1000, &receipt).unwrap())
+            .await
+            .unwrap();
+    });
+    let output = fixture.run(&["--help"], None);
+    assert!(output.status.success());
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("sync:pair"));
+    let output = fixture.run(&["sync:pair"], None);
+    assert_eq!(output.status.code(), Some(2));
+    let notice = String::from_utf8_lossy(&output.stderr);
+    assert!(notice.contains("already belongs to a mesh"));
+    assert!(notice.contains("copied store"));
+    assert!(notice.contains("sync:reset-identity"));
+    let output = fixture.run(&["sync:status"], None);
+    assert!(output.status.success());
+    let text = String::from_utf8_lossy(&output.stdout);
+    assert!(text.contains("This store's peer ID"));
+    assert!(text.contains("Membership revision"));
+    assert!(text.contains("store instances, not machines"));
+    let ordinary = fixture.ok(&["sync:status", "--json"], None);
+    assert!(ordinary.get("reachability").is_none());
+    let checked = fixture.ok(&["sync:status", "--check", "--json"], None);
+    assert!(checked["reachability"].is_object());
+}
+
+#[test]
 fn no_op_sync_has_one_completion_and_outline_failure_is_json() {
     let fixture = Fixture::new();
     let output = fixture.run(&["sync"], None);

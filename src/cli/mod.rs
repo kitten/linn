@@ -8,7 +8,7 @@ use crate::{
     retrieval::lexical::centered,
     storage::Call,
 };
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 use serde_json::json;
 use std::{
     io::{self},
@@ -38,6 +38,7 @@ enum Command {
     SyncPair(mesh::PairArgs),
     #[command(
         name = "sync:status",
+        hide = true,
         about = "Inspect local mesh enrollment without contacting peers"
     )]
     SyncStatus {
@@ -49,16 +50,19 @@ enum Command {
     },
     #[command(
         name = "sync:revoke",
+        hide = true,
         about = "Permanently revoke a peer by its full ID"
     )]
     SyncRevoke { peer: String },
     #[command(
         name = "sync:leave",
+        hide = true,
         about = "Disable local transport and revoke this endpoint when reachable"
     )]
     SyncLeave,
     #[command(
         name = "sync:reset-identity",
+        hide = true,
         about = "Reset a copied store's identity; preserve records and deletions"
     )]
     SyncReset,
@@ -80,7 +84,7 @@ enum Command {
     Import { file: String },
     #[command(
         about = "Collect and distribute records and deletions through the paired mesh",
-        after_help = "Pair with linn sync:pair. Each invocation runs one finite mesh job; automatic sync is deferred.\nPartial progress is durable. Retry interrupted jobs; use index:rebuild to repair incomplete publication."
+        after_help = "Sync administration (existing colon-separated commands):\n  linn sync:pair                  Create or redeem an invitation (-y confirms the notice)\n  linn sync:status [--check]      Inspect enrollment; optionally check peer transport reachability\n  linn sync:revoke <peer-id>      Permanently revoke a peer by its full ID\n  linn sync:leave                 Disable local transport and leave the mesh\n  linn sync:reset-identity        Remove a copied store's identity; preserve records and deletions\n\nPeer IDs identify store instances, not machines. Use each command with -h for details.\nEach invocation runs one finite mesh job; automatic sync is deferred.\nPartial progress is durable. Retry interrupted jobs; use index:rebuild to repair incomplete publication."
     )]
     Sync,
     #[command(
@@ -201,9 +205,57 @@ async fn enrollment(path: &std::path::Path) -> Result<Option<crate::mesh::pairin
         _ => Err(Error::Invalid("unexpected enrollment response".into())),
     }
 }
+async fn parse_args() -> Result<Args> {
+    let raw: Vec<_> = std::env::args_os().collect();
+    let command = Args::command();
+    match command.clone().try_get_matches_from(&raw) {
+        Ok(matches) => Ok(Args::from_arg_matches(&matches).expect("validated CLI arguments")),
+        Err(error) => {
+            if matches!(
+                error.kind(),
+                clap::error::ErrorKind::DisplayHelp
+                    | clap::error::ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
+            ) {
+                let mut probe = raw.clone();
+                let help_index = probe
+                    .iter()
+                    .rposition(|a| a == "--help" || a == "-h" || a == "help");
+                if help_index.is_none() {
+                    probe.push("sync:status".into());
+                }
+                if let Some(index) = help_index {
+                    probe[index] = "sync:status".into();
+                }
+                if let Ok(args) = Args::try_parse_from(probe) {
+                    let enrolled = if let Ok(path) = paths::store_path(args.store) {
+                        match tokio::time::timeout(
+                            std::time::Duration::from_secs(2),
+                            enrollment(&path),
+                        )
+                        .await
+                        {
+                            Ok(Ok(None)) => Some(false),
+                            Ok(Ok(Some(status))) => Some(status.head.is_some()),
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    };
+                    let mut command =
+                        command.mut_subcommand("sync:pair", |c| c.hide(enrolled != Some(false)));
+                    command.print_help()?;
+                    println!();
+                    std::process::exit(error.exit_code());
+                }
+            }
+            error.exit()
+        }
+    }
+}
+
 pub async fn run() -> Result<i32> {
     use crate::application::{AddOptions, Caller, Operation as Op};
-    let args = Args::parse();
+    let args = parse_args().await?;
     let path = paths::store_path(args.store)?;
     if matches!(args.command, Command::DaemonStatus | Command::DaemonStop) {
         let state =
