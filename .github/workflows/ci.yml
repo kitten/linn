@@ -39,6 +39,7 @@ jobs:
       - run: nix develop -c npm --prefix relay test
       - run: nix develop -c npm --prefix relay run test:interop
       - run: nix develop -c npm --prefix relay run test:heartbeats
+      - run: nix develop -c npm --prefix relay run test:backoff
       - run: nix develop -c python3 scripts/check_llp_refs.py
       - run: nix develop -c python3 -m unittest discover -s scripts -p 'test_*.py'
       - run: nix develop -c actionlint

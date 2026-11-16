@@ -17,8 +17,17 @@ with a fixed 15-second periodic Pong deadline. Received relay messages still
 postpone the idle timer. Immediate network-change checks retain the upstream
 RTT-based deadline. The write-stall timeout remains 15 seconds, independently
 of the heartbeat interval. A network-change ping resets the idle timer so an
-immediately due periodic check cannot replace its adaptive deadline. Reconnect
-backoff is unchanged.
+immediately due periodic check cannot replace its adaptive deadline.
+
+Repeated connection failures back off from one second to a nominal 60 seconds,
+with upstream additive jitter (up to two minutes at the cap). Queued outbound
+relay datagrams, including a full send queue, and network-change checks wake the
+wait after its one-second minimum pause. Wakeups coalesce without resetting the
+exponential schedule. Priority route queries remain responsive, cancellation
+stops the wait, and inactive non-home relays retire. A dropped established
+connection still gets an immediate first reconnect. Healthy connections stay open.
+`src/socket.rs` forwards explicit and detected network-change checks to the relay,
+including minor changes, so recovery can interrupt idle backoff.
 
 Linn configures `NetReportConfig::minimal()` and a single `RelayConfig` with
 `quic: None`: its Worker has no QUIC address-discovery listener. Direct peer IP

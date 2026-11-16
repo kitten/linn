@@ -841,8 +841,20 @@ recovery. Native clients send WebSocket control health pings after 30 seconds
 without an incoming relay message. Periodic checks allow 15 seconds for the
 matching Pong; immediate network-change checks retain Iroh's adaptive RTT-based
 deadline. Blocked relay writes retain their independent 15-second timeout.
-Reconnect backoff is unchanged. Silent idle connection loss can therefore take
+Silent idle connection loss can therefore take
 up to roughly 45 seconds to detect; active peer QUIC deadlines remain separate.
+Repeated failed relay connections use exponential backoff starting at one second
+and growing to a nominal 60 seconds, plus additive jitter up to another 60 seconds.
+Queued outbound relay traffic and detected or explicit network-change checks can
+interrupt this wait after the one-second minimum pause between failed attempts.
+Wakeups coalesce and do not reset the exponential schedule; a full outbound queue
+also signals demand before waiting for capacity. Priority route queries and
+cancellation remain responsive, and inactive non-home relays retire. Loss of an
+established connection retains its immediate first reconnect. Keep healthy relay
+connections open for incoming remote jobs. mDNS/direct local transport continues
+independently; discovery hints alone never suppress relay presence. During a quiet
+outage, incoming remote reachability can take up to roughly two minutes to recover
+if no local demand or network-change signal arrives.
 Do not suppress health checks or invent replies. Native endpoints configure the
 single service relay without QUIC address discovery, HTTPS latency probes or
 captive-portal checks. The Worker has no QUIC address-discovery listener, and a

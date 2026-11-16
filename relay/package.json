@@ -12,6 +12,7 @@
     "test": "node --test test/*.test.ts",
     "test:interop": "node scripts/interop.ts",
     "test:heartbeats": "node scripts/heartbeats.ts",
+    "test:backoff": "node scripts/backoff.ts",
     "test:control": "node scripts/control.ts",
     "test:offline": "node scripts/offline.ts",
     "dev": "wrangler dev --ip 127.0.0.1",

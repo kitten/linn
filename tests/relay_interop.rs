@@ -46,12 +46,127 @@ async fn selecting_one_relay_does_not_claim_a_successful_connection() -> TestRes
 #[tokio::test]
 #[ignore = "requires an explicitly configured Worker"]
 async fn native_iroh_relay_only_roundtrip() -> TestResult {
+    if std::env::var_os("LINN_RELAY_TEST_BACKOFF").is_some() {
+        return relay_demand_backoff().await;
+    }
     if std::env::var_os("LINN_RELAY_TEST_HEARTBEATS").is_some() {
         return relay_heartbeat_tolerance().await;
     }
     for peer_count in [2, 10] {
         relay_roundtrip(peer_count).await?;
     }
+    Ok(())
+}
+
+async fn relay_demand_backoff() -> TestResult {
+    async fn marker(directory: &std::path::Path, name: &str) -> TestResult {
+        timeout(Duration::from_secs(65), async {
+            while !directory.join(name).exists() {
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+        })
+        .await?;
+        Ok(())
+    }
+    async fn exchange(from: &Endpoint, address: EndpointAddr, to: &Endpoint) -> TestResult {
+        let (outgoing, incoming) = timeout(Duration::from_secs(3), async {
+            tokio::try_join!(
+                async { Ok::<_, Box<dyn Error + Send + Sync>>(from.connect(address, ALPN).await?) },
+                async {
+                    Ok::<_, Box<dyn Error + Send + Sync>>(
+                        to.accept().await.ok_or("no incoming connection")?.await?,
+                    )
+                },
+            )
+        })
+        .await??;
+        outgoing.close(0u32.into(), b"backoff check");
+        incoming.close(0u32.into(), b"backoff check");
+        Ok(())
+    }
+    let service = std::env::var("LINN_RELAY_TEST_URL")?;
+    let backend: RelayUrl = std::env::var("LINN_RELAY_BACKOFF_BACKEND")?.parse()?;
+    let directory = std::path::PathBuf::from(std::env::var("LINN_RELAY_BACKOFF_BARRIER")?);
+    let target_key = SecretKey::generate();
+    let keys: Vec<_> = (0..3).map(|_| SecretKey::generate()).collect();
+    let enrollment: Vec<_> = std::iter::once(&target_key).chain(keys.iter()).collect();
+    enroll(service.trim_end_matches('/'), &enrollment).await?;
+    let target = endpoint(target_key, backend).await?;
+    timeout(Duration::from_secs(10), target.online()).await?;
+    let local = Endpoint::builder(presets::Minimal)
+        .alpns(vec![ALPN.to_vec()])
+        .clear_address_lookup()
+        .relay_mode(RelayMode::Disabled)
+        .bind()
+        .await?;
+    let port = local
+        .bound_sockets()
+        .iter()
+        .find(|a| a.is_ipv4())
+        .ok_or("no IPv4 socket")?
+        .port();
+    for (mode, key) in ["traffic", "network", "cancel"].into_iter().zip(keys) {
+        let relay: RelayUrl =
+            std::env::var(format!("LINN_RELAY_BACKOFF_{}", mode.to_uppercase()))?.parse()?;
+        let client = Endpoint::builder(presets::Minimal)
+            .secret_key(key)
+            .alpns(vec![ALPN.to_vec()])
+            .clear_address_lookup()
+            .relay_mode(RelayMode::Custom(RelayMap::from_iter([RelayConfig::new(
+                relay.clone(),
+                None,
+            )])))
+            .net_report_config(NetReportConfig::minimal())
+            .bind()
+            .await?;
+        let outcome = async {
+            marker(&directory, &format!("{mode}-ready")).await?;
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            assert!(
+                !client
+                    .home_relay_status()
+                    .get()
+                    .iter()
+                    .any(|s| s.is_connected())
+            );
+            if mode == "cancel" {
+                return Ok::<_, Box<dyn Error + Send + Sync>>(());
+            }
+            // Direct local transport must stay usable during a long relay backoff.
+            exchange(
+                &client,
+                EndpointAddr::new(local.id())
+                    .with_ip_addr((std::net::Ipv4Addr::LOCALHOST, port).into()),
+                &local,
+            )
+            .await?;
+            assert!(
+                !client
+                    .home_relay_status()
+                    .get()
+                    .iter()
+                    .any(|s| s.is_connected())
+            );
+            if mode == "traffic" {
+                exchange(
+                    &client,
+                    EndpointAddr::new(target.id()).with_relay_url(relay),
+                    &target,
+                )
+                .await?;
+            } else {
+                client.network_change().await;
+                timeout(Duration::from_secs(3), client.online()).await?;
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+            Ok(())
+        }
+        .await;
+        timeout(Duration::from_secs(1), client.close()).await?;
+        outcome?;
+    }
+    target.close().await;
+    local.close().await;
     Ok(())
 }
 

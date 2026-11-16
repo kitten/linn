@@ -1664,7 +1664,6 @@ impl Actor {
             if let Err(err) = self.transports_network_change.rebind() {
                 warn!("failed to rebind transports: {err:?}");
             }
-            self.transports_network_change.check_relay_connection();
 
             #[cfg(not(wasm_browser))]
             self.sock.dns_resolver.reset();
@@ -1672,6 +1671,7 @@ impl Actor {
         } else {
             self.re_stun(UpdateReason::LinkChangeMinor);
         }
+        self.transports_network_change.check_relay_connection();
 
         if self.has_usable_network() {
             // This is considered a usable network change, propagate it to the QUIC stack
@@ -1789,6 +1789,7 @@ impl Actor {
     async fn handle_actor_message(&mut self, msg: ActorMessage) {
         match msg {
             ActorMessage::NetworkChange => {
+                self.transports_network_change.check_relay_connection();
                 self.network_monitor.network_change().await.ok();
             }
             ActorMessage::RelayMapChange => {

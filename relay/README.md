@@ -21,6 +21,7 @@ nix develop -c npm --prefix relay run build
 nix develop -c npm --prefix relay test
 nix develop -c npm --prefix relay run test:interop
 nix develop -c npm --prefix relay run test:heartbeats
+nix develop -c npm --prefix relay run test:backoff
 nix develop -c npm --prefix relay run test:control
 nix develop -c npm --prefix relay run test:offline
 ```
@@ -35,6 +36,8 @@ development test; the packaged Linn CLI never requires Node or Wrangler.
 The heartbeat runner forwards real workerd control Pongs through a local TCP
 proxy, delays one response and discards another, checking idle cadence,
 tolerance and recovery without synthetic replies.
+The backoff runner rejects relay upgrades until retries slow down, then checks
+direct local work, prompt traffic/network wakeups and cancellation.
 
 The control runner checks native/Worker membership interoperability and detached
 CLI pairing, explicit record exchange and three-store merging. Each daemon has
@@ -127,6 +130,10 @@ QUIC session. Native clients use WebSocket control heartbeats, answered by the r
 waking the coordinator. Idle health checks run after 30 seconds without incoming
 relay traffic and allow 15 seconds for the matching Pong. Network-change checks
 retain adaptive deadlines; blocked relay writes still expire after 15 seconds.
+Repeated failed connections back off to a nominal minute plus jitter (up to two
+minutes). Outbound relay demand and network-change checks wake retries after a
+one-second minimum pause without resetting the backoff. Healthy sockets remain
+connected for incoming jobs; local discovery and direct transfers remain usable.
 The coordinator retains earlier
 alarms across acknowledgements and reconciles deadlines when they fire, allowing
 one trailing wake after traffic instead of per-checkpoint alarm writes. Application

@@ -55,7 +55,7 @@ use n0_future::{
 };
 use n0_watcher::Watchable;
 use netwatch::interfaces;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{Notify, mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 use tracing::{Instrument, Level, debug, error, event, info, info_span, instrument, trace, warn};
 use url::Url;
@@ -77,6 +77,9 @@ const PERIODIC_PING_TIMEOUT: Duration = Duration::from_secs(15);
 
 /// Bound blocked writes independently of the idle health-check interval.
 const SEND_TIMEOUT: Duration = Duration::from_secs(15);
+
+/// Minimum pause between failed attempts, even when more work arrives.
+const RECONNECT_MIN_DELAY: Duration = Duration::from_secs(1);
 
 /// Number of datagrams which can be sent to the relay server in one batch.
 ///
@@ -139,6 +142,7 @@ struct ActiveRelayActor {
     relay_datagrams_recv: mpsc::Sender<RelayRecvDatagram>,
     /// Channel on which we queue packets to send to the relay.
     relay_datagrams_send: mpsc::Receiver<RelaySendItem>,
+    reconnect_demand: Arc<Notify>,
 
     // Other actor state.
     /// The relay server for this actor.
@@ -199,6 +203,7 @@ struct ActiveRelayActorOptions {
     prio_inbox_: mpsc::Receiver<ActiveRelayPrioMessage>,
     inbox: mpsc::Receiver<ActiveRelayMessage>,
     relay_datagrams_send: mpsc::Receiver<RelaySendItem>,
+    reconnect_demand: Arc<Notify>,
     relay_datagrams_recv: mpsc::Sender<RelayRecvDatagram>,
     connection_opts: RelayConnectionOptions,
     stop_token: CancellationToken,
@@ -271,6 +276,7 @@ impl ActiveRelayActor {
             prio_inbox_: prio_inbox,
             inbox,
             relay_datagrams_send,
+            reconnect_demand,
             relay_datagrams_recv,
             connection_opts,
             stop_token,
@@ -283,6 +289,7 @@ impl ActiveRelayActor {
             inbox,
             relay_datagrams_recv,
             relay_datagrams_send,
+            reconnect_demand,
             url,
             relay_client_builder,
             is_home_relay: false,
@@ -359,7 +366,7 @@ impl ActiveRelayActor {
         debug!("exiting");
     }
 
-    /// Waits out a reconnect backoff delay while still answering priority messages.
+    /// Waits out a reconnect delay, waking for queued traffic or network changes.
     ///
     /// Other active relays may query [`ActiveRelayPrioMessage::HasEndpointRoute`] on this
     /// relay while it is backing off, e.g. when [`RelayActor`] is looking for an existing
@@ -367,10 +374,13 @@ impl ActiveRelayActor {
     /// disconnected relay cannot have an endpoint route) keeps that lookup from stalling
     /// for however long is left of this relay's own unrelated backoff.
     ///
-    /// Returns `false` if the actor should shut down instead of retrying.
+    /// Wakeups coalesce and do not reset the exponential backoff. Failed attempts
+    /// remain at least one second apart. Returns `false` on shutdown or inactivity.
     async fn sleep_backoff(&mut self, delay: Duration) -> bool {
         let sleep = time::sleep(delay);
-        tokio::pin!(sleep);
+        let earliest_retry = time::sleep(RECONNECT_MIN_DELAY);
+        tokio::pin!(sleep, earliest_retry);
+        let mut demanded = false;
         loop {
             tokio::select! {
                 biased;
@@ -378,6 +388,9 @@ impl ActiveRelayActor {
                     debug!("Shutdown.");
                     return false;
                 }
+                _ = &mut earliest_retry, if demanded => return true,
+                _ = &mut sleep => return true,
+                _ = &mut self.inactive_timeout, if !self.is_home_relay => return false,
                 msg = self.prio_inbox.recv() => {
                     let Some(msg) = msg else {
                         warn!("Priority inbox closed, shutdown.");
@@ -389,15 +402,32 @@ impl ActiveRelayActor {
                         }
                     }
                 }
-                _ = &mut sleep => return true,
+                msg = self.inbox.recv() => {
+                    let Some(msg) = msg else { return false; };
+                    match msg {
+                        ActiveRelayMessage::CheckConnection { .. } => demanded = true,
+                        ActiveRelayMessage::SetHomeRelay(is_home) => {
+                            demanded |= is_home && !self.is_home_relay;
+                            self.set_home_relay(is_home);
+                        }
+                        #[cfg(test)]
+                        ActiveRelayMessage::GetLocalAddr(sender) => { sender.send(None).ok(); }
+                        #[cfg(test)]
+                        ActiveRelayMessage::PingServer(sender) => { drop(sender); }
+                    }
+                }
+                _ = self.reconnect_demand.notified(), if !demanded => {
+                    self.reset_inactive_timeout();
+                    demanded = true;
+                }
             }
         }
     }
 
     fn build_backoff() -> impl Backoff {
         ExponentialBuilder::new()
-            .with_min_delay(Duration::from_millis(10))
-            .with_max_delay(Duration::from_secs(16))
+            .with_min_delay(RECONNECT_MIN_DELAY)
+            .with_max_delay(Duration::from_secs(60))
             .with_jitter()
             .without_max_times()
             .build()
@@ -410,6 +440,9 @@ impl ActiveRelayActor {
     /// be retried with a backoff.
     #[allow(clippy::result_large_err)]
     async fn run_once(&mut self) -> Result<(), RelayConnectionError> {
+        // This attempt serves already queued work; only newer demand should
+        // shorten a later backoff. Notify retains at most one pending wakeup.
+        let _ = n0_future::future::now_or_never(self.reconnect_demand.notified());
         self.my_relay
             .set_status(&self.url, RelayConnectionState::Connecting);
         let client = match self.run_dialing().instrument(info_span!("dialing")).await {
@@ -1215,16 +1248,23 @@ impl RelayActor {
             .active_relay_handle_for_endpoint(&item.url, &item.remote_endpoint)
             .await;
         match handle.datagrams_send_queue.try_send(item) {
-            Ok(()) => None,
+            Ok(()) => {
+                handle.reconnect_demand.notify_one();
+                None
+            }
             Err(mpsc::error::TrySendError::Closed(_)) => {
                 warn!(?url, "Dropped datagram(s): ActiveRelayActor closed.");
                 None
             }
             Err(mpsc::error::TrySendError::Full(item)) => {
+                handle.reconnect_demand.notify_one();
                 let sender = handle.datagrams_send_queue.clone();
+                let reconnect_demand = handle.reconnect_demand.clone();
                 let fut = async move {
                     if sender.send(item).await.is_err() {
                         warn!(?url, "Dropped datagram(s): ActiveRelayActor closed.");
+                    } else {
+                        reconnect_demand.notify_one();
                     }
                 };
                 Some(fut)
@@ -1364,11 +1404,13 @@ impl RelayActor {
         let (prio_inbox_tx, prio_inbox_rx) = mpsc::channel(32);
         let (inbox_tx, inbox_rx) = mpsc::channel(64);
         let span = info_span!("active-relay", %url);
+        let reconnect_demand = Arc::new(Notify::new());
         let opts = ActiveRelayActorOptions {
             url,
             prio_inbox_: prio_inbox_rx,
             inbox: inbox_rx,
             relay_datagrams_send: send_datagram_rx,
+            reconnect_demand: reconnect_demand.clone(),
             relay_datagrams_recv: self.relay_datagram_recv_queue.clone(),
             connection_opts,
             stop_token: self.cancel_token.child_token(),
@@ -1386,6 +1428,7 @@ impl RelayActor {
             prio_inbox_addr: prio_inbox_tx,
             inbox_addr: inbox_tx,
             datagrams_send_queue: send_datagram_tx,
+            reconnect_demand,
         };
         self.log_active_relay();
         handle
@@ -1496,6 +1539,7 @@ struct ActiveRelayHandle {
     prio_inbox_addr: mpsc::Sender<ActiveRelayPrioMessage>,
     inbox_addr: mpsc::Sender<ActiveRelayMessage>,
     datagrams_send_queue: mpsc::Sender<RelaySendItem>,
+    reconnect_demand: Arc<Notify>,
 }
 
 /// A single datagram received from a relay server.
@@ -1583,6 +1627,7 @@ mod tests {
             prio_inbox_: prio_inbox_rx,
             inbox: inbox_rx,
             relay_datagrams_send,
+            reconnect_demand: Default::default(),
             relay_datagrams_recv,
             connection_opts: RelayConnectionOptions {
                 secret_key,
@@ -1948,6 +1993,7 @@ mod tests {
             prio_inbox_: prio_inbox_rx,
             inbox: inbox_rx,
             relay_datagrams_send: send_datagram_rx,
+            reconnect_demand: Default::default(),
             relay_datagrams_recv: recv_datagram_tx,
             connection_opts: RelayConnectionOptions {
                 secret_key,
@@ -1973,7 +2019,7 @@ mod tests {
         // Query the actor while it waits out the backoff delay. The reply must
         // arrive well before the delay elapses; before the backoff wait
         // serviced the priority inbox, this reply only arrived after the
-        // remaining backoff delay (up to 16s).
+        // remaining backoff delay.
         let (tx, rx) = oneshot::channel();
         prio_inbox_tx
             .send(ActiveRelayPrioMessage::HasEndpointRoute(peer, tx))
