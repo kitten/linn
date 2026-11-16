@@ -33,7 +33,7 @@ enum Command {
     #[command(
         name = "sync:pair",
         about = "Create or redeem a whole-store mesh invitation",
-        after_help = "Invitations authorize merging both entire stores and their meshes, including offline members.\nUse --join with a token, piped stdin, or a terminal prompt. Admission is independent of the optional first sync. Use --sync or --no-sync to choose explicitly."
+        after_help = "Service relays cannot read your private notes or data: transfers are end-to-end encrypted between your devices.\n\nInvitations authorize merging both entire stores and their meshes, including offline members.\nUse --join with a token, piped stdin, or a terminal prompt. Admission is independent of the optional first sync. Use --sync or --no-sync to choose explicitly."
     )]
     SyncPair(mesh::PairArgs),
     #[command(
