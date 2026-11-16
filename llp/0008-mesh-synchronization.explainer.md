@@ -674,13 +674,14 @@ alongside its original, explaining that records and deletions survive.
 
 Invitation presentation labels invitation ID, known peer IDs and readable UTC
 expiry, explains single use and gives the join/paste next step. Label the token
-on terminal stdout; redirected stdout remains the raw token. JSON remains one
+only on human-terminal stdout under LLP 0009#presentation-policy; plain
+stdout remains the raw token. JSON remains one
 typed result. Notices and instructions go to stderr. Peer IDs identify
 account-owned store instances, not machines.
 
-Sync progress is on stderr, deduplicated when unchanged, and updates a single
-line on terminals. Peer collection/distribution counts include this peer and
-show cohort denominators. Completion appears once on stdout; JSON retains the
+Sync progress uses stderr and the shared presentation/cleanup rules in
+LLP 0009#transient-progress. Peer collection/distribution counts include this peer
+and show cohort denominators. Completion appears once on stdout; JSON retains the
 structured report without a second human completion summary. Applied-change
 counts describe this store's records and deletions, not mesh-wide transfers.
 Zero local changes must not be described as a mesh-wide no-op. Incomplete text

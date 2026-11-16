@@ -10,3 +10,4 @@ The LLP corpus is the self-contained specification:
 - [0005: Evaluation](../llp/0005-evaluation.explainer.md)
 - [0007: Background runtime](../llp/0007-background-runtime.guide.md)
 - [0008: Replication contracts and mesh synchronization plan](../llp/0008-mesh-synchronization.explainer.md)
+- [0009: CLI presentation](../llp/0009-cli-presentation.explainer.md)

@@ -3,7 +3,7 @@
 **Type:** Explainer\
 **Status:** Active\
 **Systems:** CLI, Paths, Packaging\
-**Related:** LLP 0000, LLP 0001, LLP 0002, LLP 0003, LLP 0005, LLP 0008, LLP 0007
+**Related:** LLP 0000, LLP 0001, LLP 0002, LLP 0003, LLP 0005, LLP 0008, LLP 0007, LLP 0009
 
 ## Runtime
 
@@ -55,6 +55,12 @@ peer reachability checks. Write-command help describes display labels, UTC expir
 timestamps and close reasons/replacement references without changing validation.
 A non-current outline returns exit 1 with contextual text or
 `{"status":"not_current","entries":[]}` under `--json`.
+
+## Terminal presentation
+
+[LLP 0009](0009-cli-presentation.explainer.md) defines the shared presentation
+policy, human terminal hierarchy, plain/JSON byte contracts and transient progress.
+Command semantics and stdout/stderr routing remain defined here.
 
 ## Command structure
 

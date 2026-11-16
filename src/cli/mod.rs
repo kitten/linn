@@ -3,6 +3,7 @@ mod bundle;
 mod listing;
 mod mesh;
 pub mod paths;
+mod presentation;
 use crate::{
     error::{Error, Result},
     retrieval::lexical::centered,
@@ -245,7 +246,8 @@ fn root_help(raw: &[std::ffi::OsString]) -> bool {
 
 async fn parse_args() -> Result<Args> {
     let raw: Vec<_> = std::env::args_os().collect();
-    let command = Args::command();
+    let policy = presentation::current();
+    let command = Args::command().color(clap::ColorChoice::Never);
     match command.clone().try_get_matches_from(&raw) {
         Ok(matches) => Ok(Args::from_arg_matches(&matches).expect("validated CLI arguments")),
         Err(error) => {
@@ -283,12 +285,33 @@ async fn parse_args() -> Result<Args> {
                     };
                     let mut command =
                         command.mut_subcommand("sync:pair", |c| c.hide(enrolled != Some(false)));
+                    command = command.color(if policy.out.0 {
+                        clap::ColorChoice::Always
+                    } else {
+                        clap::ColorChoice::Never
+                    });
                     command.print_help()?;
                     println!();
                     std::process::exit(error.exit_code());
                 }
             }
-            error.exit()
+            let styled = if error.use_stderr() {
+                policy.err.0
+            } else {
+                policy.out.0
+            };
+            let rendered = error.render();
+            let text = if styled {
+                rendered.ansi().to_string()
+            } else {
+                rendered.to_string()
+            };
+            if error.use_stderr() {
+                eprint!("{text}");
+            } else {
+                print!("{text}");
+            }
+            std::process::exit(error.exit_code())
         }
     }
 }
@@ -296,6 +319,7 @@ async fn parse_args() -> Result<Args> {
 pub async fn run() -> Result<i32> {
     use crate::application::{AddOptions, Caller, Operation as Op};
     let args = parse_args().await?;
+    let style = presentation::current().out;
     let path = paths::store_path(args.store)?;
     if matches!(args.command, Command::DaemonStatus | Command::DaemonStop) {
         let state =
@@ -303,14 +327,18 @@ pub async fn run() -> Result<i32> {
         if args.json {
             println!("{}", serde_json::to_value(&state)?);
         } else {
-            println!("Store: {}", path.display());
+            println!("{} {}", style.title("Store:"), path.display());
             if let Some(runtime) = &state.runtime {
-                println!("Linn release: {}", runtime.release);
+                println!("{} {}", style.title("Linn release:"), runtime.release);
             }
             match state.pid.filter(|_| state.running) {
-                Some(pid) => println!("Background process: running (PID {pid})."),
+                Some(pid) => println!(
+                    "{} running (PID {pid}).",
+                    style.title("Background process:")
+                ),
                 None => println!(
-                    "Background process: {}.",
+                    "{} {}.",
+                    style.title("Background process:"),
                     if state.running { "running" } else { "stopped" }
                 ),
             }
@@ -450,7 +478,11 @@ pub async fn run() -> Result<i32> {
                 && !matches!(&e, Error::Application(error)
             if matches!(error.code, crate::error::ErrorCode::Schema)) =>
         {
-            eprintln!("Index damaged: {e}");
+            progress.finish();
+            eprintln!(
+                "{} {e}",
+                presentation::current().err.error("Index damaged:")
+            );
             return Ok(3);
         }
         Err(e) => {
@@ -474,7 +506,7 @@ pub async fn run() -> Result<i32> {
         println!("{context}");
     }
     for warning in reply.warnings {
-        eprintln!("{warning}");
+        eprintln!("{}", presentation::current().err.warning(&warning));
     }
     if let Some(mut output) = reply.output {
         bundle::write_output(&mut output, output_path)?;
@@ -507,6 +539,7 @@ pub async fn run() -> Result<i32> {
 }
 fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
     use crate::application::Value;
+    let style = presentation::current().out;
     match value {
         Value::Search(page) => {
             let Some(call) = &page.call else {
@@ -516,7 +549,7 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
                         json!({"status":"nothing_qualified","cards":[],"more":false})
                     );
                 } else {
-                    println!("No more results for this search.");
+                    println!("{}", style.quiet("No more results for this search."));
                 }
                 return Ok(1);
             };
@@ -529,9 +562,12 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
             } else {
                 print_call(&page, call);
                 if let Some(token) = page.cursor {
-                    println!("more: linn search:more {token}");
+                    println!(
+                        "{}",
+                        style.quiet(&format!("more: linn search:more {token}"))
+                    );
                 } else {
-                    println!("No more results for this search.");
+                    println!("{}", style.quiet("No more results for this search."));
                 }
             }
             return Ok(if call.cards.is_empty() { 1 } else { 0 });
@@ -548,7 +584,7 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
             } else {
                 println!(
                     "{}{}",
-                    s.label,
+                    style.title(&s.label),
                     if s.heading.is_empty() {
                         String::new()
                     } else {
@@ -556,10 +592,16 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
                     }
                 );
                 print!("{}", s.text);
+                if style.0 && !s.text.ends_with('\n') {
+                    println!();
+                }
                 if s.truncated {
                     println!(
-                        "… ({} more characters; --all to print the rest)",
-                        s.characters - 1500
+                        "{}",
+                        style.quiet(&format!(
+                            "… ({} more characters; --all to print the rest)",
+                            s.characters - 1500
+                        ))
                     );
                 }
             }
@@ -578,16 +620,20 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
                 println!("{}", json!({"cards":cards}));
             } else {
                 for (i, c) in cards.iter().enumerate() {
+                    if i > 0 {
+                        style.gap();
+                    }
+                    let heading = if c.heading.is_empty() {
+                        "(document start)"
+                    } else {
+                        &c.heading
+                    };
                     println!(
-                        "[o{}] {}\n    {}\n    fetch {}",
-                        i + 1,
-                        if c.heading.is_empty() {
-                            "(document start)"
-                        } else {
-                            &c.heading
-                        },
-                        c.text,
-                        c.fetch.as_deref().unwrap()
+                        "{} {}\n    {}\n    {}",
+                        style.accent(&format!("[o{}]", i + 1)),
+                        style.title(heading),
+                        style.excerpt(&c.text),
+                        style.quiet(&format!("fetch {}", c.fetch.as_deref().unwrap()))
                     );
                 }
             }
@@ -598,25 +644,37 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
             if json_output {
                 println!("{}", json!({"records":records,"next":next}));
             } else {
-                for r in records {
-                    println!(
-                        "{}  {}  created: {}  expires: {}\n  {}",
+                for (i, r) in records.into_iter().enumerate() {
+                    let created = if r.created.is_empty() {
+                        "unknown"
+                    } else {
+                        &r.created
+                    };
+                    let metadata = format!(
+                        "{}  {}  created: {}  expires: {}",
                         r.record,
                         r.kind,
-                        if r.created.is_empty() {
-                            "unknown"
-                        } else {
-                            &r.created
-                        },
-                        r.stale_after.as_deref().unwrap_or("never"),
-                        r.label.replace(['\n', '\r', '\t'], " ")
+                        created,
+                        r.stale_after.as_deref().unwrap_or("never")
                     );
+                    let label = r.label.replace(['\n', '\r', '\t'], " ");
+                    if style.0 {
+                        if i > 0 {
+                            style.gap();
+                        }
+                        println!("{}\n  {}", style.title(&label), style.quiet(&metadata));
+                    } else {
+                        println!("{metadata}\n  {label}");
+                    }
                 }
                 if empty {
                     println!("No records.");
                 }
                 if let Some(next) = next {
-                    println!("Next: linn list --cursor {next}");
+                    println!(
+                        "{}",
+                        style.quiet(&format!("Next: linn list --cursor {next}"))
+                    );
                 }
             }
             return Ok(if empty { 1 } else { 0 });
@@ -625,28 +683,28 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
             if json_output {
                 println!("{}", json!({"record":id}));
             } else {
-                println!("{id}");
+                println!("{}", style.title(&id));
             }
         }
         Value::Forgotten(id) => {
             if json_output {
                 println!("{}", json!({"forgotten":id}));
             } else {
-                println!("Forgotten: {id}");
+                println!("{} {id}", style.success("Forgotten:"));
             }
         }
         Value::Checked => {
             if json_output {
                 println!("{}", json!({"integrity":"ok"}));
             } else {
-                println!("Index integrity: ok");
+                println!("{} ok", style.success("Index integrity:"));
             }
         }
         Value::Rebuilt => {
             if json_output {
                 println!("{}", json!({"rebuilt":true}));
             } else {
-                println!("Index rebuilt.");
+                println!("{}", style.success("Index rebuilt."));
             }
         }
         Value::Exported => {}
@@ -655,8 +713,10 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
                 println!("{}", serde_json::to_string(&c)?);
             } else {
                 println!(
-                    "Import complete: {} record/deletion changes applied; {} items already present.",
-                    c.changed, c.unchanged
+                    "{} {} record/deletion changes applied; {} items already present.",
+                    style.success("Import complete:"),
+                    c.changed,
+                    c.unchanged
                 );
             }
         }
@@ -676,23 +736,34 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
     Ok(0)
 }
 fn print_call(store: &crate::application::SearchPage, call: &Call) {
+    let style = presentation::current().out;
     if call.cards.is_empty() {
         println!("Nothing qualified.");
     }
     for (i, c) in call.cards.iter().enumerate() {
+        if i > 0 {
+            style.gap();
+        }
         let r = &store.records[&c.record];
-        println!(
-            "[{}] {}{}{}\n    {}\n    fetch {}",
-            i + 1,
+        let title = format!(
+            "{}{}{}",
             r.label,
             if r.kind == "doc" { " (doc)" } else { "" },
             if c.heading.is_empty() {
                 String::new()
             } else {
                 format!(" — {}", c.heading)
-            },
-            c.text,
-            c.fetch.as_deref().expect("application fetch reference")
+            }
+        );
+        println!(
+            "{} {}\n    {}\n    {}",
+            style.accent(&format!("[{}]", i + 1)),
+            style.title(&title),
+            style.excerpt(&c.text),
+            style.quiet(&format!(
+                "fetch {}",
+                c.fetch.as_deref().expect("application fetch reference")
+            ))
         );
     }
     for (title, prefix, list) in [
@@ -700,11 +771,22 @@ fn print_call(store: &crate::application::SearchPage, call: &Call) {
         ("Near misses (not results):", "h", &call.hints),
     ] {
         if !list.is_empty() {
-            println!("{title}");
+            style.gap();
+            println!(
+                "{}",
+                if prefix == "h" {
+                    style.warning(title)
+                } else {
+                    style.quiet(title)
+                }
+            );
             for (i, p) in list.iter().enumerate() {
+                if i > 0 {
+                    style.gap();
+                }
                 let r = &store.records[&p.record];
-                println!(
-                    "[{prefix}{}] {}{}{}\n    {}{}\n    fetch {}",
+                let title = format!(
+                    "[{prefix}{}] {}{}{}",
                     i + 1,
                     p.label,
                     if r.kind == "doc" { " (doc)" } else { "" },
@@ -712,22 +794,30 @@ fn print_call(store: &crate::application::SearchPage, call: &Call) {
                         String::new()
                     } else {
                         format!(" — {}", p.heading)
-                    },
-                    if prefix == "h" {
-                        format!(
-                            "matched: {}; missing: {}\n    ",
-                            p.matched.join(", "),
-                            if p.missing.is_empty() {
-                                "-".into()
-                            } else {
-                                p.missing.join(", ")
-                            }
-                        )
-                    } else {
-                        String::new()
-                    },
-                    centered(&p.excerpt, &[]),
-                    p.fetch.as_deref().expect("application fetch reference")
+                    }
+                );
+                let matches = if prefix == "h" {
+                    format!(
+                        "matched: {}; missing: {}\n    ",
+                        p.matched.join(", "),
+                        if p.missing.is_empty() {
+                            "-".into()
+                        } else {
+                            p.missing.join(", ")
+                        }
+                    )
+                } else {
+                    String::new()
+                };
+                println!(
+                    "{}\n    {}{}\n    {}",
+                    style.title(&title),
+                    matches,
+                    style.excerpt(&centered(&p.excerpt, &[])),
+                    style.quiet(&format!(
+                        "fetch {}",
+                        p.fetch.as_deref().expect("application fetch reference")
+                    ))
                 );
             }
         }
@@ -736,6 +826,11 @@ fn print_call(store: &crate::application::SearchPage, call: &Call) {
 
 fn pointer_json(pointers: &[crate::storage::Pointer]) -> Vec<serde_json::Value> {
     pointers.iter().enumerate().map(|(i,p)|{json!({"n":i+1,"record":p.record,"label":p.label,"heading":p.heading,"excerpt":p.excerpt,"fetch":p.fetch,"matched":p.matched,"missing":p.missing})}).collect()
+}
+
+/// Print a command failure using the same stderr policy as help and progress.
+pub fn report_error(error: &crate::error::Error) {
+    eprintln!("{} {error}", presentation::current().err.error("linn:"));
 }
 
 #[cfg(test)]

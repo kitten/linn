@@ -1,0 +1,289 @@
+#![cfg(unix)]
+use std::{
+    fs::File,
+    io::{Read, Write},
+    os::fd::{AsRawFd, FromRawFd},
+    process::{Command, Output, Stdio},
+    time::{Duration, Instant},
+};
+
+fn command(db: &std::path::Path, args: &[&str]) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_linn"));
+    command
+        .arg("--store")
+        .arg(db)
+        .args(args)
+        .stdin(Stdio::null());
+    for name in [
+        "NO_COLOR",
+        "TERM",
+        "CI",
+        "CLICOLOR",
+        "COLOR",
+        "FORCE_COLOR",
+        "CLICOLOR_FORCE",
+    ] {
+        command.env_remove(name);
+    }
+    command.env("TERM", "xterm-256color");
+    command
+}
+
+// Only the selected stream gets a PTY: verify stdout/stderr policy independence.
+fn terminal(mut command: Command, stdout: bool) -> Output {
+    let (mut master, mut slave) = (-1, -1);
+    let mut size = libc::winsize {
+        ws_row: 24,
+        ws_col: 80,
+        ws_xpixel: 0,
+        ws_ypixel: 0,
+    };
+    assert_eq!(
+        unsafe {
+            libc::openpty(
+                &mut master,
+                &mut slave,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                &mut size,
+            )
+        },
+        0
+    );
+    let mut master = unsafe { File::from_raw_fd(master) };
+    let slave = unsafe { File::from_raw_fd(slave) };
+    // Do not leak one test's PTY into another test's child or detached owner.
+    for fd in [master.as_raw_fd(), slave.as_raw_fd()] {
+        assert_eq!(
+            unsafe { libc::fcntl(fd, libc::F_SETFD, libc::FD_CLOEXEC) },
+            0
+        );
+    }
+    if stdout {
+        command.stdout(slave).stderr(Stdio::piped());
+    } else {
+        command.stderr(slave).stdout(Stdio::piped());
+    }
+    let mut child = command.spawn().unwrap();
+    drop(command);
+    let mut bytes = Vec::new();
+    let started = Instant::now();
+    loop {
+        let mut poll = libc::pollfd {
+            fd: master.as_raw_fd(),
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        let ready = unsafe { libc::poll(&mut poll, 1, 100) };
+        if ready > 0 {
+            let mut buffer = [0; 4096];
+            match master.read(&mut buffer) {
+                Ok(0) => break,
+                Ok(n) => bytes.extend_from_slice(&buffer[..n]),
+                Err(e) if e.raw_os_error() == Some(libc::EIO) => break,
+                Err(e) => panic!("PTY read: {e}"),
+            }
+        }
+        if started.elapsed() > Duration::from_secs(15) {
+            let _ = child.kill();
+            panic!("CLI PTY test timed out");
+        }
+    }
+    let mut output = child.wait_with_output().unwrap();
+    if stdout {
+        output.stdout = bytes;
+    } else {
+        output.stderr = bytes;
+    }
+    output
+}
+
+#[test]
+fn help_errors_and_status_obey_per_stream_disable_policy_in_a_pty() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = dir.path().join("unused.db");
+    let help = terminal(command(&db, &["--help"]), true);
+    assert!(help.status.success());
+    assert!(help.stdout.contains(&0x1b), "human help should be styled");
+    for (key, value) in [
+        ("NO_COLOR", "1"),
+        ("NO_COLOR", "0"),
+        ("TERM", "dumb"),
+        ("TERM", "unknown"),
+        ("CI", "1"),
+        ("CI", "true"),
+        ("CLICOLOR", "0"),
+        ("COLOR", "0"),
+        ("FORCE_COLOR", "0"),
+    ] {
+        let mut cmd = command(&db, &["--help"]);
+        cmd.env(key, value).env("CLICOLOR_FORCE", "1");
+        let output = terminal(cmd, true);
+        assert!(!output.stdout.contains(&0x1b), "{key}={value}");
+    }
+    let json_help = terminal(command(&db, &["--json", "--help"]), true);
+    assert!(!json_help.stdout.contains(&0x1b));
+    let error = terminal(command(&db, &["--unknown-option"]), false);
+    assert_eq!(error.status.code(), Some(2));
+    assert!(error.stderr.contains(&0x1b));
+    let status = terminal(command(&db, &["daemon:status"]), false);
+    assert!(status.status.success());
+    assert!(
+        !status.stdout.contains(&0x1b),
+        "piped stdout must stay plain when stderr is a terminal"
+    );
+    let mut piped = command(&db, &["--help"]);
+    piped.env("FORCE_COLOR", "3").env("CLICOLOR_FORCE", "1");
+    assert!(!piped.output().unwrap().stdout.contains(&0x1b));
+    assert!(!db.exists(), "presentation checks must not create a store");
+}
+
+#[test]
+fn terminal_layout_preserves_original_body_and_plain_layout() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = dir.path().join("memory.db");
+    let mut add = command(&db, &["add", "-", "--label", "Readable label", "--json"]);
+    let mut child = add
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(b"First original line\nSecond original line")
+        .unwrap();
+    let added = child.wait_with_output().unwrap();
+    assert!(added.status.success());
+    let id = serde_json::from_slice::<serde_json::Value>(&added.stdout).unwrap()["record"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let shown = terminal(command(&db, &["show", &id, "--all"]), true);
+    let shown = String::from_utf8(shown.stdout)
+        .unwrap()
+        .replace("\r\n", "\n");
+    assert!(
+        shown.contains("\x1b[1mReadable label\x1b[0m\nFirst original line\nSecond original line\n")
+    );
+    let plain = command(&db, &["show", &id, "--all"]).output().unwrap();
+    assert_eq!(
+        plain.stdout,
+        b"Readable label\nFirst original line\nSecond original line"
+    );
+    let listed = terminal(command(&db, &["list"]), true);
+    let listed = String::from_utf8(listed.stdout).unwrap();
+    assert!(listed.starts_with("\x1b[1mReadable label\x1b[0m"));
+    assert!(listed.contains(&id));
+    let json = terminal(command(&db, &["show", &id, "--all", "--json"]), true);
+    assert!(!json.stdout.contains(&0x1b));
+    let json: serde_json::Value = serde_json::from_slice(&json.stdout).unwrap();
+    assert_eq!(json["text"], "First original line\nSecond original line");
+    assert!(
+        command(&db, &["daemon:stop"])
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+}
+
+#[test]
+fn agent_pty_keeps_search_navigation_and_show_instructions_plain() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = dir.path().join("memory.db");
+    let body = "# First\nneedle routing.\n# Second\nneedle routing.\n# Third\nneedle routing.\n";
+    let mut child = command(&db, &["add", "-", "--label", "Sections", "--json"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(body.as_bytes())
+        .unwrap();
+    let added = child.wait_with_output().unwrap();
+    assert!(added.status.success());
+    let id = serde_json::from_slice::<serde_json::Value>(&added.stdout).unwrap()["record"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let first = command(&db, &["search", "needle routing", "--json"])
+        .output()
+        .unwrap();
+    let first: serde_json::Value = serde_json::from_slice(&first.stdout).unwrap();
+    let cursor = first["cursor"]
+        .as_str()
+        .expect("fixture has another section page");
+    let fetch = first["cards"][0]["fetch"].as_str().unwrap();
+    let cases = [
+        vec!["search", "needle routing"],
+        vec!["search", "\"needle routing missingunique879\""],
+        vec!["search:more", cursor],
+        vec!["show", fetch],
+        vec!["show", &id, "--all"],
+        vec!["show:outline", &id],
+        vec!["search", "--help"],
+        vec!["search:more", "--help"],
+        vec!["show", "--help"],
+        vec!["show:outline", "--help"],
+    ];
+    fn plain_text(bytes: Vec<u8>, cursor: bool) -> String {
+        let mut text = String::from_utf8(bytes).unwrap().replace("\r\n", "\n");
+        assert!(
+            !text.contains('\x1b'),
+            "generated ANSI in agent output: {text:?}"
+        );
+        assert!(!text.contains('\r'), "progress rewrite in agent output");
+        if cursor && let Some(start) = text.find("more: linn search:more ") {
+            let start = start + "more: linn search:more ".len();
+            let end = text[start..].find('\n').map_or(text.len(), |i| start + i);
+            text.replace_range(start..end, "<cursor>");
+        }
+        text
+    }
+    for args in cases {
+        let baseline = command(&db, &args).output().unwrap();
+        let expected = plain_text(baseline.stdout, args[0] == "search");
+        if args == ["search", "needle routing"] {
+            assert!(expected.contains("[1] Sections"));
+            assert!(expected.contains("    fetch "));
+            assert!(expected.contains("more: linn search:more <cursor>"));
+        }
+        if args == ["search", "\"needle routing missingunique879\""] {
+            assert!(expected.contains("Near misses (not results):"));
+            assert!(expected.contains("matched: needle, routing; missing: missingunique879"));
+        }
+        if args[0] == "show:outline" && args.len() == 2 && args[1] == id {
+            assert!(expected.contains("[o1]"));
+            assert!(expected.contains("    fetch "));
+        }
+        for (key, value) in [
+            ("NO_COLOR", "1"),
+            ("TERM", "dumb"),
+            ("CI", "1"),
+            ("FORCE_COLOR", "0"),
+        ] {
+            let mut cmd = command(&db, &args);
+            cmd.env(key, value).env("CLICOLOR_FORCE", "1");
+            let output = terminal(cmd, true);
+            assert_eq!(output.status, baseline.status, "{args:?}");
+            assert_eq!(
+                plain_text(output.stdout, args[0] == "search"),
+                expected,
+                "{key}={value}: {args:?}"
+            );
+            assert_eq!(output.stderr, baseline.stderr, "{args:?}");
+        }
+    }
+    assert!(
+        command(&db, &["daemon:stop"])
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+}

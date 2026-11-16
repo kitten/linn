@@ -14,7 +14,7 @@ async fn run() -> ExitCode {
     match linn::cli::run().await {
         Ok(code) => ExitCode::from(code as u8),
         Err(error) => {
-            eprintln!("linn: {error}");
+            linn::cli::report_error(&error);
             ExitCode::from(2)
         }
     }
