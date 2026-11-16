@@ -45,7 +45,7 @@ fn terminal(mut command: Command, stdout: bool) -> Output {
                 &mut slave,
                 std::ptr::null_mut(),
                 std::ptr::null_mut(),
-                &mut size,
+                &raw mut size,
             )
         },
         0
