@@ -138,7 +138,8 @@ import accepts a file or stdin (`-`). Full original-data backups use unfiltered
 
 LLP 0008 owns replica/publication contracts, mesh commands, membership and
 manual whole-store exchange. The interface is
-`linn sync:pair --service <url>` to create an invitation and
+`linn sync:pair` to create an invitation (default service: `https://linn.kitten.sh`,
+with `--service <url>` for a custom deployment) and
 `linn sync:pair --join [invitation]` to redeem it, then `linn sync` to run a finite
 mesh exchange. Joining requires `--join`; positional invitation input is rejected.
 The owner can serve another member's explicit request while idle;

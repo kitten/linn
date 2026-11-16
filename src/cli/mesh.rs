@@ -3,14 +3,11 @@ use crate::{
     mesh::pairing::{Command, Output},
 };
 use clap::Args;
-use std::{
-    io::{IsTerminal, Read, Write},
-    path::{Path, PathBuf},
-};
+use std::io::{IsTerminal, Read, Write};
 
 #[derive(Args)]
 pub(super) struct PairArgs {
-    #[arg(long, num_args = 0..=1, default_missing_value = "", conflicts_with_all = ["bootstrap_file", "cancel"], help = "Join using a token argument, piped stdin, or an interactive prompt")]
+    #[arg(long, num_args = 0..=1, default_missing_value = "", conflicts_with = "cancel", help = "Join using a token argument, piped stdin, or an interactive prompt")]
     join: Option<String>,
     #[arg(
         long,
@@ -22,15 +19,14 @@ pub(super) struct PairArgs {
     no_sync: bool,
     #[arg(
         long,
-        help = "Mesh service origin, required to initialize an unpaired store"
+        help = "Mesh service origin for a new mesh (default: https://linn.kitten.sh)"
     )]
     service: Option<String>,
     #[arg(
         long,
-        help = "Read deployment bootstrap authorization from an account-private file"
+        help = "Cancel an unused invitation by its full ID",
+        conflicts_with = "service"
     )]
-    bootstrap_file: Option<PathBuf>,
-    #[arg(long, help = "Cancel an unused invitation by its full ID", conflicts_with_all = ["service", "bootstrap_file"])]
     cancel: Option<String>,
 }
 impl PairArgs {
@@ -63,44 +59,15 @@ impl PairArgs {
             }
             _ => value,
         };
-        let bootstrap = self
-            .bootstrap_file
-            .as_deref()
-            .map(read_bootstrap)
-            .transpose()?;
         let command = Command::Pair {
             service: self.service,
             invitation,
-            bootstrap,
             cancel: self.cancel,
             initial_sync: self.sync,
         };
         command.validate()?;
         Ok(command)
     }
-}
-
-fn read_bootstrap(path: &Path) -> Result<String> {
-    use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
-    let file = std::fs::OpenOptions::new()
-        .read(true)
-        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
-        .open(path)?;
-    let metadata = file.metadata()?;
-    if !metadata.is_file()
-        || metadata.uid() != unsafe { libc::geteuid() }
-        || metadata.mode() & 0o777 != 0o600
-        || metadata.nlink() != 1
-    {
-        return Err(Error::Invalid(
-            "bootstrap file must be an account-owned mode-0600 regular file with one link".into(),
-        ));
-    }
-    let mut token = String::new();
-    file.take(4097).read_to_string(&mut token)?;
-    let token = token.trim();
-    crate::mesh::pairing::validate_bootstrap(token)?;
-    Ok(token.to_owned())
 }
 
 // Invitations can exceed the terminal's canonical line buffer. Read a bounded

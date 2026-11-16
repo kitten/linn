@@ -83,7 +83,7 @@ test("storage failures are unavailable while malformed requests remain bad input
   const { hex } = await import("../src/protocol.ts");
   const store = new Storage();
   const context = { storage: store.storage(), blockConcurrencyWhile: <T>(fn: () => Promise<T>) => fn() } as unknown as DurableObjectState;
-  const plane = new ControlPlane(context, { BOOTSTRAP_TOKEN: "bootstrap" });
+  const plane = new ControlPlane(context);
   const service = "https://mesh.example";
   const response = await plane.fetch(new Request(`${service}/v1/service`));
   assert.equal(response.status, 200);
@@ -101,12 +101,12 @@ test("storage failures are unavailable while malformed requests remain bad input
     action: { kind: "invite", actor, key, receipt_key: receipt.receipt_key, not_before: now, expires: now + 600 } };
   const proposal = { event, signatures: { [actor]: await sign(pair.privateKey, EVENT_DOMAIN, event) } };
   store.failAt = store.transactions + 1;
-  const unavailable = await plane.fetch(new Request(`${service}/v1/events`, { method: "POST", headers: { authorization: "Bearer bootstrap" }, body: canonical(proposal) }));
+  const unavailable = await plane.fetch(new Request(`${service}/v1/events`, { method: "POST", body: canonical(proposal) }));
   assert.equal(unavailable.status, 503);
   assert.deepEqual(await unavailable.json(), { error: "control service unavailable" });
   store.failAt = Infinity;
   // The exact proposal remains retryable, not a rejected or partially consumed event.
-  assert.equal((await plane.fetch(new Request(`${service}/v1/events`, { method: "POST", headers: { authorization: "Bearer bootstrap" }, body: canonical(proposal) }))).status, 200);
+  assert.equal((await plane.fetch(new Request(`${service}/v1/events`, { method: "POST", body: canonical(proposal) }))).status, 200);
   const read = { version: 1, service, key: actor, expires: Math.floor(Date.now() / 1000) + 60, nonce: "3".repeat(64), after: null, invitation: null };
   store.failAt = store.transactions + 1;
   assert.equal((await plane.fetch(new Request(`${service}/v1/history`, { method: "POST", body: canonical({ request: read, signature: await sign(pair.privateKey, READ_DOMAIN, read) }) }))).status, 503);
@@ -135,7 +135,7 @@ test("body bounds include stalled readers and cancellation cannot stall cleanup"
 test("busy control requests reject promptly and release capacity after invalid input", async () => {
   const store = new Storage();
   const context = { storage: store.storage(), blockConcurrencyWhile: <T>(fn: () => Promise<T>) => fn() } as unknown as DurableObjectState;
-  const plane = new ControlPlane(context, {});
+  const plane = new ControlPlane(context);
   await plane.fetch(new Request("https://mesh.example/v1/service"));
   const controllers: ReadableStreamDefaultController<Uint8Array>[] = [];
   const pending = Array.from({ length: 4 }, () => plane.fetch(new Request("https://mesh.example/v1/events", {
@@ -180,7 +180,7 @@ test("cache deletion enumerates stored chunks instead of trusting a huge count",
 test("relay authorization reads both memberships in one storage snapshot", async () => {
   const store = new Storage();
   const context = { storage: store.storage(), blockConcurrencyWhile: <T>(fn: () => Promise<T>) => fn() } as unknown as DurableObjectState;
-  const plane = new ControlPlane(context, {});
+  const plane = new ControlPlane(context);
   assert.equal((await plane.fetch(new Request("https://mesh.example/v1/service"))).status, 200);
   store.values.set("active:a", "root");
   store.values.set("active:b", "root");
@@ -203,7 +203,7 @@ test("read authorization must still be unexpired when its storage transaction st
   const { hex } = await import("../src/protocol.ts");
   const store = new Storage();
   const context = { storage: store.storage(), blockConcurrencyWhile: <T>(fn: () => Promise<T>) => fn() } as unknown as DurableObjectState;
-  const plane = new ControlPlane(context, {});
+  const plane = new ControlPlane(context);
   assert.equal((await plane.fetch(new Request("https://mesh.example/v1/service"))).status, 200);
   const pair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
   const key = hex(new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey)));

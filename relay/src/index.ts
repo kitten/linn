@@ -6,7 +6,6 @@ import { ControlPlane } from "./control.ts";
 
 interface Env extends IngressEnv {
   COORDINATOR: DurableObjectNamespace<RelayCoordinator>;
-  BOOTSTRAP_TOKEN?: string;
 }
 interface Attachment extends MessageBudget, Heartbeat {
   version: 1;
@@ -38,7 +37,7 @@ export default {
 
 // @ref LLP 0008#worker-and-durable-object-architecture
 export class RelayCoordinator extends DurableObject<Env> {
-  private readonly control = new ControlPlane(this.ctx, this.env);
+  private readonly control = new ControlPlane(this.ctx);
 
   async fetch(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;

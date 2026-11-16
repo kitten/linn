@@ -22,7 +22,6 @@ pub enum Command {
     Pair {
         service: Option<String>,
         invitation: Option<String>,
-        bootstrap: Option<String>,
         cancel: Option<String>,
         #[serde(default)]
         initial_sync: bool,
@@ -40,27 +39,23 @@ impl Command {
             Self::Pair {
                 service,
                 invitation,
-                bootstrap,
                 cancel,
                 initial_sync,
             } => {
                 if let Some(service) = service {
                     crate::storage::mesh::service_origin(service)?;
                 }
-                if let Some(token) = bootstrap {
-                    validate_bootstrap(token)?;
-                }
                 if invitation.as_ref().is_some_and(|s| s.len() > 32 * 1024) {
                     return Err(Error::Invalid("invitation token is too large".into()));
                 }
-                if invitation.is_some() && (bootstrap.is_some() || cancel.is_some()) {
+                if invitation.is_some() && cancel.is_some() {
                     return Err(Error::Invalid(
-                        "redemption cannot be combined with bootstrap or cancellation".into(),
+                        "redemption cannot be combined with cancellation".into(),
                     ));
                 }
-                if cancel.is_some() && (service.is_some() || bootstrap.is_some()) {
+                if cancel.is_some() && service.is_some() {
                     return Err(Error::Invalid(
-                        "cancellation cannot be combined with service or bootstrap".into(),
+                        "cancellation cannot be combined with service".into(),
                     ));
                 }
                 if *initial_sync && invitation.is_none() {
@@ -246,12 +241,6 @@ impl Output {
         }
     }
 }
-pub(crate) fn validate_bootstrap(token: &str) -> Result<()> {
-    if token.is_empty() || token.len() > 4096 || token.bytes().any(|b| !b.is_ascii_graphic()) {
-        return Err(Error::Invalid("invalid bootstrap authorization".into()));
-    }
-    Ok(())
-}
 // Secret-bearing invitation tokens deliberately have no Debug implementation.
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -403,10 +392,9 @@ async fn committed(
     store: &impl ControlStore,
     client: &ControlClient,
     proposal: Proposal,
-    bootstrap: Option<&str>,
 ) -> Result<Acceptance> {
     store.step(Step::Prepare(proposal.clone())).await?;
-    match client.commit(&proposal, bootstrap).await {
+    match client.commit(&proposal).await {
         Ok(accepted) => {
             accept(store, accepted.clone()).await?;
             Ok(accepted)
@@ -423,18 +411,14 @@ async fn committed(
     }
 }
 
-async fn resume(
-    store: &impl ControlStore,
-    client: &ControlClient,
-    bootstrap: Option<&str>,
-) -> Result<Option<Acceptance>> {
+async fn resume(store: &impl ControlStore, client: &ControlClient) -> Result<Option<Acceptance>> {
     let Value::Pending(pending) = store.step(Step::Pending).await? else {
         return Err(Error::Invalid(
             "unexpected pending mesh proposal reply".into(),
         ));
     };
     if let Some(pending) = pending {
-        match committed(store, client, pending, bootstrap).await {
+        match committed(store, client, pending).await {
             Ok(accepted) => return Ok(Some(accepted)),
             Err(Error::MeshControl(ControlError::StaleHead)) => (),
             Err(error) => return Err(error),
@@ -458,8 +442,7 @@ async fn create_identity(store: &impl ControlStore, service: &str) -> Result<Ide
 async fn require_identity(store: &impl ControlStore) -> Result<Identity> {
     let identity = store::identity(store).await?.ok_or_else(|| {
         Error::Invalid(
-            "this store is not paired; use linn sync:pair --service <url> or redeem an invitation"
-                .into(),
+            "this store is not paired; use linn sync:pair or redeem an invitation".into(),
         )
     })?;
     if identity.conflict {
@@ -479,22 +462,18 @@ async fn activate(store: &impl ControlStore) -> Result<()> {
     Ok(())
 }
 
-async fn create_invitation(
-    store: &impl ControlStore,
-    service: Option<String>,
-    bootstrap: Option<String>,
-) -> Result<Output> {
+// @ref LLP 0008#pairing-and-mesh-membership
+fn invitation_service<'a>(requested: Option<&'a str>, enrolled: Option<&'a str>) -> &'a str {
+    requested.or(enrolled).unwrap_or("https://linn.kitten.sh")
+}
+
+async fn create_invitation(store: &impl ControlStore, service: Option<String>) -> Result<Output> {
     let initial = store::identity(store).await?;
-    let origin =
-        match (service, initial.as_ref()) {
-            (Some(service), _) => service,
-            (None, Some(identity)) => identity.service.clone(),
-            (None, None) => return Err(Error::Invalid(
-                "an unpaired store needs --service <url> and deployment bootstrap authorization"
-                    .into(),
-            )),
-        };
-    let identity = create_identity(store, &origin).await?;
+    let origin = invitation_service(
+        service.as_deref(),
+        initial.as_ref().map(|id| id.service.as_str()),
+    );
+    let identity = create_identity(store, origin).await?;
     if identity.pending_leave || identity.conflict {
         return Err(Error::Invalid("store has left or has conflicting membership; explicitly reset identity before enrolling again".into()));
     }
@@ -504,7 +483,7 @@ async fn create_invitation(
             .step(Step::Pin(client.service().await?.receipt_key))
             .await?;
     }
-    resume(store, &client, bootstrap.as_deref()).await?;
+    resume(store, &client).await?;
     let identity = require_identity(store).await?;
     if identity.head.is_none() {
         let genesis = proposal(
@@ -517,7 +496,7 @@ async fn create_invitation(
             },
             None,
         )?;
-        committed(store, &client, genesis, bootstrap.as_deref()).await?;
+        committed(store, &client, genesis).await?;
     }
     activate(store).await?;
     let delegated = SecretKey::generate();
@@ -542,7 +521,7 @@ async fn create_invitation(
             },
             None,
         )?;
-        match committed(store, &client, event, None).await {
+        match committed(store, &client, event).await {
             Ok(invitation) => {
                 let id = invitation.proposal.hash()?;
                 let token = URL_SAFE_NO_PAD.encode(canonical(&Token {
@@ -613,7 +592,7 @@ async fn redeem(
     store.step(Step::Pin(receipt_key.clone())).await?;
     let client = ControlClient::new(origin)?;
     let anchor = token.invitation.proposal.hash()?;
-    if let Some(accepted) = resume(store, &client, None).await?
+    if let Some(accepted) = resume(store, &client).await?
         && matches!(&accepted.proposal.event.action, Action::Redeem { invitation, .. } if invitation == &anchor)
     {
         activate(store).await?;
@@ -662,7 +641,7 @@ async fn redeem(
             },
             Some(&delegated),
         )?;
-        match committed(store, &client, event, None).await {
+        match committed(store, &client, event).await {
             Ok(_) => {
                 activate(store).await?;
                 return Ok(Output::changed(Change::Paired, status(store).await?));
@@ -704,10 +683,9 @@ pub async fn run(store: &impl ControlStore, command: Command) -> Result<Output> 
         Command::Pair {
             service,
             invitation: None,
-            bootstrap,
             cancel: None,
             ..
-        } => create_invitation(store, service, bootstrap).await,
+        } => create_invitation(store, service).await,
         command => {
             let identity = require_identity(store).await?;
             let leaving = matches!(command, Command::Leave);
@@ -715,7 +693,7 @@ pub async fn run(store: &impl ControlStore, command: Command) -> Result<Output> 
                 store.step(Step::Leave).await?;
             }
             let client = ControlClient::new(&identity.service)?;
-            resume(store, &client, None).await?;
+            resume(store, &client).await?;
             if leaving
                 && store::membership(store, None)
                     .await?
@@ -762,7 +740,7 @@ pub async fn run(store: &impl ControlStore, command: Command) -> Result<Output> 
                     _ => unreachable!(),
                 };
                 let event = proposal(&identity, vec![head], action, None)?;
-                match committed(store, &client, event, None).await {
+                match committed(store, &client, event).await {
                     Ok(_) => {
                         return Ok(Output::changed(operation, status(store).await?));
                     }
@@ -784,31 +762,50 @@ mod validation_tests {
             panic!("invalid requests must not access the store");
         }
     }
-    fn pair(bootstrap: Option<String>, cancel: Option<String>, initial_sync: bool) -> Command {
+    fn pair(cancel: Option<String>, initial_sync: bool) -> Command {
         Command::Pair {
             service: Some("https://mesh.example".into()),
             invitation: None,
-            bootstrap,
             cancel,
             initial_sync,
         }
     }
-    #[tokio::test]
-    async fn validation_rejects_bad_credentials_and_conflicting_modes_before_io() {
-        for token in [
-            String::new(),
-            "line\nbreak".into(),
-            "non ascii é".into(),
-            "x".repeat(4097),
-        ] {
-            assert!(run(&NoStore, pair(Some(token), None, false)).await.is_err());
+    #[test]
+    fn invitations_default_to_public_service_and_preserve_existing_enrollment() {
+        assert_eq!(invitation_service(None, None), "https://linn.kitten.sh");
+        assert_eq!(
+            invitation_service(None, Some("https://custom.example")),
+            "https://custom.example"
+        );
+        assert_eq!(
+            invitation_service(Some("https://override.example"), None),
+            "https://override.example"
+        );
+        assert_eq!(
+            invitation_service(
+                Some("https://override.example"),
+                Some("https://custom.example")
+            ),
+            "https://override.example"
+        );
+        Command::Pair {
+            service: None,
+            invitation: None,
+            cancel: None,
+            initial_sync: false,
         }
+        .validate()
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn validation_rejects_conflicting_modes_before_io() {
         assert!(
-            run(&NoStore, pair(None, Some("1".repeat(64)), false))
+            run(&NoStore, pair(Some("1".repeat(64)), false))
                 .await
                 .is_err()
         );
-        assert!(run(&NoStore, pair(None, None, true)).await.is_err());
+        assert!(run(&NoStore, pair(None, true)).await.is_err());
         assert!(
             run(
                 &NoStore,
@@ -819,10 +816,6 @@ mod validation_tests {
             .await
             .is_err()
         );
-        assert!(
-            pair(Some("safe-token".into()), None, false)
-                .validate()
-                .is_ok()
-        );
+        assert!(pair(None, false).validate().is_ok());
     }
 }

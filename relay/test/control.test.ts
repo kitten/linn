@@ -8,9 +8,8 @@ import { hex } from "../src/protocol.ts";
 let runtime: Miniflare;
 let receiptKey: string;
 const service = "https://local";
-const token = "private-local-control-test";
 before(async () => {
-  runtime = await createRuntime(token);
+  runtime = await createRuntime();
   receiptKey = (await (await runtime.dispatchFetch(`${service}/v1/service`)).json() as { receipt_key: string }).receipt_key;
 });
 after(async () => { await runtime?.dispose(); });
@@ -24,8 +23,8 @@ async function proposal(heads: string[], action: Action, keys: Identity[]): Prom
   const event: Event = { version: 1, service, id: id(), heads: heads.sort(), action };
   return { event, signatures: Object.fromEntries(await Promise.all(keys.map(async (key) => [key.id, await sign(key.privateKey, EVENT_DOMAIN, event)]))) };
 }
-async function post(value: Proposal, credential = token) {
-  return runtime.dispatchFetch(`${service}/v1/events`, { method: "POST", headers: { authorization: `Bearer ${credential}` }, body: canonical(value) });
+async function post(value: Proposal) {
+  return runtime.dispatchFetch(`${service}/v1/events`, { method: "POST", body: canonical(value) });
 }
 async function commit(value: Proposal, parents: Membership[]): Promise<{ accepted: Acceptance; state: Membership }> {
   const response = await post(value);
@@ -45,12 +44,13 @@ async function history(owner: Identity, invitation: string | null = null, after:
   return runtime.dispatchFetch(`${service}/v1/history`, { method: "POST", headers: knownHead ? { "x-linn-known-head": knownHead } : {}, body: canonical({ request, signature: await sign(owner.privateKey, READ_DOMAIN, request) }) });
 }
 
-test("bootstrap, signature proofs, private history, atomic admission and exact retries", async () => {
+test("open genesis, signature proofs, private history, atomic admission and exact retries", async () => {
   const a = await identity(); const b = await identity(); const delegated = await identity();
   const initial = await proposal([], { kind: "genesis", actor: a.id, root: id(), receipt_key: receiptKey }, [a]);
-  assert.equal((await post(initial, "wrong")).status, 401);
+  const unsigned = { ...initial, signatures: {} };
+  assert.equal((await post(unsigned)).status, 400);
   const first = await commit(initial, []);
-  assert.equal(canonical(await (await post(initial, "wrong")).json()), canonical(first.accepted));
+  assert.equal(canonical(await (await post(initial)).json()), canonical(first.accepted));
   const invite = await invitation(a, first.state, delegated);
   assert.equal((await history(b)).status, 403);
   const pending = await history(delegated, invite.state.head);

@@ -9,17 +9,9 @@ import { readState, writeState, deleteState } from "./state.ts";
 interface ReceiptKey { private: number[]; public: string }
 interface StoredEvent { acceptance: Acceptance; cursor: string }
 interface OrderEntry { hash: string; root: string }
-export interface ControlEnv { BOOTSTRAP_TOKEN?: string }
 
 function json(value: unknown, status = 200): Response {
   return new Response(canonical(value), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
-}
-function bootstrap(request: Request, token?: string): boolean {
-  if (!token) return false;
-  const encoder = new TextEncoder();
-  const a = encoder.encode(request.headers.get("authorization") ?? "");
-  const b = encoder.encode(`Bearer ${token}`);
-  return a.length === b.length && crypto.subtle.timingSafeEqual(a, b);
 }
 export async function body(request: Request, deadlineMs = 10_000): Promise<unknown> {
   if (!request.body) throw new MembershipError("body required");
@@ -55,10 +47,9 @@ export class ControlPlane {
   private inFlight = 0;
   private migrated = false;
   private readonly ctx: DurableObjectState;
-  private readonly env: ControlEnv;
   private readonly receipt: Promise<{ key: CryptoKey; id: string }>;
-  constructor(ctx: DurableObjectState, env: ControlEnv) {
-    this.ctx = ctx; this.env = env;
+  constructor(ctx: DurableObjectState) {
+    this.ctx = ctx;
     this.receipt = ctx.blockConcurrencyWhile(async () => {
       this.migrated = await migrateDerivedIndexes(ctx.storage, 100);
       let stored = await ctx.storage.get<ReceiptKey>("receipt-key");
@@ -124,9 +115,6 @@ export class ControlPlane {
       if (existing) {
         if (existing !== eventHash) throw new MembershipError("event ID reused", 409);
         return (await tx.get<StoredEvent>(`event:${existing}`))!.acceptance;
-      }
-      if (proposal.event.action.kind === "genesis" && !bootstrap(request, this.env.BOOTSTRAP_TOKEN)) {
-        throw new MembershipError("bootstrap authorization required", 401);
       }
       const parents: Membership[] = [];
       for (const head of proposal.event.heads) {

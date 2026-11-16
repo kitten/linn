@@ -174,9 +174,8 @@ configuration, store and runtime directory. An inherited XDG_RUNTIME_DIR owned
 by the invoking account fails the existing privacy check; do not weaken it or
 reuse that socket directory. Headless accounts may leave it unset and use the
 native private fallback. Enrollment needs no desktop login, shared keychain or
-administrator access; only initial service deployment/bootstrap has operator
-credentials. An invited account does not need the deployment bootstrap secret
-to join.
+administrator access or deployment credentials. Any user may create a new mesh
+or join an existing one using an invitation.
 
 Every endpoint binds independent UDP sockets using OS-assigned ports (port 0),
 and maintains its own outbound relay connection when the service is reachable.
@@ -297,10 +296,11 @@ driver before the background wake-up. Reset/leave/shutdown discard older resume
 intent. This ordering must not reintroduce a transport wait into pairing.
 
 Each store uses one service origin. Meshes on the same deployment may merge;
-cross-deployment federation is rejected explicitly. The service URL is chosen
-during initialization and carried by invitations, not hardcoded into the
-binary. The Worker cannot replace the invitation's anchors or the endpoint
-authenticated by Iroh.
+cross-deployment federation is rejected explicitly. New meshes default to
+`https://linn.kitten.sh`; `--service <url>` selects a custom deployment during
+initialization. An enrolled store retains its service, and invitations carry
+the service origin for joining devices. The Worker cannot replace the
+invitation's anchors or the endpoint authenticated by Iroh.
 
 ## Revocation and partition semantics
 
@@ -370,10 +370,11 @@ compatibility is carried by the `/v1/` paths and versioned payloads; no separate
 HTTP version header is required. Relay upgrades must offer
 `Sec-WebSocket-Protocol: iroh-relay-v2`; reject missing or unsupported offers
 before opening a socket and echo the selected subprotocol on success.
-The operator bootstrap secret authorizes genesis
-creation. It grants no native store access and cannot substitute for device
-signatures. Existing members and invitation delegations authorize subsequent
-changes. Relay registration requires current mesh membership. Malformed
+Genesis creation is open to users without deployment authorization. The
+creating device must sign its genesis proposal and bind the service receipt
+key. Deployment credentials and bootstrap files are not part of mesh creation.
+Existing members and invitation delegations authorize subsequent changes.
+Relay registration requires current mesh membership. Malformed
 UTF-8/JSON, key encodings and origins are bad requests. Unexpected storage or
 signing failures return HTTP 503 without internal details; callers retain
 uncertain proposals and may use verified cached membership for service
@@ -656,13 +657,12 @@ creates no OS boot service and does not wake sleeping hardware.
 
 The public synchronization commands are:
 
-- `linn sync:pair --service <url>` creates an invitation. If unpaired, initialize
-  a genesis mesh using the deployment's bootstrap authorization first. Supply
-  that secret with `--bootstrap-file <path>`, an account-owned mode-0600 regular
-  file with one link. Open with no symlink following, validate descriptor
-  metadata and read that same descriptor; reject nonregular files without a
-  blocking read. An enrolled store uses its existing service. This grants
-  joining/merging authority, not a record transfer. An existing enrollment cannot silently switch services.
+- `linn sync:pair` creates an invitation, initializing a genesis mesh if
+  unpaired. New meshes use `https://linn.kitten.sh` by default; optional
+  `--service <url>` selects a custom deployment. No bootstrap file or deployment
+  authorization is required. An enrolled store uses its existing service and
+  cannot silently switch services. This grants joining/merging authority, not
+  a record transfer.
 - `linn sync:pair --join [invitation]` redeems an invitation. An argument value is
   accepted at the user's discretion. With no value, read piped stdin or prompt
   in a terminal. `--join -` explicitly selects stdin. Joining requires `--join`;
@@ -786,7 +786,7 @@ typecheck, dry-run build and tests. Native relay interoperability is exercised
 with IP transports and public discovery disabled; public-domain testing checks
 actual Cloudflare TLS/relay behavior. Unit/local-runtime tests do not establish
 operational cost or real-domain behavior by themselves. Do not commit generated
-bundles, private bootstrap files, credentials or transfer output.
+bundles, credentials or transfer output.
 
 ### Process isolation and local networking
 

@@ -6,9 +6,8 @@ import { canonical, EVENT_DOMAIN, hash, sign, type Action, type Event, type Acce
 import { authenticate, challengeMessage, decode, frame, hex } from "../src/protocol.ts";
 
 let runtime: Miniflare;
-const bootstrap = "private-local-test-bootstrap";
 before(async () => {
-  runtime = await createRuntime(bootstrap);
+  runtime = await createRuntime();
 });
 after(async () => { await runtime?.dispose(); });
 
@@ -159,7 +158,7 @@ async function enroll(keys: CryptoKeyPair[]): Promise<void> {
     const event: Event = { version: 1, service, id: id(), heads: head ? [head] : [], action };
     const proposal = { event, signatures: Object.fromEntries(await Promise.all(signers.map(async (key) => [await publicKey(key), await sign(key.privateKey, EVENT_DOMAIN, event)]))) };
     const response = await runtime.dispatchFetch(`${service}/v1/events`, {
-      method: "POST", headers: { authorization: `Bearer ${bootstrap}` }, body: canonical(proposal),
+      method: "POST", body: canonical(proposal),
     });
     assert.equal(response.status, 200, await response.clone().text());
     head = hash((await response.json() as Acceptance).proposal);
@@ -184,7 +183,7 @@ function closed(socket: { addEventListener: Function; removeEventListener: Funct
 }
 
 test("pending handshake expires without another request", async () => {
-  const isolated = await createRuntime(bootstrap);
+  const isolated = await createRuntime();
   try {
     const address = new URL("/relay", await isolated.ready);
     address.protocol = "ws:";

@@ -36,14 +36,11 @@ fn proposal(
 }
 
 #[tokio::test]
-#[ignore = "requires an explicitly configured Worker and private bootstrap file"]
+#[ignore = "requires an explicitly configured Worker"]
 async fn signed_membership_and_private_native_relay() -> TestResult {
     let service = std::env::var("LINN_RELAY_TEST_URL")?
         .trim_end_matches('/')
         .to_owned();
-    let bootstrap = std::fs::read_to_string(
-        std::env::var_os("LINN_RELAY_BOOTSTRAP_FILE").ok_or("bootstrap file required")?,
-    )?;
     let client = ControlClient::new(&service)?;
     let info = client.service().await?;
     let root = tempfile::tempdir()?;
@@ -66,7 +63,7 @@ async fn signed_membership_and_private_native_relay() -> TestResult {
         &[&a_id.key],
     )?;
     a.mesh_prepare(&first).await?;
-    let accepted = client.commit(&first, Some(bootstrap.trim())).await?;
+    let accepted = client.commit(&first).await?;
     let genesis = a.mesh_accept(&accepted).await?;
     let unchanged = client
         .history(&a_id.key, None, None, Some(&genesis.head))
@@ -89,7 +86,7 @@ async fn signed_membership_and_private_native_relay() -> TestResult {
         &[&a_id.key],
     )?;
     a.mesh_prepare(&invite).await?;
-    let accepted_invite = client.commit(&invite, None).await?;
+    let accepted_invite = client.commit(&invite).await?;
     let offered = a.mesh_accept(&accepted_invite).await?;
     let mut cursor = None;
     let mut found_anchor = false;
@@ -119,11 +116,11 @@ async fn signed_membership_and_private_native_relay() -> TestResult {
         &[&b_id.key, &delegated],
     )?;
     b.mesh_prepare(&join).await?;
-    let accepted_join = client.commit(&join, None).await?;
+    let accepted_join = client.commit(&join).await?;
     let joined = b.mesh_accept(&accepted_join).await?;
     b.mesh_enable(&joined.head).await?;
     a.mesh_accept(&accepted_join).await?;
-    assert_eq!(client.commit(&join, None).await?, accepted_join);
+    assert_eq!(client.commit(&join).await?, accepted_join);
     assert_eq!(joined.members.len(), 2);
     assert!(a.mesh_pending().await?.is_none());
     assert!(b.mesh_pending().await?.is_none());
@@ -199,10 +196,7 @@ async fn signed_membership_and_private_native_relay() -> TestResult {
         },
         &[&a_id.key],
     )?;
-    let (left, right) = tokio::join!(
-        client.commit(&revoke_a, None),
-        client.commit(&revoke_b, None)
-    );
+    let (left, right) = tokio::join!(client.commit(&revoke_a), client.commit(&revoke_b));
     let (accepted, winner, loser) = match (left, right) {
         (Ok(accepted), Err(ControlError::StaleHead)) => (accepted, &b_id.key, &a_id.key),
         (Err(ControlError::StaleHead), Ok(accepted)) => (accepted, &a_id.key, &b_id.key),
@@ -224,7 +218,7 @@ async fn signed_membership_and_private_native_relay() -> TestResult {
         },
         &[winner],
     )?;
-    let final_event = client.commit(&leave, None).await?;
+    let final_event = client.commit(&leave).await?;
     a.mesh_accept(&final_event).await?;
     b.mesh_accept(&final_event).await?;
     eprintln!(

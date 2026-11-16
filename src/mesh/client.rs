@@ -128,19 +128,16 @@ impl ControlClient {
 
     /// The caller persists this exact proposal before issuing the request and
     /// verifies the returned acceptance against its locally trusted history.
-    pub async fn commit(&self, proposal: &Proposal, bootstrap: Option<&str>) -> Result<Acceptance> {
+    pub async fn commit(&self, proposal: &Proposal) -> Result<Acceptance> {
         if proposal.event.service != self.origin {
             return Err(ControlError::Protocol("proposal names another service"));
         }
         let bytes = canonical(proposal).map_err(|_| ControlError::Protocol("invalid proposal"))?;
-        let mut request = self
+        let request = self
             .http
             .post(format!("{}/v1/events", self.origin))
             .header("content-type", "application/json")
             .body(bytes);
-        if let Some(token) = bootstrap {
-            request = request.bearer_auth(token);
-        }
         let accepted: Acceptance = self.response(request).await?;
         if &accepted.proposal != proposal {
             return Err(ControlError::Protocol("receipt names another proposal"));

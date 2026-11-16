@@ -15,9 +15,8 @@ const ALPN: &[u8] = b"linn/relay-interop/1";
 const PAYLOAD_BYTES: usize = 8 * 1024 * 1024;
 
 /// Run against a local or staging Worker using ordinary signed enrollment.
-/// The genesis bootstrap secret is read from a private file.
 #[tokio::test]
-#[ignore = "requires an explicitly configured Worker and bootstrap file"]
+#[ignore = "requires an explicitly configured Worker"]
 async fn stock_iroh_relay_only_roundtrip() -> TestResult {
     for peer_count in [2, 10] {
         relay_roundtrip(peer_count).await?;
@@ -27,9 +26,6 @@ async fn stock_iroh_relay_only_roundtrip() -> TestResult {
 
 async fn relay_roundtrip(peer_count: usize) -> TestResult {
     let relay: RelayUrl = std::env::var("LINN_RELAY_TEST_URL")?.parse()?;
-    let secret_path = std::env::var_os("LINN_RELAY_BOOTSTRAP_FILE")
-        .ok_or("LINN_RELAY_BOOTSTRAP_FILE is required")?;
-    let bootstrap = std::fs::read_to_string(secret_path)?;
     let server_key = SecretKey::generate();
     let client_key = SecretKey::generate();
     let idle_keys = (2..peer_count)
@@ -39,12 +35,7 @@ async fn relay_roundtrip(peer_count: usize) -> TestResult {
         .into_iter()
         .chain(idle_keys.iter())
         .collect();
-    enroll(
-        relay.as_str().trim_end_matches('/'),
-        bootstrap.trim(),
-        &keys,
-    )
-    .await?;
+    enroll(relay.as_str().trim_end_matches('/'), &keys).await?;
 
     let server = endpoint(server_key, relay.clone()).await?;
     let client = endpoint(client_key, relay.clone()).await?;
@@ -126,14 +117,13 @@ async fn endpoint(
         .await?)
 }
 
-async fn enroll(service: &str, bootstrap: &str, keys: &[&SecretKey]) -> TestResult {
+async fn enroll(service: &str, keys: &[&SecretKey]) -> TestResult {
     async fn commit(
         client: &ControlClient,
         service: &str,
         parent: Option<&Membership>,
         action: Action,
         signers: &[&SecretKey],
-        bootstrap: Option<&str>,
     ) -> TestResult<Membership> {
         let proposal = Proposal::sign(
             Event {
@@ -145,7 +135,7 @@ async fn enroll(service: &str, bootstrap: &str, keys: &[&SecretKey]) -> TestResu
             },
             signers,
         )?;
-        let accepted = client.commit(&proposal, bootstrap).await?;
+        let accepted = client.commit(&proposal).await?;
         Ok(accepted.evaluate(&parent.into_iter().collect::<Vec<_>>())?)
     }
     let client = ControlClient::new(service)?;
@@ -161,7 +151,6 @@ async fn enroll(service: &str, bootstrap: &str, keys: &[&SecretKey]) -> TestResu
             receipt_key: receipt.clone(),
         },
         &[owner],
-        Some(bootstrap),
     )
     .await?;
     for joining in keys.iter().skip(1) {
@@ -179,7 +168,6 @@ async fn enroll(service: &str, bootstrap: &str, keys: &[&SecretKey]) -> TestResu
                 expires: now + 600,
             },
             &[owner],
-            None,
         )
         .await?;
         let invitation = state.head.clone();
@@ -192,7 +180,6 @@ async fn enroll(service: &str, bootstrap: &str, keys: &[&SecretKey]) -> TestResu
                 invitation,
             },
             &[joining, &delegated],
-            None,
         )
         .await?;
     }

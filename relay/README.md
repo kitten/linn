@@ -29,9 +29,8 @@ source-bound datagram routing, duplicate identity isolation and a hibernation/
 wake cycle. The interoperability runner starts an isolated local Worker and uses
 the pinned, unmodified native Iroh client with all IP transports and public
 discovery removed. It exercises 2 and 10 relay connections, idle heartbeats, and
-an 8 MiB bidirectional transfer. It creates a temporary private bootstrap file,
-closes endpoints/runtime and deletes the file afterward. It is a development
-test; the packaged Linn CLI never requires Node or Wrangler.
+an 8 MiB bidirectional transfer, then closes endpoints and the runtime. It is a
+development test; the packaged Linn CLI never requires Node or Wrangler.
 
 The control runner checks native/Worker membership interoperability and detached
 CLI pairing, explicit record exchange and three-store merging. Each daemon has
@@ -43,7 +42,7 @@ are independent-process tests under one UID; actual Linux/macOS cross-account
 tests are deferred and remain distinct security checks.
 
 `npm test` requires the dry-run bundle from `npm run build`. Never commit `dist`,
-`.wrangler`, `.dev.vars`, bootstrap files or node_modules. Dependency versions
+`.wrangler`, `.dev.vars`, credentials or node_modules. Dependency versions
 and integrity hashes are committed in package-lock.json; the flake pins Node.
 
 ## Deployment and real-domain gate
@@ -51,30 +50,25 @@ and integrity hashes are committed in package-lock.json; the flake pins Node.
 The Worker uses one SQLite-backed `RelayCoordinator` Durable Object binding and
 the `v1` migration tag. It routes all groups through one named object. Choose a
 domain under the operator's Cloudflare account; it is a deployment argument,
-not a hardcoded native default. Authenticate Wrangler headlessly with an API
-token supplied privately, or an existing operator-managed OAuth login. Do not
-commit an account ID, secret or domain-specific configuration.
+selectable with `linn sync:pair --service <url>`. The native default is
+`https://linn.kitten.sh`. Authenticate Wrangler headlessly with an API token
+supplied privately, or an existing operator-managed OAuth login. Do not commit
+an account ID, secret or domain-specific configuration.
 
-Deploy the membership-authorized Worker using `npm run deploy -- --domain <domain>`
-inside `nix develop`. A private `BOOTSTRAP_TOKEN`
-authorizes creation of independent initial meshes; invitation redeemers do not
-need it. Existing members sign every subsequent membership change. For the
-relay staging gate, create a private JSON secrets
-file with a cryptographically random `BOOTSTRAP_TOKEN`, and use:
+Deploy using:
 
 ```sh
-nix develop -c npm --prefix relay run deploy -- \
-  --domain "$relay_domain" --strict \
-  --secrets-file "$relay_secrets_file"
+nix develop -c npm --prefix relay run deploy -- --domain "$relay_domain"
 ```
 
-Paths passed to the npm script resolve within `relay/`; use absolute paths for
-external private files. The secrets JSON is trusted input. Supply the same
-bootstrap value in a separate mode-0600 file for the native test:
+Mesh creation requires no deployment secret. Users create independent meshes
+with signed genesis proposals; existing members authorize subsequent membership
+changes, and invitation redeemers need only their invitation.
+
+For the relay staging gate:
 
 ```sh
 LINN_RELAY_TEST_URL="https://$relay_domain" \
-LINN_RELAY_BOOTSTRAP_FILE="$relay_bootstrap_file" \
   nix develop -c cargo test --test relay_interop -- --ignored --nocapture
 ```
 
@@ -83,12 +77,9 @@ redemption APIs; it does not replace any existing enrollment. Endpoint private
 keys remain in the test process. Normal test/CI runs ignore this network gate.
 A local pass does not establish public TLS/Cloudflare interoperability.
 
-Retain the bootstrap secret if the deployment must admit new
-independent initial meshes; removing it prevents new genesis admissions while
-existing mesh invitations continue working. Protect local credential files and
-never commit them. Native membership and CLI tests use `mesh_control` and
-`mesh_pairing` instead of `relay_interop`; skip the offline test when running
-against a real domain, since its runner must own and stop the service.
+Native membership and CLI tests use `mesh_control` and `mesh_pairing` instead
+of `relay_interop`; skip the offline test against a real domain, since its runner
+must own and stop the service.
 
 `GET /health` returns the relay protocol marker; `/ping` is the Iroh latency
 probe; both are answered by the Worker without waking the coordinator.

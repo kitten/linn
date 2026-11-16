@@ -747,7 +747,6 @@ async fn admission_progress_preserves_typed_success_when_the_sync_reply_is_lost(
             operation: Operation::Mesh(Command::Pair {
                 service: None,
                 invitation: Some("token".into()),
-                bootstrap: None,
                 cancel: None,
                 initial_sync: true,
             }),

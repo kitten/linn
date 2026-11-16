@@ -156,53 +156,9 @@ fn unpaired_status_and_invalid_invitation_do_not_create_identity_or_database() {
 }
 
 #[test]
-fn bootstrap_rejects_symlinks_hardlinks_insecure_modes_and_nonregular_files() {
-    use std::os::unix::fs::{OpenOptionsExt, symlink};
-    let fixture = Fixture::new();
-    let secret = fixture.root.path().join("secret");
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(&secret)
-        .unwrap();
-    file.write_all(b"not-to-be-sent").unwrap();
-    let link = fixture.root.path().join("symlink");
-    symlink(&secret, &link).unwrap();
-    let reject = |path: &std::path::Path| {
-        let output = fixture.run(
-            &[
-                "sync:pair",
-                "--service",
-                "http://127.0.0.1:1",
-                "--bootstrap-file",
-                path.to_str().unwrap(),
-            ],
-            None,
-        );
-        assert_eq!(output.status.code(), Some(2));
-        assert!(!fixture.store.exists());
-        assert!(!String::from_utf8_lossy(&output.stderr).contains("not-to-be-sent"));
-    };
-    reject(&link);
-    let hard = fixture.root.path().join("hardlink");
-    std::fs::hard_link(&secret, &hard).unwrap();
-    reject(&hard);
-    reject(&secret);
-    std::fs::remove_file(hard).unwrap();
-    std::fs::set_permissions(&secret, std::fs::Permissions::from_mode(0o644)).unwrap();
-    reject(&secret);
-    let fifo = fixture.root.path().join("fifo");
-    let name = std::ffi::CString::new(fifo.as_os_str().as_encoded_bytes()).unwrap();
-    assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0);
-    reject(&fifo);
-}
-
-#[test]
-#[ignore = "requires an explicitly configured Worker and private bootstrap file"]
+#[ignore = "requires an explicitly configured Worker"]
 fn failed_sync_reports_partial_durable_progress_and_retry_does_not_double_count() {
     let service = std::env::var("LINN_RELAY_TEST_URL").unwrap();
-    let bootstrap = std::env::var("LINN_RELAY_BOOTSTRAP_FILE").unwrap();
     let a = Fixture::new();
     let b = Fixture::new();
     fn bundle(records: &[(&str, &str)]) -> String {
@@ -240,8 +196,6 @@ fn failed_sync_reports_partial_durable_progress_and_retry_does_not_double_count(
             "sync:pair",
             "--service",
             service.trim_end_matches('/'),
-            "--bootstrap-file",
-            &bootstrap,
             "--json",
         ],
         None,
@@ -283,10 +237,9 @@ fn failed_sync_reports_partial_durable_progress_and_retry_does_not_double_count(
 }
 
 #[test]
-#[ignore = "requires an explicitly configured Worker and private bootstrap file"]
+#[ignore = "requires an explicitly configured Worker"]
 fn joining_supports_arguments_prompt_first_sync_failure_and_self_revocation() {
     let service = std::env::var("LINN_RELAY_TEST_URL").unwrap();
-    let bootstrap = std::env::var("LINN_RELAY_BOOTSTRAP_FILE").unwrap();
     let a = Fixture::new();
     let b = Fixture::new();
     let c = Fixture::new();
@@ -303,8 +256,6 @@ fn joining_supports_arguments_prompt_first_sync_failure_and_self_revocation() {
             "sync:pair",
             "--service",
             service.trim_end_matches('/'),
-            "--bootstrap-file",
-            &bootstrap,
             "--json",
         ],
         None,
@@ -368,13 +319,12 @@ fn joining_supports_arguments_prompt_first_sync_failure_and_self_revocation() {
 }
 
 #[test]
-#[ignore = "requires an explicitly configured Worker and private bootstrap file"]
+#[ignore = "requires an explicitly configured Worker"]
 fn daemon_pairing_and_explicit_sync_merge_three_independent_stores() {
     let service = std::env::var("LINN_RELAY_TEST_URL")
         .unwrap()
         .trim_end_matches('/')
         .to_owned();
-    let bootstrap = std::env::var("LINN_RELAY_BOOTSTRAP_FILE").unwrap();
     let a = Fixture::new();
     let b = Fixture::new();
     let c = Fixture::new();
@@ -392,17 +342,7 @@ fn daemon_pairing_and_explicit_sync_merge_three_independent_stores() {
         .as_str()
         .unwrap()
         .to_owned();
-    let invite = a.ok(
-        &[
-            "sync:pair",
-            "--service",
-            &service,
-            "--bootstrap-file",
-            &bootstrap,
-            "--json",
-        ],
-        None,
-    );
+    let invite = a.ok(&["sync:pair", "--service", &service, "--json"], None);
     let token = invite["token"].as_str().unwrap();
     let joined = b.ok(&["sync:pair", "--join", "-", "--json"], Some(token));
     assert_eq!(joined["status"]["members"].as_array().unwrap().len(), 2);
@@ -434,17 +374,7 @@ fn daemon_pairing_and_explicit_sync_merge_three_independent_stores() {
         "Original B remains private until an explicit sync."
     );
 
-    c.ok(
-        &[
-            "sync:pair",
-            "--service",
-            &service,
-            "--bootstrap-file",
-            &bootstrap,
-            "--json",
-        ],
-        None,
-    );
+    c.ok(&["sync:pair", "--service", &service, "--json"], None);
     let invite = a.ok(&["sync:pair", "--json"], None);
     let merged = c.ok(
         &["sync:pair", "--join", "-", "--json"],
@@ -504,10 +434,9 @@ fn daemon_pairing_and_explicit_sync_merge_three_independent_stores() {
 }
 
 #[test]
-#[ignore = "requires an explicitly configured Worker and private bootstrap file"]
+#[ignore = "requires an explicitly configured Worker"]
 fn one_member_approval_admits_and_merges_without_sync_or_online_peers() {
     let service = std::env::var("LINN_RELAY_TEST_URL").unwrap();
-    let bootstrap = std::env::var("LINN_RELAY_BOOTSTRAP_FILE").unwrap();
     let a = Fixture::new();
     let b = Fixture::new();
     let c = Fixture::new();
@@ -525,8 +454,6 @@ fn one_member_approval_admits_and_merges_without_sync_or_online_peers() {
                 "sync:pair",
                 "--service",
                 service.trim_end_matches('/'),
-                "--bootstrap-file",
-                &bootstrap,
                 "--json",
             ],
             None,
@@ -585,7 +512,6 @@ fn offline_daemons_rediscover_changed_loopback_ports() {
         time::{Duration, Instant},
     };
     let service = std::env::var("LINN_RELAY_TEST_URL").unwrap();
-    let bootstrap = std::env::var("LINN_RELAY_BOOTSTRAP_FILE").unwrap();
     let barrier = PathBuf::from(std::env::var_os("LINN_OFFLINE_BARRIER").unwrap());
     let a = Fixture::new();
     let b = Fixture::new();
@@ -594,8 +520,6 @@ fn offline_daemons_rediscover_changed_loopback_ports() {
             "sync:pair",
             "--service",
             service.trim_end_matches('/'),
-            "--bootstrap-file",
-            &bootstrap,
             "--json",
         ],
         None,

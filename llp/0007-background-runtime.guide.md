@@ -67,8 +67,8 @@ Store/config paths, local input/output I/O and presentation remain client tasks.
 
 Mesh request validation is shared application behavior: check credential content
 and size, IDs and incompatible pairing modes before store/network mutation,
-including requests from non-CLI callers. The CLI owns descriptor/privacy checks
-for bootstrap files; it sends validated bytes rather than a file path.
+including requests from non-CLI callers. Mesh creation requires no deployment
+credential or bootstrap file.
 
 The daemon allocates sync run IDs and sends typed admission/progress events on
 the existing request connection. Use a two-event queue, dropping intermediate
