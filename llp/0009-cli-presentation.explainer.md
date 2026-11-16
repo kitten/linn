@@ -50,9 +50,16 @@ Search and outline separate entries and indent every excerpt line only in human
 presentation. List puts the readable label before its unchanged identifier, kind
 and exact timestamps. Keep complete references and suggested commands copyable.
 Show styles only its header and truncation notice; original body bytes are not
-styled or rewritten. Add a presentation newline when needed on a human terminal
-so a notice or shell prompt does not attach to the body. Plain show preserves its
-existing byte layout, including missing trailing newlines.
+styled or rewritten. In every text mode, append one presentation newline to a
+nonempty displayed span that lacks a final newline, so the truncation notice,
+next result or shell prompt cannot attach to the body. Preserve existing trailing
+newlines without adding a blank line. This separator also applies to `show --all`
+and is the explicit compatibility correction to the previous plain byte layout.
+JSON and exports supply exact original text when its final newline matters.
+
+Interactive prompt lines end explicitly on stderr after input and on error or
+cancellation; input echo is not evidence that stderr received a newline. Never
+attach a diagnostic or follow-up instruction to a partially written prompt.
 
 JSON values and raw export bytes remain unchanged. Invitation tokens remain
 unstyled, with a heading only in human presentation. Safety notices and essential
@@ -91,7 +98,8 @@ accepted partial progress was rolled back.
 per-stream capability, environment disables, help/errors, JSON and original-body
 preservation. Corpus-free policy and screen-model tests cover disable precedence,
 shorter updates, coalescing, resize, unknown/narrow width and idempotent cleanup.
-Captured plain output should match the baseline byte-for-byte except corrected
-command help. Cursor clocks
+Captured plain output should match the baseline byte-for-byte except documented
+clarity corrections: show/prompt boundaries and command help.
+Cursor clocks
 remain context-bearing values rather than a presentation difference. Rendering
 checks do not establish retrieval quality or a broad agent-latency claim.

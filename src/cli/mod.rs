@@ -592,7 +592,7 @@ fn render(value: crate::application::Value, json_output: bool) -> Result<i32> {
                     }
                 );
                 print!("{}", s.text);
-                if style.0 && !s.text.ends_with('\n') {
+                if !s.text.is_empty() && !s.text.ends_with('\n') {
                     println!();
                 }
                 if s.truncated {

@@ -5,6 +5,17 @@ use crate::{
 use clap::Args;
 use std::io::{IsTerminal, Read, Write};
 
+// Prompt input echo may go to a different terminal than stderr, or be disabled.
+// End the prompt even on early errors before the caller prints a diagnostic.
+struct PromptLine;
+impl Drop for PromptLine {
+    fn drop(&mut self) {
+        let mut stderr = std::io::stderr().lock();
+        let _ = writeln!(stderr);
+        let _ = stderr.flush();
+    }
+}
+
 #[derive(Args)]
 pub(super) struct PairArgs {
     #[arg(long, num_args = 0..=1, default_missing_value = "", conflicts_with = "cancel", help = "Join using a token argument, piped stdin, or an interactive prompt")]
@@ -73,10 +84,12 @@ impl PairArgs {
             return Err(Error::Invalid("pairing requires confirmation; pass -y to confirm when using piped input or running unattended".into()));
         }
         use std::io::BufRead;
+        let prompt_line = PromptLine;
         eprint!("Continue with pairing? [y/N] ");
         std::io::stderr().flush()?;
         let mut answer = String::new();
         std::io::stdin().lock().read_line(&mut answer)?;
+        drop(prompt_line);
         if matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes") {
             Ok(())
         } else {
@@ -143,6 +156,7 @@ fn prompt_invitation() -> Result<String> {
         return Err(std::io::Error::last_os_error().into());
     }
     let _restore = Restore(fd, original);
+    let prompt_line = PromptLine;
     eprint!("Invitation: ");
     std::io::stderr().flush()?;
     let mut bytes = Vec::new();
@@ -165,7 +179,7 @@ fn prompt_invitation() -> Result<String> {
             _ => return Err(Error::Invalid("invalid invitation input".into())),
         }
     }
-    eprintln!();
+    drop(prompt_line);
     if bytes.is_empty() {
         return Err(Error::Invalid("empty invitation input".into()));
     }
@@ -178,10 +192,12 @@ pub(super) fn offer_sync() -> Result<bool> {
         return Ok(false);
     }
     loop {
+        let prompt_line = PromptLine;
         eprint!("This store joined the mesh. Start the first sync now? [Y/n] ");
         std::io::stderr().flush()?;
         let mut answer = String::new();
         let read = std::io::stdin().lock().read_line(&mut answer)?;
+        drop(prompt_line);
         if read == 0 {
             return Ok(false);
         }

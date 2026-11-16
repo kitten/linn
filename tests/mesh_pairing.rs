@@ -709,6 +709,10 @@ fn pairing_confirmation_is_explicit_before_membership_mutation() {
         let output =
             fixture.prompt_command(&["sync:pair"], b"Continue with pairing? [y/N] ", answer);
         assert_eq!(output.status.code(), Some(2));
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("Continue with pairing? [y/N] \nlinn:")
+        );
         assert!(String::from_utf8_lossy(&output.stderr).contains("pairing cancelled"));
         assert!(!fixture.store.exists());
     }
@@ -842,4 +846,25 @@ fn no_op_sync_has_one_completion_and_outline_failure_is_json() {
     let text = String::from_utf8_lossy(&output.stdout);
     assert!(text.contains("Store:"));
     assert!(text.contains("PID"));
+}
+
+#[test]
+fn invitation_input_errors_do_not_attach_to_the_prompt() {
+    let fixture = Fixture::new();
+    for (answer, message) in [
+        ("\u{3}", "invitation input cancelled"),
+        ("\u{1}", "invalid invitation input"),
+        ("", "empty invitation input"),
+    ] {
+        let output = fixture.prompt_command(
+            &["sync:pair", "-y", "--join", "--no-sync"],
+            b"Invitation: ",
+            answer,
+        );
+        assert_eq!(output.status.code(), Some(2));
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(stderr.contains("Invitation: \nlinn:"), "{stderr}");
+        assert!(stderr.contains(message), "{stderr}");
+        assert!(!fixture.store.exists());
+    }
 }

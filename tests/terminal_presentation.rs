@@ -170,7 +170,7 @@ fn terminal_layout_preserves_original_body_and_plain_layout() {
     let plain = command(&db, &["show", &id, "--all"]).output().unwrap();
     assert_eq!(
         plain.stdout,
-        b"Readable label\nFirst original line\nSecond original line"
+        b"Readable label\nFirst original line\nSecond original line\n"
     );
     let listed = terminal(command(&db, &["list"]), true);
     let listed = String::from_utf8(listed.stdout).unwrap();
@@ -278,6 +278,66 @@ fn agent_pty_keeps_search_navigation_and_show_instructions_plain() {
             );
             assert_eq!(output.stderr, baseline.stderr, "{args:?}");
         }
+    }
+    assert!(
+        command(&db, &["daemon:stop"])
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+}
+
+#[test]
+fn show_separates_notices_without_rewriting_original_text() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = dir.path().join("memory.db");
+    for body in [
+        "é".repeat(1506),
+        format!("{}\ntail", "x".repeat(1499)),
+        "already terminated\n\n".into(),
+    ] {
+        let mut child = command(&db, &["add", "-", "--label", "Boundary", "--json"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(body.as_bytes())
+            .unwrap();
+        let added = child.wait_with_output().unwrap();
+        assert!(added.status.success());
+        let id = serde_json::from_slice::<serde_json::Value>(&added.stdout).unwrap()["record"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let shown = command(&db, &["show", &id]).output().unwrap();
+        let mut displayed: String = body.chars().take(1500).collect();
+        if !displayed.ends_with('\n') {
+            displayed.push('\n');
+        }
+        let mut expected = format!("Boundary\n{displayed}");
+        if body.chars().count() > 1500 {
+            expected.push_str(&format!(
+                "… ({} more characters; --all to print the rest)\n",
+                body.chars().count() - 1500
+            ));
+        }
+        assert_eq!(shown.stdout, expected.as_bytes());
+        let full = command(&db, &["show", &id, "--all"]).output().unwrap();
+        let separator = if body.ends_with('\n') { "" } else { "\n" };
+        assert_eq!(
+            full.stdout,
+            format!("Boundary\n{body}{separator}").as_bytes()
+        );
+        let json = command(&db, &["show", &id, "--all", "--json"])
+            .output()
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&json.stdout).unwrap();
+        assert_eq!(json["text"], body);
     }
     assert!(
         command(&db, &["daemon:stop"])

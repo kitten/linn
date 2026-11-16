@@ -206,7 +206,9 @@ skipped. After the last call it prints `No more results for this search.` and ex
 Prints the record's label and heading path, then the original bytes the reference names: the span
 of a fetch id, or the whole body for a record id or a hash.
 - **Limit.** At most 1,500 characters. If the span is longer, it ends with `… (N more characters;
-  --all to print the rest)`.
+  --all to print the rest)`. Text output separates the notice from the body with
+  a newline when needed; full text output also ends on a line boundary. JSON
+  preserves the original text without a presentation separator.
 - **Current records only.** The record must be accepted and current: not a close envelope, not
   closed, not superseded, not expired. A fetch id comes from a search, so a result found with
   `scope:` stays openable.
