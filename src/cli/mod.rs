@@ -17,6 +17,9 @@ use std::{
 #[derive(Parser)]
 #[command(
     name = "linn",
+    version,
+    disable_version_flag = true,
+    arg(clap::Arg::new("version").short('v').long("version").help("Print version").action(clap::ArgAction::Version)),
     about = "Search private notes and documents. Results are pointers; open a section before relying on it.",
     after_help = "Typical use:\n  linn search '\"git send\" allowed prefixes'\n  linn show <fetch-id>\n  linn search:more <cursor>\n  linn show:outline <ref>\n\nSearches cover every repository by default.\nA related topic, a different package or version, or shared words is not an answer.\nNear misses are hints, not results. An honest Nothing qualified is a successful miss.\nSave reusable engineering discoveries; see linn add --help.\n\nExit codes: 0 results/success, 1 no results/not current, 2 command error, 3 damaged index."
 )]

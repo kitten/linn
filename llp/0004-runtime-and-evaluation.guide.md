@@ -55,6 +55,10 @@ already present. A non-current outline returns exit 1 with contextual text or
 
 ## Command structure
 
+`linn -v` and `linn --version` print `linn <Cargo package version>` followed by a
+newline and exit 0 before resolving paths, opening a store or contacting an owner.
+The package manifest is the single version source.
+
 ```
 linn <command>[:<subcommand>] [arguments] [--json]
 ```

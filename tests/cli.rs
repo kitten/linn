@@ -28,6 +28,35 @@ fn cli(db: &std::path::Path, args: &[&str], body: Option<&str>) -> std::process:
     child.wait_with_output().unwrap()
 }
 #[test]
+fn version_flags_do_not_resolve_or_open_a_store() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = dir.path().join("never-created.db");
+    for flag in ["-v", "--version"] {
+        let output = Command::new(env!("CARGO_BIN_EXE_linn"))
+            .args(["--store", store.to_str().unwrap(), flag])
+            .env("XDG_DATA_HOME", "relative")
+            .env("XDG_CONFIG_HOME", "relative")
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(0));
+        assert_eq!(
+            output.stdout,
+            format!("linn {}\n", env!("CARGO_PKG_VERSION")).as_bytes()
+        );
+        assert!(output.stderr.is_empty());
+        assert!(!store.exists());
+    }
+    let help = Command::new(env!("CARGO_BIN_EXE_linn"))
+        .args(["--store", store.to_str().unwrap(), "--help"])
+        .output()
+        .unwrap();
+    let help = String::from_utf8(help.stdout).unwrap();
+    assert!(help.contains("-v, --version"));
+    assert!(help.contains("Print version"));
+    assert!(std::fs::read_dir(dir.path()).unwrap().next().is_none());
+}
+
+#[test]
 fn stdin_versions_original_bytes_and_secure_forget() {
     let tmp = tempfile::tempdir().unwrap();
     let db = tmp.path().join("memory.db");
