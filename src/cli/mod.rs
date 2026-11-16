@@ -42,7 +42,7 @@ enum Command {
     #[command(
         name = "sync:status",
         hide = true,
-        about = "Inspect local mesh enrollment without contacting peers"
+        about = "Inspect local mesh state; optionally check peer reachability"
     )]
     SyncStatus {
         #[arg(
@@ -126,12 +126,16 @@ Use --json for cards, related pointers, near misses and the next cursor."#
     #[command(about = "Read original bytes; accepts a record id, fetch id, or unique hash prefix")]
     Show {
         reference: String,
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Print the entire referenced span instead of the first 1,500 characters"
+        )]
         all: bool,
     },
     #[command(
         name = "show:outline",
-        about = "List a document's sections as openable pointers"
+        about = "List a document's sections as openable pointers",
+        after_help = "Open an entry with linn show <fetch-id>."
     )]
     Outline { reference: String },
     #[command(
@@ -145,13 +149,19 @@ Use --stale-after only for known expiry."#
     )]
     Add {
         file: PathBuf,
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Display label; inferred from the file or note when omitted"
+        )]
         label: Option<String>,
         #[arg(long, help = "Omit repository scope from this record")]
         unscoped: bool,
         #[arg(long, help = "Correct an existing record with a new child")]
         parent: Option<String>,
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "UTC expiry timestamp (e.g. 2027-01-01T00:00:00Z), not a duration"
+        )]
         stale_after: Option<String>,
         #[arg(long, help = "Source path for a stdin note; derived for files")]
         source_path: Option<String>,
@@ -162,9 +172,12 @@ Use --stale-after only for known expiry."#
     )]
     Close {
         reference: String,
-        #[arg(long,value_parser=["supersede","correct","expire"])]
+        #[arg(long,value_parser=["supersede","correct","expire"], help = "Reason the target is no longer current")]
         reason: String,
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Existing replacement record reference; does not create a replacement"
+        )]
         replacement: Option<String>,
     },
     #[command(
@@ -208,17 +221,41 @@ async fn enrollment(path: &std::path::Path) -> Result<Option<crate::mesh::pairin
         _ => Err(Error::Invalid("unexpected enrollment response".into())),
     }
 }
+// Enrollment only changes top-level command discovery, never task-specific help.
+fn root_help(raw: &[std::ffi::OsString]) -> bool {
+    let mut args = raw.iter().skip(1);
+    while let Some(arg) = args.next() {
+        if arg == "--store" {
+            args.next();
+            continue;
+        }
+        if arg == "--json" || arg.to_str().is_some_and(|s| s.starts_with("--store=")) {
+            continue;
+        }
+        if arg == "--help" || arg == "-h" {
+            return true;
+        }
+        if arg == "help" {
+            return args.next().is_none();
+        }
+        return false;
+    }
+    true
+}
+
 async fn parse_args() -> Result<Args> {
     let raw: Vec<_> = std::env::args_os().collect();
     let command = Args::command();
     match command.clone().try_get_matches_from(&raw) {
         Ok(matches) => Ok(Args::from_arg_matches(&matches).expect("validated CLI arguments")),
         Err(error) => {
-            if matches!(
-                error.kind(),
-                clap::error::ErrorKind::DisplayHelp
-                    | clap::error::ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
-            ) {
+            if root_help(&raw)
+                && matches!(
+                    error.kind(),
+                    clap::error::ErrorKind::DisplayHelp
+                        | clap::error::ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
+                )
+            {
                 let mut probe = raw.clone();
                 let help_index = probe
                     .iter()
@@ -699,4 +736,39 @@ fn print_call(store: &crate::application::SearchPage, call: &Call) {
 
 fn pointer_json(pointers: &[crate::storage::Pointer]) -> Vec<serde_json::Value> {
     pointers.iter().enumerate().map(|(i,p)|{json!({"n":i+1,"record":p.record,"label":p.label,"heading":p.heading,"excerpt":p.excerpt,"fetch":p.fetch,"matched":p.matched,"missing":p.missing})}).collect()
+}
+
+#[cfg(test)]
+mod help_context_tests {
+    use super::root_help;
+    #[test]
+    fn contextual_discovery_only_applies_to_root_help() {
+        for args in [
+            vec!["linn"],
+            vec!["linn", "help"],
+            vec!["linn", "--store", "add", "--help"],
+            vec!["linn", "--json", "--store=x", "-h"],
+        ] {
+            assert!(root_help(
+                &args
+                    .iter()
+                    .map(|arg| std::ffi::OsString::from(*arg))
+                    .collect::<Vec<_>>()
+            ));
+        }
+        for args in [
+            vec!["linn", "add", "--help"],
+            vec!["linn", "show", "--help"],
+            vec!["linn", "help", "add"],
+            vec!["linn", "--store", "help", "show", "--help"],
+            vec!["linn", "--json", "--store=add", "help", "show"],
+        ] {
+            assert!(!root_help(
+                &args
+                    .iter()
+                    .map(|arg| std::ffi::OsString::from(*arg))
+                    .collect::<Vec<_>>()
+            ));
+        }
+    }
 }

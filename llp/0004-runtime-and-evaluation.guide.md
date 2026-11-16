@@ -50,7 +50,10 @@ Daemon text status identifies the selected store and, when running, its PID and
 reported Linn release. JSON status retains running/PID and adds optional runtime
 release and capability metadata for upgrade coordination.
 Import text summaries distinguish applied record/deletion changes from items
-already present. A non-current outline returns exit 1 with contextual text or
+already present. Sync-status help distinguishes local inspection from optional
+peer reachability checks. Write-command help describes display labels, UTC expiry
+timestamps and close reasons/replacement references without changing validation.
+A non-current outline returns exit 1 with contextual text or
 `{"status":"not_current","entries":[]}` under `--json`.
 
 ## Command structure
