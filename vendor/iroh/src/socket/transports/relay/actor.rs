@@ -69,9 +69,14 @@ const RELAY_INACTIVE_CLEANUP_TIME: Duration = Duration::from_secs(60);
 
 /// Interval in which we ping the relay server to ensure the connection is alive.
 ///
-/// The default QUIC max_idle_timeout is 30s, so setting that to half this time gives some
-/// chance of recovering.
-const PING_INTERVAL: Duration = Duration::from_secs(15);
+/// Incoming relay messages postpone this idle health check.
+const PING_INTERVAL: Duration = Duration::from_secs(30);
+
+/// Periodic health checks tolerate brief network and scheduling stalls.
+const PERIODIC_PING_TIMEOUT: Duration = Duration::from_secs(15);
+
+/// Bound blocked writes independently of the idle health-check interval.
+const SEND_TIMEOUT: Duration = Duration::from_secs(15);
 
 /// Number of datagrams which can be sent to the relay server in one batch.
 ///
@@ -615,7 +620,7 @@ impl ActiveRelayActor {
                     break Err(e!(RunError::PingTimeout));
                 }
                 _ = ping_interval.tick() => {
-                    let data = state.ping_tracker.new_ping();
+                    let data = state.ping_tracker.new_ping_with_timeout(PERIODIC_PING_TIMEOUT);
                     let fut = client_sink.send(ClientToRelayMsg::Ping(data));
                     self.run_sending(fut, &mut state, &mut client_stream).await?;
                 }
@@ -642,6 +647,7 @@ impl ActiveRelayActor {
                                     let data = state.ping_tracker.new_ping();
                                     let fut = client_sink.send(ClientToRelayMsg::Ping(data));
                                     self.run_sending(fut, &mut state, &mut client_stream).await?;
+                                    ping_interval.reset();
                                 }
                                 Some(_) => break Err(e!(RunError::LocalIpInvalid)),
                                 None => break Err(e!(RunError::LocalAddrMissing)),
@@ -801,10 +807,7 @@ impl ActiveRelayActor {
         state: &mut ConnectedRelayState,
         client_stream: &mut iroh_relay::client::ClientStream,
     ) -> Result<(), RelayConnectionError> {
-        // we use the same time as for our ping interval
-        let send_timeout = PING_INTERVAL;
-
-        let mut timeout = pin!(time::sleep(send_timeout));
+        let mut timeout = pin!(time::sleep(SEND_TIMEOUT));
         let mut sending_fut = pin!(sending_fut);
         let res = loop {
             tokio::select! {

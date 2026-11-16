@@ -46,10 +46,44 @@ async fn selecting_one_relay_does_not_claim_a_successful_connection() -> TestRes
 #[tokio::test]
 #[ignore = "requires an explicitly configured Worker"]
 async fn native_iroh_relay_only_roundtrip() -> TestResult {
+    if std::env::var_os("LINN_RELAY_TEST_HEARTBEATS").is_some() {
+        return relay_heartbeat_tolerance().await;
+    }
     for peer_count in [2, 10] {
         relay_roundtrip(peer_count).await?;
     }
     Ok(())
+}
+
+async fn relay_heartbeat_tolerance() -> TestResult {
+    let relay: RelayUrl = std::env::var("LINN_RELAY_TEST_URL")?.parse()?;
+    let key = SecretKey::generate();
+    enroll(relay.as_str().trim_end_matches('/'), &[&key]).await?;
+    let endpoint = endpoint(key, relay).await?;
+    let outcome = async {
+        timeout(Duration::from_secs(10), endpoint.online()).await?;
+        let start = std::time::Instant::now();
+        let mut status = endpoint.home_relay_status();
+        timeout(Duration::from_secs(90), async {
+            loop {
+                let statuses = status.updated().await.map_err(|_| "relay watcher closed")?;
+                if !statuses.iter().any(|s| s.is_connected()) {
+                    return Ok::<_, &str>(());
+                }
+            }
+        })
+        .await??;
+        assert!(
+            start.elapsed() >= Duration::from_secs(70),
+            "delayed periodic Pong must not disconnect the client"
+        );
+        timeout(Duration::from_secs(10), endpoint.online()).await?;
+        tokio::time::sleep(Duration::from_millis(250)).await;
+        Ok::<_, Box<dyn Error + Send + Sync>>(())
+    }
+    .await;
+    endpoint.close().await;
+    outcome
 }
 
 async fn relay_roundtrip(peer_count: usize) -> TestResult {

@@ -837,8 +837,12 @@ the socket; these budgets survive hibernation and initialize on older
 attachments. Each sender has a 4 MiB/s datagram budget, and
 each receiver has a 256 KiB unconfirmed send window. Ordered protocol Pong
 checkpoints release that window; excess datagrams are dropped for QUIC
-recovery. Native clients send WebSocket control health pings every 15 seconds,
-using the existing Iroh health tracker, cadence and timeout unchanged.
+recovery. Native clients send WebSocket control health pings after 30 seconds
+without an incoming relay message. Periodic checks allow 15 seconds for the
+matching Pong; immediate network-change checks retain Iroh's adaptive RTT-based
+deadline. Blocked relay writes retain their independent 15-second timeout.
+Reconnect backoff is unchanged. Silent idle connection loss can therefore take
+up to roughly 45 seconds to detect; active peer QUIC deadlines remain separate.
 Do not suppress health checks or invent replies. Native endpoints configure the
 single service relay without QUIC address discovery, HTTPS latency probes or
 captive-portal checks. The Worker has no QUIC address-discovery listener, and a

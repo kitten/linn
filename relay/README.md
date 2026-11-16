@@ -20,6 +20,7 @@ nix develop -c npm --prefix relay run typecheck
 nix develop -c npm --prefix relay run build
 nix develop -c npm --prefix relay test
 nix develop -c npm --prefix relay run test:interop
+nix develop -c npm --prefix relay run test:heartbeats
 nix develop -c npm --prefix relay run test:control
 nix develop -c npm --prefix relay run test:offline
 ```
@@ -31,6 +32,9 @@ the pinned native Iroh client with the control-heartbeat patch, with all IP
 transports and public discovery removed. It exercises 2 and 10 relay connections, idle heartbeats, and
 an 8 MiB bidirectional transfer, then closes endpoints and the runtime. It is a
 development test; the packaged Linn CLI never requires Node or Wrangler.
+The heartbeat runner forwards real workerd control Pongs through a local TCP
+proxy, delays one response and discards another, checking idle cadence,
+tolerance and recovery without synthetic replies.
 
 The control runner checks native/Worker membership interoperability and detached
 CLI pairing, explicit record exchange and three-store merging. Each daemon has
@@ -120,8 +124,10 @@ confirms delivery of all earlier frames on the ordered WebSocket, allowing its
 window to advance. Excess UDP datagrams are dropped for QUIC loss recovery;
 relay queues do not grow without bound and rate limiting does not reset a valid
 QUIC session. Native clients use WebSocket control heartbeats, answered by the runtime without
-waking the coordinator. Native heartbeat cadence and response timeouts retain
-the pinned upstream defaults. The coordinator retains earlier
+waking the coordinator. Idle health checks run after 30 seconds without incoming
+relay traffic and allow 15 seconds for the matching Pong. Network-change checks
+retain adaptive deadlines; blocked relay writes still expire after 15 seconds.
+The coordinator retains earlier
 alarms across acknowledgements and reconciles deadlines when they fire, allowing
 one trailing wake after traffic instead of per-checkpoint alarm writes. Application
 checkpoints start at 64 KiB in the 256 KiB window; their 30-second timeout
