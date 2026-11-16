@@ -12,7 +12,7 @@ struct Args {
     /// JSONL cases; compare each prepared wording without inspecting gold.
     #[arg(long)]
     cases: Option<PathBuf>,
-    /// Original source units exported by pos_units, with a `text` field.
+    /// Original source units as JSONL, with a `text` field.
     #[arg(long)]
     units: Option<PathBuf>,
 }

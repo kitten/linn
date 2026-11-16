@@ -748,7 +748,7 @@ fresh-process POS/model initialization rather than treating historical timings
 as a present speedup. Report cache conditions and separate workloads accurately;
 a small fixture is not full neutral validation.
 
-Native macOS verification is recorded in evals/FINDINGS.md. Curated/scale
+Native macOS verification is archived as described in evals/README.md. Curated/scale
 corpus verification and native Linux/Windows runs are not implied by a small
 real-store sample.
 

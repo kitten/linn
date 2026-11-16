@@ -12,9 +12,9 @@ serde = { version = "1", features = ["derive"] }
 sha2 = "0.10"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tempfile = "3"
-nlprule = { version = "=0.6.4", default-features = false, features = ["regex-fancy"] }
 
 [dev-dependencies]
+nlprule = { version = "=0.6.4", default-features = false, features = ["regex-fancy"] }
 aho-corasick = "0.7"
 bimap = { version = "0.6", features = ["serde"] }
 bincode = "1.3"

@@ -364,9 +364,12 @@ for invocation and archive layout.
 ## Lookup optimization diagnostic
 
 `LINN_STARTUP_TIMINGS=1` emits JSON phase timings on stderr for database setup,
-record decoding, validity, block parsing/tokenization, persisted row-id mapping,
-vectors, distinct FTS vocabulary, column lengths, surface DF, derived postings,
-and links/trees. This is diagnostic instrumentation, not a retrieval switch.
+publication metadata and derived-artifact verification. Healthy opens defer
+vectors and FTS vocabulary; record decoding, validity, block parsing and
+structural projection phases apply when rebuilding derived state. Numerical-array
+reads and candidate-vector scoring report their costs when requested. These
+phases do not imply corpus-wide reconstruction on every open. This is diagnostic
+instrumentation, not a retrieval switch.
 The Rust `startup_check` example opens an existing store without loading corpus
 JSONL; an optional query measures the first agent invocation separately.
 Its `--raw` mode measures libSQL preparation, row stepping and value extraction
@@ -471,32 +474,6 @@ its license. No raw copies, intermediates, corpus data or results are committed.
 Once converted, evaluation needs only this repository, the prepared JSONL, and
 the usual build-time model input. See [evals/README.md](../evals/README.md) for
 operation; no runtime external system checkout or model stack is required.
-
-## Experimental occurrence audit
-
-The eval-only `pos_groups` example executes nlprule 0.6.4 over raw input bytes,
-retaining all public analyses, chunk labels and checked byte spans. It emits
-linear singleton/adjacent alternatives and complete begin/end chunks, deduplicated
-by original interval with alternative labels retained, without claiming
-dependency heads. Whole-NP identity retains modifiers; ordered exact group
-witnesses consume separate source occurrences. Neither interface certifies
-entailment, record eligibility, section membership or a legal card schedule.
-They are shadow research interfaces and do not change product retrieval.
-
-The example accepts a caller-supplied tokenizer asset, JSONL `text` and optional
-`source`; it never reads relevance labels. Optional embedding matrices encode
-original group slices through the existing Encoder and compare with its existing
-float32 dot kernel. These matrices propose comparisons, never synonym licenses.
-The standalone example still accepts an explicit resource path. The always-enabled
-product relation selector embeds the pinned linguistic asset as described in
-LLP 0004 and publishes selected source metadata under LLP 0001. Its ranking
-contract is in LLP 0002. The audit and bounded `pos_assignment` executor are
-shadow diagnostics, not alternative graders or semantic admission authorities.
-The assignment controls retain original occurrence identity, source-unit/sentence
-bounds, nonoverlapping alternate partitions, model identity, selected assignments
-and unmatched original material. Cosine completions remain unverified. Existing
-DEV selection and one-shot parent holdout rules are unchanged.
-
 
 ## Lifecycle correctness measurement
 

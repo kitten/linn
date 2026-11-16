@@ -44,7 +44,7 @@ measurement table, not an all-pass assertion. G4 forget uses a scratch store.
 The default command still prints the unchanged two-line retrieval measurement.
 
 The accepted combination has completed q4, h2 and scale-q4 neutral tables with
-failing gates; scale-h2 neutral was canceled. See FINDINGS.md for the dated
+failing gates; scale-h2 neutral was canceled. Use the archive described below to locate the dated
 measurements and distinguish them from tables for earlier binaries. Save full gate tables
 under ignored evals/output (for example, redirect stdout to q4-neutral.md,
 h2-neutral.md, scale-q4-neutral.md, and scale-h2-neutral.md). Fixtures and an
@@ -132,13 +132,6 @@ Compare two fresh ingestion results exactly with
 block vectors, fallback metadata/vector bytes, and source POS annotations in
 stable row order. Publication generations are excluded; model identities, row
 ids, original spans and all numerical payload bytes must match.
-
-To measure repeated vector bytes in an existing copied store without changing
-it, run `nix develop -c cargo run --release -p linn-eval --example
-vector_duplicates -- evals/output/scale-copy.db --kind sentences`.
-The diagnostic groups complete float32 payloads by SHA-256 and estimates the
-size of a vector dictionary plus row ordinals. It does not implement compression
-or change the numerical population; reported time includes hashing.
 
 To compare candidate-only vector scores bit for bit with the full matrix on a
 populated copied store (including its native-index upgrade):
@@ -234,3 +227,14 @@ timings include startup and store open; they are not the neutral latency gate.
 The helper opens the supplied store and may install its derived SQL index: use
 a copy under ignored evals/output. Keep full-corpus ordered page comparisons and
 the two-line scores as separate checks; this fixed sample is not full parity.
+
+## Retired research tools
+
+The loading probe, occurrence/assignment inventories, vector-duplication probe
+and standalone SQL read profiler are archived with the historical findings.
+Branch `archive/research-cleanup-2026-11-16` preserves them at commit
+`583df0f17533d38e9b7f9a58cd53251d6a5189d0`. Read the log with
+`git show archive/research-cleanup-2026-11-16:evals/FINDINGS.md`.
+Use `startup_check --raw` for connection and row-read diagnostics;
+the retired SQL profiler's fixed research queries are not a maintained interface.
+Keep local raw evidence outside the checkout when retiring a research run.

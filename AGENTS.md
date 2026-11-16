@@ -2,8 +2,9 @@
 
 The LLP corpus is the specification. Read the governing LLP before implementation.
 Preserve measured retrieval behavior, thresholds, and card order.
-evals/FINDINGS.md is the closed-measurement log, not the specification; a
-not-adopted entry is closed and must not be rerun as if it were new.
+The closed-measurement log is archived on `archive/research-cleanup-2026-11-16`
+as `evals/FINDINGS.md`, not the specification. A not-adopted entry is closed and
+must not be rerun as if it were new.
 Adopt retrieval changes only under LLP 0005's dev-selection and one-shot h2
 confirmation rule; neutral gates and hybrid comparisons never authorize ranker
 retuning or additional models.

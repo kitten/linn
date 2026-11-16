@@ -1468,9 +1468,7 @@ is provided by `evals/examples/pos_engine_parity.rs`.
 
 Query work is transient; source relations are prepared on writes and read by candidate block,
 guarded by the LLP 0001 publication contract. Normal open does no corpus tagging.
-Shadow factored assignments in `evals/examples/pos_assignment.rs` never grant
-semantic admission. Nonoverlapping partitions and source-sentence capacities
-are external constraints; cosine is not a role or entailment certificate.
+Cosine is not a role or entailment certificate.
 
 ### Selection before feature reads
 
