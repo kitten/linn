@@ -38,6 +38,6 @@ resources and retrieval-specific annotations, `nlp` owns linguistic analysis,
 peer transport and discovery,
 `application` owns typed execution, `runtime` owns detached lifecycle and local
 IPC, and `cli` owns argument parsing, caller input and presentation.
-The [source map](../src/README.md) locates their modules. The library root retains
+The [LLP map](../src/README.md) locates the governing specifications. The library root retains
 existing import paths as re-exports; this organization changes no store format,
 algorithm, or command contract.

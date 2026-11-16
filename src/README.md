@@ -1,26 +1,12 @@
-# Native Linn implementation
+# Architecture map
 
-The CLI and eval harness share this library. Code is grouped by responsibility:
+The LLP corpus is the self-contained specification:
 
-- [storage/](storage/README.md): immutable records, section cuts, libSQL indexes,
-  publication, and on-demand reads.
-- [retrieval/](retrieval/README.md): query interpretation, lexical pages, ordered
-  fallbacks, and exact ranking operations.
-- [language/](language/README.md): embedded model encoding and POS annotations
-  derived from original text.
-- [nlp/](nlp/README.md): embedded linguistic annotation and lookup-ready assets,
-  independent of storage and ranking.
-- [sync/](sync/README.md): shared bounded replica item operations.
-- `mesh/`: signed membership, pairing, authenticated peer jobs and local discovery.
-- `application/`: typed operations/input tasks, caller context, source metadata, results and cursors.
-- [runtime/](runtime/README.md): detached bootstrap, ownership, framed IPC, a dedicated store thread and mesh workers.
-- `reference.rs`: shared original-byte fetch identifier encoding.
-- `diagnostics.rs`: task-local output controls and captured diagnostics.
-- [cli/](cli/README.md): argument parsing, caller context, byte transport and presentation.
-
-`main.rs` only runs the CLI and reports errors. `error.rs` defines shared typed
-errors. `lib.rs` exposes the domains and retains the earlier library import paths
-as re-exports for callers. Internal code uses domain paths.
-
-The [LLP map](../ARCHITECTURE.md) leads to the specification. These directory
-guides locate code; they do not define another algorithm or persistence contract.
+- [0000: Boundaries](../llp/0000-memory-store.explainer.md)
+- [0001: Immutable storage and sections](../llp/0001-storage-and-sections.explainer.md)
+- [0002: Search algorithm](../llp/0002-retrieval-parity.explainer.md)
+- [0003: Using LLP](../llp/0003-using-llp-in-linn.guide.md)
+- [0004: CLI and packaging](../llp/0004-runtime-and-evaluation.guide.md)
+- [0005: Evaluation](../llp/0005-evaluation.explainer.md)
+- [0007: Background runtime](../llp/0007-background-runtime.guide.md)
+- [0008: Replication contracts and mesh synchronization plan](../llp/0008-mesh-synchronization.explainer.md)

@@ -11,7 +11,7 @@ The LLPs are the specification. Read the relevant LLP before implementing a subs
 When durable intent changes, update its governing LLP in the same change. Add a
 numbered document only for independently useful cross-file intent. Use filenames
 `NNNN-slug.explainer.md` or `NNNN-slug.guide.md` and the metadata fields above.
-ARCHITECTURE.md is the short map; AGENTS.md is the contributor enforcement layer.
+src/README.md is the LLP map; AGENTS.md is the contributor enforcement layer.
 
 ## References
 

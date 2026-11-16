@@ -67,7 +67,7 @@ This permits a replacement, not an additional model or a reranker.
   Reject relative XDG values. Search must not depend on cwd.
 - Read the governing LLP before changing a subsystem. Update durable decisions
   in its LLP in the same change; use sparse `@ref LLP NNNN#anchor` comments.
-- LLPs cite only files in this repository and other LLPs. ARCHITECTURE.md is a map.
+- LLPs cite only files in this repository and other LLPs. src/README.md is the LLP map.
 - Run development tools through the flake:
   `nix develop -c cargo fmt`,
   `nix develop -c cargo clippy --workspace --all-targets --all-features -- -D warnings`,

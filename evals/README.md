@@ -176,7 +176,7 @@ open timer. Never report only the open timer as end-to-end CLI latency.
 For a fixed sample of fresh CLI invocations, use:
 
 ```sh
-nix develop -c cargo run --release -p linn-eval --example cli_latency -- \
+nix develop -c cargo run --release -p linn-eval --example cli_latency -- sample \
   --binary <release-linn> --store <copied-store> --corpus <corpus-directory> \
   --output evals/output/cli-latency --per-group 2
 ```
@@ -184,17 +184,27 @@ nix develop -c cargo run --release -p linn-eval --example cli_latency -- \
 Each process uses an original dev query and the real CLI clock/caller scope.
 The sample spans six case groups, and `--case <id>` adds a focused dev case.
 Use `--only-cases` with `--case` to run only named dev cases.
-`--compare-binary <saved-release-linn>` compares semantic CLI output, excluding
-the clock-bearing cursor. Exit 1 is an honest miss, not an execution error.
+`--compare-binary <saved-release-linn>` compares semantic CLI output, normalizing
+clock-bearing cursor strings while preserving cursor presence and null/string
+differences. Exit 1 is an honest miss, not an execution error.
 This is neither the frozen retrieval measurement nor the neutral latency gate.
 
-`cli_latency_compare` alternates two saved product binaries over a stratified
+`cli_latency compare` alternates two saved product binaries over a stratified
 sample and checks their complete JSON responses and exit codes. Supply `--before`,
 `--after`, `--corpus`, `--pages` and `--store`; optional `--before-store` uses a
 separate identical copy for the baseline, avoiding alternating schema migrations
 in the measured invocations. It performs an unmeasured warm-up pair, followed by
 `--rounds` measured rounds and a diagnostic round. Keep other heavy work idle for
 final latency comparisons.
+
+For example:
+
+```sh
+nix develop -c cargo run --release -p linn-eval --example cli_latency -- compare \
+  --before <baseline-linn> --after <candidate-linn> --store <copied-store> \
+  --corpus <corpus-directory> --pages <pages.jsonl> > evals/output/paired-latency.json
+```
+
 Selected cases outside the CLI query grammar are excluded and listed in
 `excluded_cli_queries`; the store's full retrieval evaluation still includes them.
 
@@ -210,28 +220,11 @@ cache costs. This runs the same queries and preserves the two-line score output.
 It is not the neutral per-returned-call latency gate, and it does not include
 corpus JSONL loading in the store timer.
 
-For a copied store and two saved `linn-eval` executables, run:
-
-```sh
-nix develop -c cargo run --release -p linn-eval --example lookup_check -- \
-  <corpus-directory> <copied-store> <before-binary> <after-binary> <output-directory>
-```
-
-The utility checks identical ordered row ids from indexed SQL and the in-memory
-record lookup, then times 100 passes over at most 128 records. It also compares
-complete call JSON on up to 24 evenly spaced original queries from the dev split,
-including later calls, spans, excerpts, hints, and related pointers. It saves both
-exports and fails on a difference. The two executables must accept `linn-eval`'s
-ordinary `--query`, `--scope`, `--corpus`, and `--store` interface. Whole-command
-timings include startup and store open; they are not the neutral latency gate.
-The helper opens the supplied store and may install its derived SQL index: use
-a copy under ignored evals/output. Keep full-corpus ordered page comparisons and
-the two-line scores as separate checks; this fixed sample is not full parity.
-
 ## Retired research tools
 
-The loading probe, occurrence/assignment inventories, vector-duplication probe
-and standalone SQL read profiler are archived with the historical findings.
+The loading probe, occurrence/assignment inventories, vector-duplication probe,
+lookup microbenchmark and standalone SQL read profiler are archived with the
+historical findings.
 Branch `archive/research-cleanup-2026-11-16` preserves them at commit
 `583df0f17533d38e9b7f9a58cd53251d6a5189d0`. Read the log with
 `git show archive/research-cleanup-2026-11-16:evals/FINDINGS.md`.

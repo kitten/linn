@@ -388,7 +388,7 @@ wall time and first-use query time in addition to the open timer. Native query
 plans and lifecycle tests should establish indexed reads, lazy construction,
 rollback, external-write invalidation and secure deletion of projection content.
 
-The `cli_latency` Rust example runs each selected original wording in a fresh
+The `cli_latency sample` Rust example mode runs each selected original wording in a fresh
 product CLI process. Select the first/last evenly spaced dev originals per
 identifier, phrase, doc-passage, lateral, paraphrase and no-gold group, deduplicate
 case ids, and optionally add explicit dev case ids. No alternative wording is
@@ -398,9 +398,20 @@ and teardown; use the CLI's real wall clock and caller scope. This is a latency
 diagnostic, not gold scoring or neutral C2. Exit 0 and honest-miss exit 1 are
 valid invocations. Save stdout/stderr and JSONL timings under ignored output.
 Optional before/after CLI comparisons require equal exit codes and complete
-semantic JSON after removing the clock-bearing cursor. Report sample size,
+semantic JSON after normalizing clock-bearing cursor strings. Cursor presence
+and null/string differences remain significant. Report sample size,
 selection, individual times, median, nearest-index ties-even p95 and maximum;
 do not claim a small fixed sample is a production latency distribution.
+
+The same tool's `compare` mode selects evenly spaced category samples from
+case ids present in `--pages`, excludes unsupported CLI queries with an explicit
+list, and preserves corpus order. It alternates baseline/candidate order over
+positive `--rounds`, after an unmeasured warm-up pair, then runs a separate traced
+diagnostic round. `--before-store` allows an identical separate baseline store.
+Both modes share invocation, sampling arithmetic and cursor normalization;
+`sample` uses dev selection while `compare` uses the supplied page population.
+Keep warm-up and diagnostic rows separate from measured results. These samples
+are not full retrieval evaluation or neutral gates.
 
 `startup_check --artifact-stats` reports numerical projection row, chunk and byte
 counts without loading vector payloads. Record disk growth and one-time numerical
@@ -420,15 +431,9 @@ store opening separately and do not claim corpus-independent cost for exact
 global vector work. It conflicts with neutral, document, query and offline
 comparison/vector-maintenance modes.
 
-The corpus-free tests also cover content-derived lookup invalidation and
-persisted row-id gaps. The optional Rust `lookup_check` example compares SQL
-and memory record lookups in order, times 100 passes over the first at most
-128 record ids, and compares full calls from two saved eval executables on up to
-24 evenly spaced original dev queries in corpus order. It saves both call
-exports and fails on inequality. These diagnostics do not replace full-corpus
-page and score comparisons. Its command wall times include startup and store
-open and are not neutral latency-gate samples. Use a copied store, since open
-may install the derived record index. See evals/README.md for invocation.
+The corpus-free tests cover content-derived lookup invalidation and persisted
+row-id gaps. Use full-corpus ordered pages, complete `--responses` exports and
+score comparisons for retrieval parity rather than a sampled lookup benchmark.
 
 ## External document benchmarks
 

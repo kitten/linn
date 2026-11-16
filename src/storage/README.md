@@ -8,7 +8,7 @@ modules add methods to this same store; they do not own another database.
 - `catalog.rs`: candidate headers, lifecycle lookups and indexed clock-dependent totals.
 - `record.rs`: record envelopes, hashes, and lifecycle eligibility.
 - `bundle.rs`: snapshot export selection and validated original-data bundles.
-- `sync.rs`: immutable replica merges and store-local remote configuration.
+- `sync.rs`: immutable replica merges and publication.
 - `migrations/`: numbered SQL schema upgrades, their transaction runner and exact-schema fences for resident connections.
 - `sections.rs`: original-byte section, block, and hint spans.
 
