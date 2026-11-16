@@ -283,7 +283,8 @@ fn joining_supports_arguments_prompt_first_sync_failure_and_self_revocation() {
         b.ok(&["show", &original, "--all", "--json"], None)["text"],
         "Initial sync transfers this original."
     );
-    let revoked = b.ok(&["sync:revoke", "self", "--json"], None);
+    let endpoint = joined["status"]["endpoint"].as_str().unwrap();
+    let revoked = b.ok(&["sync:revoke", endpoint, "--json"], None);
     assert_eq!(revoked["status"]["enabled"], false);
     assert_eq!(revoked["status"]["pending_leave"], false);
     let invite = a.ok(&["sync:pair", "--json"], None);
