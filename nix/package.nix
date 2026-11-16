@@ -34,6 +34,8 @@ pkgs.rustPlatform.buildRustPackage {
     cp src/nlp/LICENSE "$out/share/doc/linn/NLP-LICENSE"
   '';
   preBuild = ''
+    # SHA-256 repository support requires the vendored experimental libgit2.
+    export LIBGIT2_NO_VENDOR=0
     export RUSTFLAGS="''${RUSTFLAGS:+$RUSTFLAGS }--remap-path-prefix=$NIX_BUILD_TOP=/build --remap-path-prefix=/nix/store=/build/store"
     export CFLAGS="''${CFLAGS:+$CFLAGS }-ffile-prefix-map=$NIX_BUILD_TOP=/build -ffile-prefix-map=/nix/store=/build/store"
     export CXXFLAGS="''${CXXFLAGS:+$CXXFLAGS }-ffile-prefix-map=$NIX_BUILD_TOP=/build -ffile-prefix-map=/nix/store=/build/store"
