@@ -13,7 +13,9 @@ Ordinary commands transparently connect to the per-store detached process in
 LLP 0007; the same binary contains the internal bootstrap, application API and
 CLI. There is no public foreground serve command. `daemon:status` inspects an
 existing owner and `daemon:stop` drains accepted work before stopping it; neither
-starts a daemon. Both lifecycle commands remain callable but are hidden from
+starts a daemon. Ordinary requests automatically replace older releases through
+the authenticated, lock-coordinated handoff in LLP 0007; lifecycle inspection
+and explicit stop do not initiate that handoff. Both lifecycle commands remain callable but are hidden from
 top-level help for now. The next ordinary command starts one again. Results and request
 local diagnostics are returned to the calling CLI, never printed by the daemon.
 The client resolves paths, Git scope/writer provenance and file/stdin bytes for
@@ -44,7 +46,9 @@ pagination without requiring fetch-ID citations. Query guidance favors specific 
 words and exact identifiers, with distinguishing context as needed, rather than
 a prescribed word count.
 
-Daemon text status identifies the selected store and, when running, its PID.
+Daemon text status identifies the selected store and, when running, its PID and
+reported Linn release. JSON status retains running/PID and adds optional runtime
+release and capability metadata for upgrade coordination.
 Import text summaries distinguish applied record/deletion changes from items
 already present. A non-current outline returns exit 1 with contextual text or
 `{"status":"not_current","entries":[]}` under `--json`.

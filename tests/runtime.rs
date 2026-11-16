@@ -867,3 +867,184 @@ fn non_utf8_runtime_source_and_repository_paths_work_end_to_end() {
     );
     f.ok(&["daemon:stop"], None);
 }
+
+// Exercise the existing lifecycle framing with an owner from before release
+// reporting, or with deliberately different release/capability metadata.
+fn older_owner(
+    f: &Fixture,
+    reported: Option<serde_json::Value>,
+    publish_version_hint: bool,
+) -> std::thread::JoinHandle<bool> {
+    use std::{
+        fs::OpenOptions,
+        os::unix::net::UnixListener,
+        time::{Duration, Instant},
+    };
+    f.ok(&["sync:status", "--json"], None);
+    let root = f
+        .dir
+        .path()
+        .join(format!(".linn-runtime-{}", unsafe { libc::geteuid() }));
+    let endpoint = std::fs::read_dir(root)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .find(|p| p.extension().is_some_and(|x| x == "endpoint"))
+        .unwrap();
+    let mut metadata: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&endpoint).unwrap()).unwrap();
+    f.ok(&["daemon:stop"], None);
+    let socket = PathBuf::from(metadata["path"].as_str().unwrap());
+    // Force inspection even if the live owner reports a newer version. A hint
+    // alone must never authorize replacing it.
+    metadata.as_object_mut().unwrap().remove("runtime");
+    if publish_version_hint && let Some(runtime) = &reported {
+        metadata["runtime"] = runtime.clone();
+    }
+    std::fs::write(&endpoint, serde_json::to_vec(&metadata).unwrap()).unwrap();
+    let owner = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(endpoint.with_extension("owner.lock"))
+        .unwrap();
+    owner.lock().unwrap();
+    let listener = UnixListener::bind(&socket).unwrap();
+    listener.set_nonblocking(true).unwrap();
+    std::thread::spawn(move || {
+        use std::io::Read;
+        fn read(stream: &mut std::os::unix::net::UnixStream) -> serde_json::Value {
+            let mut n = [0; 4];
+            stream.read_exact(&mut n).unwrap();
+            let mut bytes = vec![0; u32::from_be_bytes(n) as usize];
+            stream.read_exact(&mut bytes).unwrap();
+            serde_json::from_slice(&bytes).unwrap()
+        }
+        fn send(stream: &mut std::os::unix::net::UnixStream, value: serde_json::Value) {
+            let bytes = serde_json::to_vec(&value).unwrap();
+            stream
+                .write_all(&(bytes.len() as u32).to_be_bytes())
+                .unwrap();
+            stream.write_all(&bytes).unwrap();
+        }
+        let deadline = Instant::now() + Duration::from_secs(15);
+        let stopped = loop {
+            let (mut stream, _) = match listener.accept() {
+                Ok(stream) => stream,
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                    assert!(
+                        Instant::now() < deadline,
+                        "replacement never contacted the owner"
+                    );
+                    std::thread::sleep(Duration::from_millis(10));
+                    continue;
+                }
+                Err(error) => panic!("{error}"),
+            };
+            stream.set_nonblocking(false).unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            let hello = read(&mut stream);
+            if hello["Hello"]["control"] == false {
+                send(
+                    &mut stream,
+                    serde_json::json!({"Rejected":"incompatible daemon; request not executed"}),
+                );
+                break false;
+            }
+            assert_eq!(hello["Hello"]["control"], true);
+            send(&mut stream, serde_json::json!("Accepted"));
+            match read(&mut stream).as_str().unwrap() {
+                "Status" => {
+                    let mut state = serde_json::json!({"running":true,"pid":std::process::id()});
+                    if let Some(runtime) = &reported {
+                        state["runtime"] = runtime.clone();
+                    }
+                    send(&mut stream, serde_json::json!({"State":state}));
+                }
+                "Stop" => {
+                    send(
+                        &mut stream,
+                        serde_json::json!({"State":{"running":false,"pid":null}}),
+                    );
+                    break true;
+                }
+                other => panic!("unexpected lifecycle request: {other}"),
+            }
+        };
+        drop(listener);
+        std::fs::remove_file(socket).unwrap();
+        drop(owner);
+        stopped
+    })
+}
+
+#[test]
+fn upgrades_replace_legacy_and_older_owners_before_sending_writes() {
+    for reported in [
+        None,
+        Some(
+            serde_json::json!({"release":"0.1.0","compatibility":6,"schema":linn::storage::SCHEMA_VERSION}),
+        ),
+        Some(
+            serde_json::json!({"release":env!("CARGO_PKG_VERSION"),"compatibility":5,"schema":linn::storage::SCHEMA_VERSION}),
+        ),
+    ] {
+        let f = Fixture::new();
+        let old = older_owner(&f, reported, true);
+        let inspected = json(&f.ok(&["daemon:status", "--json"], None));
+        assert_eq!(inspected["pid"], std::process::id());
+        let mut children = Vec::new();
+        for i in 0..4 {
+            let mut command = f.command();
+            command
+                .args(["add", "-", "--json"])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped());
+            let mut child = command.spawn().unwrap();
+            writeln!(child.stdin.take().unwrap(), "Original upgrade record {i}.").unwrap();
+            children.push(child);
+        }
+        let mut ids = std::collections::BTreeSet::new();
+        for child in children {
+            let result = child.wait_with_output().unwrap();
+            assert!(
+                result.status.success(),
+                "{}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+            ids.insert(json(&result)["record"].as_str().unwrap().to_owned());
+        }
+        assert!(old.join().unwrap());
+        assert_eq!(ids.len(), 4);
+        let listed = json(&f.ok(&["list", "--json"], None));
+        assert_eq!(listed["records"].as_array().unwrap().len(), 4);
+        let first = json(&f.ok(&["daemon:status", "--json"], None));
+        assert_eq!(first["runtime"]["release"], env!("CARGO_PKG_VERSION"));
+        f.ok(&["sync:status", "--json"], None);
+        assert_eq!(
+            first["pid"],
+            json(&f.ok(&["daemon:status", "--json"], None))["pid"]
+        );
+    }
+}
+
+#[test]
+fn newer_or_unknown_owners_are_not_replaced_even_with_stale_metadata() {
+    for runtime in [
+        serde_json::json!({"release":"999.0.0","compatibility":6,"schema":linn::storage::SCHEMA_VERSION}),
+        serde_json::json!({"release":"0.1.0","compatibility":999,"schema":linn::storage::SCHEMA_VERSION}),
+        serde_json::json!({"release":"0.1.0","compatibility":6,"schema":linn::storage::SCHEMA_VERSION+1}),
+        serde_json::json!({"release":"invalid","compatibility":5,"schema":linn::storage::SCHEMA_VERSION}),
+    ] {
+        let f = Fixture::new();
+        let owner = older_owner(&f, Some(runtime), false);
+        let result = f.run(
+            &["add", "-", "--json"],
+            Some("Must never be executed or replayed."),
+        );
+        assert_eq!(result.status.code(), Some(2));
+        assert!(!owner.join().unwrap());
+        assert!(!f.db.exists());
+    }
+}

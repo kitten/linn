@@ -264,6 +264,9 @@ pub async fn run() -> Result<i32> {
             println!("{}", serde_json::to_value(&state)?);
         } else {
             println!("Store: {}", path.display());
+            if let Some(runtime) = &state.runtime {
+                println!("Linn release: {}", runtime.release);
+            }
             match state.pid.filter(|_| state.running) {
                 Some(pid) => println!("Background process: running (PID {pid})."),
                 None => println!(

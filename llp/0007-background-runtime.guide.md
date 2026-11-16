@@ -349,7 +349,8 @@ Use the manual application compatibility number in
 SQL schema version derived from the migration list. Both must match for an
 application handshake. Do not compute compatibility from source hashes, compiler
 flags, Cargo profiles or executable identity. Different debug/release builds and
-compatible implementations may share an owner.
+compatible implementations at the same release may share an owner. Release
+freshness is tracked separately from application compatibility.
 
 Bump the application number when changing request/reply layouts, operation or
 error semantics, input provenance, delivery/mutation guarantees or runtime/store
@@ -360,14 +361,17 @@ changes and performance-only changes retain the number. Review protocol changes
 against this rule; no build system can infer that compatibility decision.
 
 Authenticate peer account and compare lifecycle protocol, application compatibility,
-schema capability and full store identity before operations. Reject incompatible
-application/schema pairs with an instruction to run daemon:stop, then retry.
+schema capability and full store identity before operations. Before sending any
+application invocation, a newer CLI can replace an older owner through the
+automatic upgrade handoff below. Unresolved incompatible application/schema
+pairs remain errors; advise using a current CLI or explicitly stopping the
+owner when intentionally switching versions.
 Keep lifecycle framing at version 1 and accept status/stop independently of the
 application/schema pair. Missing application compatibility or schema defaults to
 zero, rejecting application work from older clients while preserving their
 lifecycle control. Retain the old string `build` fields in handshake and endpoint
 metadata as empty legacy placeholders so older status/stop clients can parse
-them; never consult them for compatibility. Schema capability advertises binary
+them; never consult them for compatibility or freshness. Schema capability advertises binary
 support, not the on-disk version: supported older stores still migrate on open.
 Do not automatically alternate daemons between old/new clients. Keep lifecycle
 status/stop messages in a small versioned control envelope independent of the
@@ -376,12 +380,54 @@ application request schema. Never route to a different store on mismatch.
 Keep socket names and both ownership locks independent of build, protocol and
 schema versions. A versioned socket alone cannot fence a database, and separate
 versioned ownership would permit competing daemons. The stable owner is the
-cut-off: an incompatible client must stop it through the compatible control
-protocol before its own executable starts an owner. Never silently replace it.
+cut-off: a replacing client must stop it through the compatible control
+protocol and observe release of its ownership lock before its own executable
+starts an owner. Never bypass or unlink the lock, or kill a PID from metadata.
 Keep the application number alongside schema compatibility: application/RPC and
 runtime semantics can change without a SQL migration. The existing exact-schema
 snapshot/write guards continue to fence stale resident handles independently of
 the handshake.
+
+### Automatic upgrade handoff
+
+Publish optional runtime metadata in the endpoint and authenticated lifecycle
+status: package release (semantic version), application compatibility and SQL
+schema capability. Keep legacy fields and lifecycle frame shapes intact; old
+readers ignore the additive metadata, and new readers accept older status
+without it. Stopped status has no runtime metadata. No new application protocol
+number is required for these backward-compatible lifecycle additions.
+
+On an ordinary request, reuse a same-release owner with matching capabilities,
+regardless of debug/release build, executable path, filesystem timestamps or
+semantic-version build metadata. A package release must be bumped for a
+compatible product upgrade to refresh its owner; same-version rebuilds are not
+ordered. Do not fingerprint or hash the executable on the query path.
+
+A newer package release replaces an older release even when application/schema
+numbers match. Within one release, a newer compatibility/schema capability may
+also replace an older one. Never automatically replace a newer release, a
+higher application/schema capability, or malformed/unknown version metadata.
+An older compatible CLI may reuse a newer owner; an incompatible older CLI
+fails without downgrading it. Owners predating runtime-version reporting are
+replaced once through their stable lifecycle control protocol.
+
+Endpoint metadata is only a fast-path hint. Before replacement, acquire the
+existing per-store startup lock, recheck live ownership, authenticate the control
+connection and inspect the live owner's status. Decide from that response, not
+from endpoint metadata alone. Keep the startup lock across graceful Stop, owner
+lock release, same-executable launch/readiness and the new application handshake.
+Concurrent upgrading clients therefore converge on one owner; stable routing and
+ownership paths are unchanged. Lifecycle inspection/explicit stop alone does not
+trigger an upgrade or launch an owner.
+
+Use the existing shutdown behavior: accepted local work and output delivery are
+drained, mesh work is cancelled with durable partial progress, and publication
+barriers remain in force. Wait within existing bounded lifecycle deadlines;
+shutdown/startup failure is an actionable error, never permission to force-kill
+or start a parallel owner. Emit one restart diagnostic on stderr. The triggering
+application request has not been sent yet, including input bytes. After sending
+an invocation, never automatically replay a request whose result is uncertain.
+This handoff changes neither record exchange policy nor mesh wire compatibility.
 
 Serialize store operations. Admit at most 64 application connections before
 receiving their invocation or body; reject excess application handshakes with a

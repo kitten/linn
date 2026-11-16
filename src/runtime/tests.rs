@@ -95,6 +95,7 @@ async fn published_owner_survives_missing_initiating_client() {
             identity: location.id.clone(),
             path: dir.path().join("s"),
             build: String::new(),
+            runtime: Some(DaemonVersion::current()),
         },
         root: location.root,
         store: location.path,
@@ -619,6 +620,7 @@ fn native_paths_round_trip_across_startup_handshake_and_file_input() {
             identity: identity.clone(),
             path: path.clone(),
             build: String::new(),
+            runtime: Some(DaemonVersion::current()),
         },
         root: path.clone(),
         store: path.clone(),
@@ -698,6 +700,7 @@ fn native_path_codec_rejects_foreign_encodings_and_retains_legacy_endpoint_shape
         },
         path: "/runtime/s".into(),
         build: String::new(),
+        runtime: Some(DaemonVersion::current()),
     };
     let old: LegacyEndpoint =
         serde_json::from_slice(&serde_json::to_vec(&endpoint).unwrap()).unwrap();
@@ -779,4 +782,51 @@ async fn admission_progress_preserves_typed_success_when_the_sync_reply_is_lost(
             );
         }
     }
+}
+
+#[test]
+fn daemon_replacement_is_directional_and_independent_of_protocol_compatibility() {
+    fn version(release: &str, compatibility: u32, schema: usize) -> DaemonVersion {
+        DaemonVersion {
+            release: release.into(),
+            compatibility,
+            schema,
+        }
+    }
+    let local = version("0.10.0", 6, 10);
+    assert!(local.supersedes(None));
+    for (release, compatibility, schema, replace) in [
+        ("0.9.0", 6, 10, true), // Compatible release upgrade still refreshes the owner.
+        ("0.10.0-rc.1", 6, 10, true),
+        ("0.10.0", 5, 10, true),
+        ("0.10.0", 6, 9, true),
+        ("0.10.0", 6, 10, false),
+        ("0.10.0+other-build", 6, 10, false),
+        ("0.11.0", 6, 10, false),
+        ("0.11.0", 5, 9, false), // Release order cannot be overridden by older capabilities.
+        ("0.9.0", 7, 10, false),
+        ("0.9.0", 6, 11, false),
+        ("not-a-version", 5, 9, false),
+    ] {
+        assert_eq!(
+            local.supersedes(Some(&version(release, compatibility, schema))),
+            replace,
+            "{release}, {compatibility}, {schema}"
+        );
+    }
+    let legacy: DaemonState = serde_json::from_str(r#"{"running":true,"pid":123}"#).unwrap();
+    assert!(legacy.runtime.is_none());
+    let state = DaemonState {
+        running: true,
+        pid: Some(123),
+        runtime: Some(local),
+    };
+    #[derive(Deserialize)]
+    struct LegacyState {
+        running: bool,
+        pid: Option<u32>,
+    }
+    let old: LegacyState = serde_json::from_value(serde_json::to_value(state).unwrap()).unwrap();
+    assert!(old.running);
+    assert_eq!(old.pid, Some(123));
 }

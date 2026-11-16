@@ -32,8 +32,8 @@ use tokio::{
 };
 use wire::{receive_file, receive_json, send_file, send_json};
 const WAIT: Duration = Duration::from_secs(30);
-pub use protocol::DaemonState;
 use protocol::{COMPATIBILITY, Frame, Hello, Invocation, ReplyEnvelope, VERSION};
+pub use protocol::{DaemonState, DaemonVersion};
 #[derive(Clone, Serialize, Deserialize)]
 struct Endpoint {
     identity: platform::Identity,
@@ -42,6 +42,8 @@ struct Endpoint {
     // Legacy endpoint readers require this field, but it no longer identifies a build.
     #[serde(default)]
     build: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    runtime: Option<DaemonVersion>,
 }
 #[derive(Serialize, Deserialize)]
 struct Bootstrap {
@@ -153,7 +155,9 @@ fn listener(path: &Path) -> Result<Listener> {
 }
 
 async fn connect(location: &Location, control: bool) -> Result<Stream> {
-    let ep = location.endpoint()?;
+    connect_endpoint(location, location.endpoint()?, control).await
+}
+async fn connect_endpoint(location: &Location, ep: Endpoint, control: bool) -> Result<Stream> {
     let mut stream = timeout(
         WAIT,
         Stream::connect(ep.path.to_fs_name::<GenericFilePath>()?),
@@ -221,6 +225,7 @@ async fn launch(location: &Location, mesh_startup: bool) -> Result<()> {
             identity: location.id.clone(),
             path: socket,
             build: String::new(),
+            runtime: Some(DaemonVersion::current()),
         },
         root: location.root.clone(),
         store: location.path.clone(),
@@ -263,7 +268,9 @@ async fn launch(location: &Location, mesh_startup: bool) -> Result<()> {
 }
 async fn session(location: &Location, mesh_startup: bool) -> Result<Stream> {
     if live_owner(location)?
-        && let Ok(stream) = connect(location, false).await
+        && let Ok(ep) = location.endpoint()
+        && !DaemonVersion::current().supersedes(ep.runtime.as_ref())
+        && let Ok(stream) = connect_endpoint(location, ep, false).await
     {
         return Ok(stream);
     }
@@ -271,6 +278,23 @@ async fn session(location: &Location, mesh_startup: bool) -> Result<Stream> {
     // Serialize with the initiating client before deciding that connection failed.
     let start = platform::private_file(&location.file("start.lock"))?;
     wait_lock(&start).await?;
+    if live_owner(location)? {
+        // Metadata is only a hint. Authenticate and inspect the live owner again
+        // under start.lock before issuing a graceful stop; never replay a request.
+        let state = control_owner(location, false).await?;
+        if state.running && DaemonVersion::current().supersedes(state.runtime.as_ref()) {
+            let old = state
+                .runtime
+                .as_ref()
+                .map(|v| v.release.as_str())
+                .unwrap_or("legacy version");
+            eprintln!(
+                "linn: restarting older background process ({old} → {}).",
+                env!("CARGO_PKG_VERSION")
+            );
+            control_owner(location, true).await?;
+        }
+    }
     if !live_owner(location)? {
         launch(location, mesh_startup).await?;
     }
@@ -415,8 +439,11 @@ pub async fn control(path: &Path, stop: bool) -> Result<DaemonState> {
     if !live_owner(&location)? {
         return Ok(DaemonState::stopped());
     }
+    control_owner(&location, stop).await
+}
+async fn control_owner(location: &Location, stop: bool) -> Result<DaemonState> {
     let result = async {
-        let mut stream = connect(&location, true).await?;
+        let mut stream = connect(location, true).await?;
         wire::send(&mut stream, &if stop { Frame::Stop } else { Frame::Status }).await?;
         match wire::receive::<Frame>(&mut stream).await? {
             Frame::State(state) => {
@@ -479,7 +506,7 @@ async fn client(
             && (hello.compatibility != COMPATIBILITY
                 || hello.schema != crate::storage::SCHEMA_VERSION))
     {
-        wire::send(&mut stream,&Frame::Rejected("incompatible daemon protocol/compatibility/schema/store; run linn daemon:stop, then retry with this executable".into())).await?;
+        wire::send(&mut stream,&Frame::Rejected("incompatible daemon protocol/compatibility/schema/store; use a current Linn CLI, or run linn daemon:stop explicitly before switching versions".into())).await?;
         return Ok(());
     }
     // Reserve before receiving potentially large input. Control requests have a
@@ -515,6 +542,7 @@ async fn client(
                     &Frame::State(DaemonState {
                         running: true,
                         pid: Some(std::process::id()),
+                        runtime: Some(DaemonVersion::current()),
                     }),
                 )
                 .await

@@ -90,16 +90,56 @@ impl Invocation {
         Ok(())
     }
 }
+// Release freshness is independent of application compatibility.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DaemonVersion {
+    pub release: String,
+    pub compatibility: u32,
+    pub schema: usize,
+}
+impl DaemonVersion {
+    pub(super) fn current() -> Self {
+        Self {
+            release: env!("CARGO_PKG_VERSION").into(),
+            compatibility: COMPATIBILITY,
+            schema: crate::storage::SCHEMA_VERSION,
+        }
+    }
+    pub(super) fn supersedes(&self, remote: Option<&Self>) -> bool {
+        let Some(remote) = remote else {
+            return true;
+        }; // Pre-version-reporting owner.
+        let (Ok(local_release), Ok(remote_release)) = (
+            semver::Version::parse(&self.release),
+            semver::Version::parse(&remote.release),
+        ) else {
+            return false;
+        };
+        if remote.schema > self.schema || remote.compatibility > self.compatibility {
+            return false;
+        }
+        match local_release.cmp_precedence(&remote_release) {
+            std::cmp::Ordering::Greater => true,
+            std::cmp::Ordering::Equal => {
+                self.schema > remote.schema || self.compatibility > remote.compatibility
+            }
+            std::cmp::Ordering::Less => false,
+        }
+    }
+}
 #[derive(Serialize, Deserialize)]
 pub struct DaemonState {
     pub running: bool,
     pub pid: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime: Option<DaemonVersion>,
 }
 impl DaemonState {
     pub(super) fn stopped() -> Self {
         Self {
             running: false,
             pid: None,
+            runtime: None,
         }
     }
 }
