@@ -732,6 +732,14 @@ fn help_discovers_sync_administration_without_creating_a_store() {
     for args in [vec!["--help"], vec!["-h"], vec!["help"]] {
         let output = fixture.run(&args, None);
         assert!(output.status.success());
+        let help = String::from_utf8_lossy(&output.stdout);
+        assert!(help.contains("-h, --help"));
+        assert!(
+            !help
+                .lines()
+                .any(|line| line.trim_start().starts_with("help "))
+        );
+
         let help = String::from_utf8(output.stdout).unwrap();
         assert!(help.contains("sync:pair"));
         for command in [

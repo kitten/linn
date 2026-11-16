@@ -38,8 +38,9 @@ presentation in LLP 0008. Warnings and errors stay on stderr.
 
 The README agent prompt recommends command help when syntax or behavior is
 unclear, rather than a mandatory help call each session. Top-level help supports
-command discovery and retains brief workflow and evidence-use guidance. Search
-and add help are self-contained for their tasks: search includes shared-store
+command discovery and retains brief workflow and evidence-use guidance. Hide the
+redundant `help` command entry; `-h`/`--help` stay visible and the help verb
+remains accepted. Search and add help are self-contained for their tasks: search includes shared-store
 scope, opening results and distinguishing hints; add includes original findings,
 sources and corrections. Search help expands syntax, filters, references and
 pagination without requiring fetch-ID citations. Query guidance favors specific source

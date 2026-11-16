@@ -253,7 +253,11 @@ fn root_help(raw: &[std::ffi::OsString]) -> bool {
 async fn parse_args() -> Result<Args> {
     let raw: Vec<_> = std::env::args_os().collect();
     let policy = presentation::current();
-    let command = Args::command().color(clap::ColorChoice::Never);
+    let mut command = Args::command().color(clap::ColorChoice::Never);
+    if root_help(&raw) {
+        command.build();
+        command = command.mut_subcommand("help", |help| help.hide(true));
+    }
     match command.clone().try_get_matches_from(&raw) {
         Ok(matches) => Ok(Args::from_arg_matches(&matches).expect("validated CLI arguments")),
         Err(error) => {
