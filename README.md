@@ -78,9 +78,14 @@ Search runs entirely on your machine. The embedding model is compiled into the b
 
 ### 1. Install linn
 
-`linn` is just a single-binary CLI. To install it, download the appropriate binary from the [Releases page](https://github.com/kitten/linn/releases) and place it where your harness's `$PATH` can find it.
+Install with [Homebrew](https://github.com/kitten/homebrew-tap):
 
-_(No installers supported yet, sorry!)_
+```sh
+brew install kitten/tap/linn
+```
+
+Available for macOS 14+ on Apple silicon and Linux on ARM64 or x86_64.
+To install manually, download the latest [release](https://github.com/kitten/linn/releases/latest) and place the single-binary CLI in a folder on your `PATH`.
 
 ### 2. Add system prompt
 
@@ -247,7 +252,8 @@ The system prompt covers everyday use, but you can also ask your agent about not
 
 ## Acknowledgements
 
-**Sources:**
+### Sources
+
 - [nlprule](https://github.com/bminixhofer/nlprule)
 - [LanguageTool](https://github.com/languagetool-org/languagetool/tree/v5.2)
 - [Apache OpenNLP](https://opennlp.apache.org/)
@@ -258,7 +264,8 @@ The system prompt covers everyday use, but you can also ask your agent about not
 - [iroh](https://www.iroh.computer/)
 - [Lv and Zhai (2011). When Documents Are Very Long, BM25 Fails!](https://lintool.github.io/robust04-analysis-papers/p1103-lv.pdf)
 
-**Influences:**
+### Influences
+
 - [Zhai (1997). Fast Statistical Parsing of Noun Phrases for Document Indexing.](https://aclanthology.org/A97-1046.pdf)
 - [Wang et al. (2026). BM25 Wins at Scale: A Scaling Study of Retrieval-Augmented Generation Paradigms.](https://arxiv.org/abs/2607.26497)
 - [Gloaguen et al. (2026). Evaluating AGENTS.md: Are Repository-Level Context Files Helpful for Coding Agents?](https://arxiv.org/abs/2602.11988)
