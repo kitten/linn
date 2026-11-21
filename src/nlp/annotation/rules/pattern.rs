@@ -107,7 +107,7 @@ pub struct Part {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Composition {
     pub parts: Vec<Part>,
-    #[serde(serialize_with = "crate::nlp::annotation::serialization::map")]
+    #[serde(serialize_with = "serialize_map")]
     pub id_to_idx: DefaultHashMap<GraphId, usize>,
     pub can_stop_mask: Vec<bool>,
 }
@@ -458,4 +458,13 @@ impl Composition {
             None
         }
     }
+}
+
+fn serialize_map<K: Serialize + Ord, V: Serialize, S: serde::Serializer>(
+    values: &std::collections::HashMap<K, V>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    let mut entries: Vec<_> = values.iter().collect();
+    entries.sort_unstable_by(|a, b| a.0.cmp(b.0));
+    serializer.collect_map(entries)
 }

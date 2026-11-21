@@ -9,9 +9,8 @@ use annotation::{
     multiword::MultiwordTagger,
     regex::Regex,
     rules::{
-        DisambiguationRule,
+        DisambiguationRule, Filter,
         actions::{Disambiguation, Unification},
-        filter::Filter,
         matcher::{Engine, TokenEngine},
         pattern::GraphId,
     },

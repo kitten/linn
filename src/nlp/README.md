@@ -19,10 +19,10 @@ This domain owns linguistic annotation independently of storage and retrieval.
 - `annotation/types.rs`: coordinates, words, tokens and sentences.
 - `annotation/rules/`: `pattern.rs` owns the serialized pattern schema and
   captures; `matcher.rs` owns ordered match iteration and exclusions;
-  `actions.rs` applies disambiguation; `filter.rs` checks partial-POS conditions;
-  `mod.rs` coordinates rule ownership and mutation.
-- `annotation/regex.rs`, `annotation/serialization.rs`: the fixed-resource regex
-  adapter and canonical collection serialization.
+  `actions.rs` applies disambiguation;
+  `mod.rs` coordinates rule ownership, partial-POS filters and mutation.
+- `annotation/regex.rs`: the fixed-resource regex adapter. Pattern lookup maps
+  serialize canonically in `annotation/rules/pattern.rs`.
 
 The runtime and compiler use the same annotation tree with explicit internal
 paths. The compiler is outside that tree, so ordinary loading cannot decode the

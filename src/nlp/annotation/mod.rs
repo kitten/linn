@@ -4,7 +4,6 @@ pub(super) mod dictionary;
 pub(super) mod multiword;
 pub(super) mod regex;
 pub(super) mod rules;
-pub(super) mod serialization;
 pub(super) mod tokenizer;
 pub(super) mod types;
 

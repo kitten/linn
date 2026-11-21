@@ -1,14 +1,11 @@
 pub mod actions;
-pub mod filter;
 pub mod matcher;
 pub mod pattern;
-use crate::nlp::annotation::{
-    rules::filter::Filter,
-    types::{IncompleteSentence, Span},
-};
+use crate::nlp::annotation::regex::Regex;
+use crate::nlp::annotation::types::{IncompleteSentence, Span};
 use actions::{Disambiguation, Unification};
 use matcher::Engine;
-use pattern::{GraphId, MatchSentence};
+use pattern::{GraphId, MatchGraph, MatchSentence};
 use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DisambiguationRule {
@@ -69,5 +66,33 @@ impl DisambiguationRule {
             }
             self.disambiguations.apply(groups);
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Filter {
+    NoDisambiguationEnglishPartialPosTagFilter {
+        id: GraphId,
+        regexp: Regex,
+        postag_regexp: Regex,
+    },
+}
+impl Filter {
+    pub fn keep(&self, sentence: &MatchSentence, graph: &MatchGraph) -> bool {
+        let Self::NoDisambiguationEnglishPartialPosTagFilter {
+            id,
+            regexp,
+            postag_regexp,
+        } = self;
+        graph.by_id(*id).tokens(sentence).all(|t| {
+            let Some(captures) = regexp.captures(t.word().as_str()) else {
+                return false;
+            };
+            let text = captures.get(1).expect("capture one").as_str();
+            sentence
+                .tagger()
+                .get_tags(text)
+                .any(|d| postag_regexp.is_match(d.pos().as_str()))
+        })
     }
 }
