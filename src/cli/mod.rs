@@ -895,4 +895,35 @@ mod help_context_tests {
             ));
         }
     }
+    #[test]
+    fn unresolved_admitted_mesh_loss_and_timeout_return_exit_two() {
+        use crate::mesh::{
+            failure::Kind,
+            jobs::{Failure, Phase, Report},
+            pairing::Output,
+        };
+        for kind in [Kind::Unresolved, Kind::Timeout] {
+            let report = Report {
+                cohort: vec!["root".into(), "child".into()],
+                collected: vec!["root".into()],
+                distributed: vec!["root".into()],
+                failures: vec![Failure {
+                    peer: "child".into(),
+                    phase: Phase::Collecting,
+                    kind,
+                    message: "admitted transport lost mid-round".into(),
+                }],
+                ..Report::default()
+            };
+            assert_eq!(
+                super::render(
+                    crate::application::Value::Mesh(Output::Synced(report)),
+                    true,
+                    false
+                )
+                .unwrap(),
+                2
+            );
+        }
+    }
 }

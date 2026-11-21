@@ -243,6 +243,10 @@ impl ProgressRenderer {
                 "Joined the mesh. Starting the requested first sync.".into(),
             ),
             crate::mesh::status::Progress::Sync(job) => (job.phase as u8 + 1, progress_line(job)),
+            crate::mesh::status::Progress::Checked(probe) => (
+                self.phase.unwrap_or(0).wrapping_add(1),
+                format!("{}: {}", probe.peer, probe.result),
+            ),
         };
         let _ = self.draw(
             &line,
@@ -352,8 +356,27 @@ fn progress_line(job: &crate::mesh::status::Job) -> String {
         Phase::Failed => ("Sync failed", r.distributed.len()),
         Phase::Cancelled => ("Sync cancelled", r.distributed.len()),
     };
+    let traversal = r.traversal.as_ref().map_or(String::new(), |state| {
+        format!(
+            "; round {}, L{}, direct {}, {} reached, {} contacts pending{}",
+            state.round,
+            state.level,
+            if state.direct_complete {
+                "complete"
+            } else {
+                "pending"
+            },
+            state.reached,
+            state.pending.len(),
+            if state.discovery_expired {
+                "; discovery window expired"
+            } else {
+                ""
+            }
+        )
+    });
     format!(
-        "{action}: {count}/{} peers (includes this peer); local changes: {}",
+        "{action}: {count}/{} peers (includes this peer); changes applied here: {}{traversal}",
         r.cohort.len(),
         r.received
     )
@@ -385,6 +408,23 @@ fn summary(report: &crate::mesh::jobs::Report) -> String {
             report.cohort.len()
         )
     };
+    if !report.complete
+        && report
+            .traversal
+            .as_ref()
+            .is_some_and(|state| state.discovery_expired)
+    {
+        text.push_str(
+            "\nThe discovery window expired; admitted work retained its progress deadlines.",
+        );
+    }
+    if let Some(state) = &report.traversal {
+        for (source, target) in &state.no_known_direct_routes {
+            text.push_str(&format!(
+                "\nPeer {source}: no known direct route to peer {target}."
+            ));
+        }
+    }
     if report.received == 0 {
         text.push_str("\nNo changes applied to this store.");
     } else {
@@ -607,11 +647,11 @@ pub(super) fn render(output: Output, json: bool) -> Result<()> {
                         .reachability
                         .as_ref()
                         .and_then(|r| r.get(&member))
-                        .map(String::as_str)
-                        .unwrap_or("unknown (not checked)");
+                        .map(ToString::to_string)
+                        .unwrap_or_else(|| "unknown (not checked)".into());
                     println!(
                         "{}",
-                        peer_text(style, &member, reachability, member == endpoint)
+                        peer_text(style, &member, &reachability, member == endpoint)
                     );
                 }
                 if status.reachability.is_none() {
@@ -743,7 +783,7 @@ mod tests {
         });
         assert!(line.contains("Collecting: 2/2 peers"));
         assert!(line.contains("includes this peer"));
-        assert!(line.contains("local changes: 0"));
+        assert!(line.contains("changes applied here: 0"));
     }
 
     #[test]

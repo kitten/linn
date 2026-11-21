@@ -158,7 +158,7 @@ pub struct Status {
     #[serde(default)]
     pub transport: super::status::Transport,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub reachability: Option<std::collections::BTreeMap<String, String>>,
+    pub reachability: Option<std::collections::BTreeMap<String, super::status::Reachability>>,
     pub endpoint: Option<String>,
     pub service: Option<String>,
     pub head: Option<String>,
@@ -235,6 +235,17 @@ impl Output {
     pub fn successful(&self) -> bool {
         match self {
             Self::Synced(report) => report.complete || report.unavailable_only(),
+            Self::Status(status) => status.reachability.as_ref().is_none_or(|checks| {
+                !checks.values().any(|result| {
+                    matches!(
+                        result,
+                        super::status::Reachability::Failed {
+                            kind: super::failure::Kind::Version,
+                            ..
+                        }
+                    )
+                })
+            }),
             Self::Changed {
                 initial_sync,
                 initial_sync_error,

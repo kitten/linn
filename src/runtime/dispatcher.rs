@@ -58,6 +58,7 @@ pub(super) async fn run(
     let mut workers = tokio::task::JoinSet::new();
     let mut deliveries = tokio::task::JoinSet::new();
     let (mesh_store, mut mesh_steps) = crate::mesh::store::channel();
+    dispatcher.app.mesh_buffers = Some(mesh_store.buffers.clone());
     let (transport, mut transport_task) =
         mesh_driver::Driver::start(mesh_store.clone(), &network, mesh_startup);
     let mut transport_result = None;
@@ -78,6 +79,7 @@ pub(super) async fn run(
             && jobs.is_empty()
             && workers.is_empty()
             && deliveries.is_empty()
+            && mesh_steps.is_empty()
             && transport_result.is_some()
         {
             break;
@@ -117,16 +119,15 @@ pub(super) async fn run(
                     }
                     workers.spawn_on(mesh::run(job, mesh_store.clone(), transport.clone()), &network);
                 } else {
+                    if job.operation.mutates() { mesh_store.changes.record(None, None); }
                     dispatcher.dispatch(job).await;
                 }
             }
             Some(job) = mesh_steps.recv() => {
-                if job.reply.is_closed() { continue; }
+                if job.reply.is_closed() && !matches!(job.step, crate::mesh::store::Step::ApplyGroup { .. } | crate::mesh::store::Step::Finish(None)) { continue; }
                 let changed = matches!(job.step, crate::mesh::store::Step::CreateIdentity(_) | crate::mesh::store::Step::Accept(_) | crate::mesh::store::Step::Enable(_) | crate::mesh::store::Step::Leave | crate::mesh::store::Step::Disable | crate::mesh::store::Step::Reset);
                 let result = dispatcher.mesh_step(job.step).await;
-                let _readers = read_barrier.read().await;
-                let _ = job.reply.send(result);
-                let _ = job.delivered.await;
+                job.reply.deliver(result, job.delivered, &read_barrier).await;
                 if changed { transport.changed(); }
             }
             Some(completed) = workers.join_next(), if !workers.is_empty() => {

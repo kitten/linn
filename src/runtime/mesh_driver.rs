@@ -250,11 +250,12 @@ impl Owner {
         if let Some(peer) = &self.peer {
             let result = peer.shutdown().await;
             if let Some(listener) = self.listener.take() {
-                listener.abort();
-                let _ = listener.await;
+                listener
+                    .await
+                    .map_err(|_| Error::Invalid("mesh listener did not drain".into()))?;
             }
             result?;
-            self.store.step(Step::Finish).await?;
+            self.store.step(Step::Finish(None)).await?;
         }
         self.peer = None;
         self.view.lock().unwrap().peer = None;
@@ -288,6 +289,7 @@ impl Owner {
         if let Some(peer) = &self.peer
             && peer.running()
             && peer.endpoint.id() == identity.key.public()
+            && peer.uses_service(&identity.service)
         {
             peer.update(&state).await?;
             return Ok(Some(peer.clone()));

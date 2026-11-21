@@ -25,13 +25,19 @@ pub struct SignedRun {
 impl SignedRun {
     pub fn new(key: &SecretKey, membership: &Membership, id: String) -> Result<Self> {
         unhex::<32>(&id)?;
+        if membership.members.is_empty()
+            || membership.members.len() > 256
+            || !membership.members.contains(&endpoint(key))
+        {
+            return Err(super::failure::Kind::Authentication.error("invalid manual job cohort"));
+        }
         let run = Run {
-            version: 1,
+            version: 2,
             id,
             initiator: endpoint(key),
             head: membership.head.clone(),
             cohort: membership.members.iter().cloned().collect(),
-            max_hops: 16,
+            max_hops: membership.members.len().saturating_sub(1) as u16,
         };
         let mut message = DOMAIN.to_vec();
         message.extend(canonical(&run)?);
@@ -44,11 +50,12 @@ impl SignedRun {
     pub fn verify(&self, frozen: &Membership, current: &Membership) -> Result<()> {
         let run = &self.run;
         unhex::<32>(&run.id)?;
-        if run.version != 1 {
+        if run.version != 2 {
             return Err(super::failure::Kind::Version.error("unsupported mesh job version"));
         }
-        if run.max_hops == 0
-            || run.max_hops > 16
+        let invalid_depth =
+            run.max_hops > 255 || usize::from(run.max_hops) != run.cohort.len().saturating_sub(1);
+        if invalid_depth
             || self.path.is_empty()
             || self.path.len() > usize::from(run.max_hops) + 1
             || self.path.first() != Some(&run.initiator)
@@ -110,6 +117,8 @@ pub struct Report {
     pub distributed: Vec<String>,
     pub failures: Vec<Failure>,
     pub received: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub traversal: Option<Box<super::status::Traversal>>,
     pub complete: bool,
 }
 impl Report {
@@ -120,16 +129,6 @@ impl Report {
             collected: vec![local.into()],
             ..Self::default()
         }
-    }
-    pub fn merge_collected(&mut self, other: &Self) {
-        self.collected.extend(other.collected.iter().cloned());
-        self.failures.extend(other.failures.iter().cloned());
-        self.normalize();
-    }
-    pub fn merge_distributed(&mut self, other: &Self) {
-        self.distributed.extend(other.distributed.iter().cloned());
-        self.failures.extend(other.failures.iter().cloned());
-        self.normalize();
     }
     pub fn unavailable_only(&self) -> bool {
         !self.complete
@@ -170,6 +169,39 @@ impl Report {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn coordinated_depth_matches_the_full_cohort_including_singletons() {
+        let keys: Vec<_> = (0..256).map(|_| SecretKey::generate()).collect();
+        let mut state = Membership {
+            head: "0".repeat(64),
+            service: "https://mesh.example".into(),
+            receipt_key: "0".repeat(64),
+            roots: std::collections::BTreeSet::from(["1".repeat(64)]),
+            members: keys.iter().map(endpoint).collect(),
+            revoked: Default::default(),
+            invitations: Default::default(),
+        };
+        let mut job =
+            SignedRun::new(&keys[0], &state, crate::mesh::membership::random_id()).unwrap();
+        assert_eq!(job.run.max_hops, 255);
+        job.path = keys.iter().map(endpoint).collect();
+        job.verify(&state, &state).unwrap();
+        job.run.max_hops = 16;
+        assert!(job.verify(&state, &state).is_err());
+        state.members = std::collections::BTreeSet::from([endpoint(&keys[0])]);
+        let singleton =
+            SignedRun::new(&keys[0], &state, crate::mesh::membership::random_id()).unwrap();
+        assert_eq!(singleton.run.max_hops, 0);
+        singleton.verify(&state, &state).unwrap();
+        let mut old = singleton.clone();
+        old.run.version = 1;
+        assert_eq!(
+            super::super::failure::Kind::of(&old.verify(&state, &state).unwrap_err()),
+            super::super::failure::Kind::Version
+        );
+        state.members.clear();
+        assert!(SignedRun::new(&keys[0], &state, crate::mesh::membership::random_id()).is_err());
+    }
     #[test]
     fn expected_unavailability_never_hides_other_failures_or_unaccounted_peers() {
         use super::super::failure::Kind;
@@ -220,7 +252,9 @@ mod tests {
         assert!(job.verify(&state, &state).is_ok());
         job.path = keys.iter().take(17).map(endpoint).collect();
         assert!(job.verify(&state, &state).is_ok());
-        job.path.push(endpoint(&keys[17]));
+        job.path = keys.iter().map(endpoint).collect();
+        assert!(job.verify(&state, &state).is_ok());
+        job.path.push(endpoint(&SecretKey::generate()));
         assert!(job.verify(&state, &state).is_err());
         job.path = vec![endpoint(&keys[0]), endpoint(&keys[1]), endpoint(&keys[0])];
         assert!(job.verify(&state, &state).is_err());

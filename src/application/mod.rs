@@ -167,6 +167,7 @@ pub struct Application {
     path: PathBuf,
     pub(crate) live_links: Option<crate::storage::LiveLinks>,
     pub(crate) read_barrier: Option<crate::storage::ReadBarrier>,
+    pub(crate) mesh_buffers: Option<std::sync::Arc<crate::mesh::buffers::Buffers>>,
     store: Option<Store>,
     replica: Option<crate::storage::sync::Replica>,
 }
@@ -176,6 +177,7 @@ impl Application {
             path,
             live_links: None,
             read_barrier: None,
+            mesh_buffers: None,
             store: None,
             replica: None,
         }
@@ -240,7 +242,10 @@ impl Application {
         let mut input = input.into();
         let flags = caller.diagnostics.clone();
         let mutates = op.mutates();
-        let release_replica = matches!(op, Operation::Import | Operation::Rebuild);
+        let release_replica = matches!(
+            op,
+            Operation::Import | Operation::Rebuild | Operation::Forget { .. }
+        );
         let (result, lines) = crate::diagnostics::capture(flags, async {
             let started = std::time::Instant::now();
             let result = self.execute_inner(op, caller, &mut input).await;
@@ -312,6 +317,11 @@ impl Application {
         } else {
             None
         };
+        if matches!(op, Forget { .. }) {
+            // The erasing writer must not leave an older replica pager cached.
+            self.replica = None;
+        }
+        let buffers = self.mesh_buffers.clone();
         let store = self.store().await?;
         let snapshot = if matches!(
             op,
@@ -322,7 +332,16 @@ impl Application {
             None
         };
         store.set_query_clock(&ctx.now);
-        let result = execute_store(store, op, caller.writer, input, ctx, prepared).await;
+        let result = execute_store(
+            store,
+            op,
+            caller.writer,
+            input,
+            ctx,
+            prepared,
+            buffers.as_deref(),
+        )
+        .await;
         if let Some(snapshot) = snapshot {
             snapshot.rollback().await?;
         }
@@ -336,6 +355,7 @@ async fn execute_store(
     input: &mut Option<File>,
     ctx: Context,
     prepared: Option<input::Prepared>,
+    buffers: Option<&crate::mesh::buffers::Buffers>,
 ) -> Result<Reply> {
     use Operation::*;
     let scope = ctx.scope.clone();
@@ -615,6 +635,9 @@ async fn execute_store(
                 .0
                 .id
                 .clone();
+            if let Some(buffers) = buffers {
+                buffers.forget(&id);
+            }
             store.forget(&id).await?;
             Value::Forgotten(id)
         }

@@ -10,7 +10,7 @@ use std::path::PathBuf;
 // Keep lifecycle framing stable across application compatibility changes.
 pub(super) const VERSION: u32 = 1;
 // @ref LLP 0007#automatic-detached-lifecycle
-pub(super) const COMPATIBILITY: u32 = 6;
+pub(super) const COMPATIBILITY: u32 = 7;
 #[derive(Serialize, Deserialize)]
 pub(super) struct Hello {
     pub version: u32,
@@ -50,15 +50,37 @@ impl Invocation {
                     invitation: Some(_),
                     ..
                 }),
-                _
+                Progress::Admitted(_) | Progress::Sync(_)
             ) | (Operation::Mesh(Command::Sync), Progress::Sync(_))
+                | (Operation::Mesh(Command::CheckStatus), Progress::Checked(_))
         );
         let valid = valid
             && match progress {
                 Progress::Admitted(status) => status.is_admitted(),
+                Progress::Checked(probe) => {
+                    crate::mesh::membership::unhex::<32>(&probe.peer).is_ok()
+                }
                 Progress::Sync(job) => {
                     job.id == job.report.run
                         && crate::mesh::membership::unhex::<32>(&job.id).is_ok()
+                        && job.report.traversal.as_ref().is_none_or(|state| {
+                            matches!(state.round, 1 | 2)
+                                && state.level <= 255
+                                && state.reached <= job.report.cohort.len()
+                                && state.no_known_direct_routes.len() <= 256 * 255
+                                && state.no_known_direct_routes.iter().all(|(source, target)| {
+                                    source != target
+                                        && job.report.cohort.contains(source)
+                                        && job.report.cohort.contains(target)
+                                })
+                                && state.pending.len() <= 8
+                                && state.relay.len() <= 256
+                                && state.pending.iter().all(|contact| {
+                                    contact.level <= 255
+                                        && job.report.cohort.contains(&contact.source)
+                                        && job.report.cohort.contains(&contact.target)
+                                })
+                        })
                 }
             };
         if valid {

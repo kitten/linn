@@ -58,7 +58,7 @@ pub struct HistoryPage {
 #[derive(Clone)]
 pub struct ControlClient {
     origin: String,
-    http: reqwest::Client,
+    timeout: Duration,
 }
 impl ControlClient {
     pub fn new(origin: &str) -> crate::error::Result<Self> {
@@ -72,12 +72,16 @@ impl ControlClient {
     fn with_timeout(origin: &str, timeout: Duration) -> crate::error::Result<Self> {
         Ok(Self {
             origin: crate::storage::mesh::service_origin(origin)?,
-            http: reqwest::Client::builder()
-                .timeout(timeout)
-                .redirect(reqwest::redirect::Policy::none())
-                .build()
-                .map_err(|_| ControlError::Unavailable)?,
+            timeout,
         })
+    }
+
+    fn http(&self) -> Result<reqwest::Client> {
+        reqwest::Client::builder()
+            .timeout(self.timeout)
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .map_err(|_| ControlError::Unavailable)
     }
 
     async fn response<T: DeserializeOwned + Serialize>(
@@ -123,7 +127,7 @@ impl ControlClient {
 
     pub async fn service(&self) -> Result<Service> {
         let service: Service = self
-            .response(self.http.get(format!("{}/v1/service", self.origin)))
+            .response(self.http()?.get(format!("{}/v1/service", self.origin)))
             .await?;
         if service.version != 1
             || service.service != self.origin
@@ -142,7 +146,7 @@ impl ControlClient {
         }
         let bytes = canonical(proposal).map_err(|_| ControlError::Protocol("invalid proposal"))?;
         let request = self
-            .http
+            .http()?
             .post(format!("{}/v1/events", self.origin))
             .header("content-type", "application/json")
             .body(bytes);
@@ -179,7 +183,7 @@ impl ControlClient {
         let bytes = canonical(&SignedRead { request, signature })
             .map_err(|_| ControlError::Protocol("invalid request"))?;
         let mut http = self
-            .http
+            .http()?
             .post(format!("{}/v1/history", self.origin))
             .header("content-type", "application/json")
             .body(bytes);

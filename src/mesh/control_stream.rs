@@ -3,7 +3,6 @@
 use super::{
     failure::Kind,
     progress::Progress,
-    store::Handle,
     wire::{self, Frame},
 };
 use crate::error::{Error, Result};
@@ -22,12 +21,13 @@ use tokio::{
 
 enum Write {
     Frame(Frame, Option<oneshot::Sender<Result<()>>>),
-    Reset(Kind, oneshot::Sender<()>),
+    Finish(oneshot::Sender<Result<()>>),
 }
 #[derive(Clone)]
 struct Tracker {
     progress: Progress,
     forward: bool,
+    prompt: bool,
 }
 pub(crate) struct Control {
     outgoing: mpsc::Sender<Write>,
@@ -36,23 +36,20 @@ pub(crate) struct Control {
     writer: JoinHandle<()>,
     tracker: Arc<Mutex<Option<Tracker>>>,
     remote: Arc<AtomicU64>,
+    tracked: Arc<tokio::sync::Notify>,
     observed: (u64, u64),
     last_progress: Instant,
     idle: Duration,
 }
 impl Control {
-    pub(crate) fn new(send: SendStream, recv: RecvStream, store: Handle, peer: String) -> Self {
-        Self::with_idle(send, recv, store, peer, Duration::from_secs(60))
+    pub(crate) fn new(send: SendStream, recv: RecvStream) -> Self {
+        Self::with_idle(send, recv, Duration::from_secs(60))
     }
-    pub(crate) fn with_idle(
-        mut send: SendStream,
-        mut recv: RecvStream,
-        store: Handle,
-        peer: String,
-        idle: Duration,
-    ) -> Self {
+    pub(crate) fn with_idle(mut send: SendStream, mut recv: RecvStream, idle: Duration) -> Self {
         let tracker: Arc<Mutex<Option<Tracker>>> = Arc::default();
         let remote = Arc::new(AtomicU64::new(0));
+        let tracked = Arc::new(tokio::sync::Notify::new());
+        let outgoing_tracked = tracked.clone();
         let outgoing_tracker = tracker.clone();
         let incoming_tracker = tracker.clone();
         let incoming_remote = remote.clone();
@@ -64,8 +61,25 @@ impl Control {
                 Duration::from_secs(10),
             );
             heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+            let mut sent_revision = 0;
+            let mut sent_at = tokio::time::Instant::now() - Duration::from_millis(100);
             loop {
+                let tracking = outgoing_tracker.lock().unwrap().clone();
+                let activity = async {
+                    if let Some(tracker) = &tracking
+                        && tracker.prompt
+                    {
+                        tracker.progress.changed_since(sent_revision).await;
+                        tokio::time::sleep_until(sent_at + Duration::from_millis(100)).await;
+                    } else {
+                        std::future::pending::<()>().await;
+                    }
+                };
                 let write = tokio::select! {
+                    _ = outgoing_tracked.notified() => continue,
+                    _ = activity => {
+                        Write::Frame(Frame::Progress { revision: tracking.as_ref().unwrap().progress.revision() }, None)
+                    }
                     write = writes.recv() => match write { Some(write) => write, None => break },
                     _ = heartbeat.tick() => {
                         let revision = outgoing_tracker.lock().unwrap().as_ref()
@@ -76,13 +90,19 @@ impl Control {
                 };
                 let (frame, reply) = match write {
                     Write::Frame(frame, reply) => (frame, reply),
-                    Write::Reset(kind, reply) => {
-                        let _ = send.reset(kind.code().into());
-                        let _ = reply.send(());
-                        break;
+                    Write::Finish(reply) => {
+                        let result = send
+                            .finish()
+                            .map_err(|error| Kind::Unresolved.error(error.to_string()));
+                        let _ = reply.send(result);
+                        return;
                     }
                 };
-                let result = wire::send(&mut send, frame, &store, &peer).await;
+                if let Frame::Progress { revision } = &frame {
+                    sent_revision = *revision;
+                    sent_at = tokio::time::Instant::now();
+                }
+                let result = wire::send(&mut send, frame).await;
                 let failed = result.is_err();
                 if let Some(reply) = reply {
                     let _ = reply.send(result);
@@ -113,6 +133,8 @@ impl Control {
                         }
                     }
                     Err(error) => {
+                        let error =
+                            Kind::of(&error).error(format!("mesh control response: {error}"));
                         let _ = reads.send(Err(error)).await;
                         break;
                     }
@@ -127,6 +149,7 @@ impl Control {
             writer,
             tracker,
             remote,
+            tracked,
             observed: (0, 0),
             last_progress: Instant::now(),
             idle,
@@ -142,14 +165,30 @@ impl Control {
             .await
             .map_err(|_| Error::Invalid("mesh control writer stopped".into()))?
     }
-    pub(crate) async fn fail(&self, kind: Kind) {
+    pub(crate) async fn finish(self) -> Result<()> {
         let (reply, result) = oneshot::channel();
-        if self.outgoing.send(Write::Reset(kind, reply)).await.is_ok() {
-            let _ = result.await;
-        }
+        self.outgoing
+            .send(Write::Finish(reply))
+            .await
+            .map_err(|_| {
+                Kind::Unresolved.error("mesh control writer stopped before finalization")
+            })?;
+        result
+            .await
+            .map_err(|_| Kind::Unresolved.error("mesh control finalization stopped"))?
     }
-    pub(crate) fn track(&self, progress: Progress, forward: bool) {
-        *self.tracker.lock().unwrap() = Some(Tracker { progress, forward });
+    pub(crate) fn track_coordinated(&self, progress: Progress, forward: bool) {
+        // Prompt activity goes child-to-parent. Downstream siblings keep the
+        // ordinary heartbeat instead of rebroadcasting each root revision.
+        self.track_mode(progress, forward, !forward);
+    }
+    fn track_mode(&self, progress: Progress, forward: bool, prompt: bool) {
+        *self.tracker.lock().unwrap() = Some(Tracker {
+            progress,
+            forward,
+            prompt,
+        });
+        self.tracked.notify_one();
     }
     pub(crate) async fn receive(&mut self) -> Result<Frame> {
         let mut tick = tokio::time::interval(self.idle.min(Duration::from_secs(1)));
@@ -169,7 +208,7 @@ impl Control {
             }
             tokio::select! {
                 frame = self.incoming.recv() => {
-                    return frame.ok_or_else(|| Kind::Offline.error("mesh control stream ended"))?;
+                    return frame.ok_or_else(|| Kind::Unresolved.error("mesh control stream ended"))?;
                 }
                 _ = tick.tick() => (),
             }

@@ -21,16 +21,25 @@ use iroh::{
     endpoint::{Connection, RecvStream, SendStream, presets},
 };
 use std::{
-    collections::{BTreeMap, BTreeSet, VecDeque},
-    future::Future,
-    pin::Pin,
+    collections::{BTreeMap, BTreeSet},
     sync::{
         Arc, Mutex, Weak,
         atomic::{AtomicBool, AtomicUsize, Ordering},
     },
-    time::{Duration, Instant},
+    time::Duration,
 };
 use tokio::{sync::Semaphore, task::JoinSet};
+
+mod capacity;
+pub(super) mod coordinated;
+mod pipeline;
+#[cfg(test)]
+#[path = "../../tests/support/relay.rs"]
+mod relay_fixture;
+mod replica;
+pub(crate) mod source;
+mod startup;
+pub(crate) use startup::Startup;
 
 struct Entry {
     job: SignedRun,
@@ -38,14 +47,49 @@ struct Entry {
     children: BTreeSet<String>,
     phase: Phase,
     report: Report,
-    touched: Instant,
     progress: Progress,
     ended: tokio::sync::watch::Sender<bool>,
+    reads: BTreeMap<String, Arc<source::Grant>>,
+    coordinated: Option<Arc<coordinated::Node>>,
+    terminal_only: bool,
+    data_round: u8,
+    transfers: usize,
+}
+impl Drop for Entry {
+    fn drop(&mut self) {
+        self.revoke_sources();
+    }
 }
 impl Entry {
-    fn serves(&self, peer: &str) -> bool {
-        (self.phase == Phase::Collected && self.parent.as_deref() == Some(peer))
-            || (self.phase == Phase::Distributing && self.children.contains(peer))
+    fn advance_round(&mut self, round: u8) -> Result<()> {
+        if !matches!(round, 1 | 2)
+            || round < self.data_round
+            || (round > self.data_round
+                && (self.transfers != 0 || self.reads.values().any(|grant| grant.active())))
+        {
+            return Err(protocol(
+                "data rounds cannot overlap or replay an earlier phase",
+            ));
+        }
+        if round > self.data_round {
+            self.revoke_sources();
+            self.data_round = round;
+        }
+        Ok(())
+    }
+    fn revoke_sources(&mut self) {
+        for grant in self.reads.values() {
+            grant.revoke();
+        }
+        self.reads.clear();
+    }
+    fn serves_round(&self, peer: &str, round: u8) -> bool {
+        matches!(round, 1 | 2)
+            && !self.terminal_only
+            && self
+                .reads
+                .get(peer)
+                .is_some_and(|grant| grant.round == round)
     }
 }
 pub(crate) struct Peer {
@@ -58,19 +102,25 @@ pub(crate) struct Peer {
     lookup: MemoryLookup,
     discovery: Option<LocalLookup>,
     runs: Mutex<BTreeMap<String, Entry>>,
-    outgoing: Semaphore,
+    outgoing: capacity::Transfers,
     incoming: Semaphore,
     handshakes: Semaphore,
-    connections: Arc<Semaphore>,
+    connections: Arc<super::connections::Connections>,
     stopped: AtomicBool,
     roots: AtomicUsize,
     roots_changed: tokio::sync::Notify,
+    connection_idle: tokio::sync::Notify,
+    readers: tokio::sync::Mutex<JoinSet<()>>,
+    #[cfg(test)]
+    replica_rounds: [AtomicUsize; 2],
+    #[cfg(test)]
+    delta_transfers: [AtomicUsize; 2],
 }
 struct Running {
     peer: Weak<Peer>,
     run: String,
     root: bool,
-    finished: bool,
+    retire: bool,
 }
 impl Running {
     fn new(peer: &Arc<Peer>, run: &str, root: bool) -> Self {
@@ -81,18 +131,17 @@ impl Running {
             peer: Arc::downgrade(peer),
             run: run.into(),
             root,
-            finished: false,
+            retire: true,
         }
     }
 }
 impl Drop for Running {
     fn drop(&mut self) {
+        if !self.retire {
+            return;
+        }
         if let Some(peer) = self.peer.upgrade() {
-            if !self.finished
-                && let Some(entry) = peer.runs.lock().unwrap().get_mut(&self.run)
-            {
-                entry.phase = Phase::Cancelled;
-                entry.touched = Instant::now();
+            if let Some(entry) = peer.runs.lock().unwrap().remove(&self.run) {
                 entry.ended.send_replace(true);
             }
             if self.root {
@@ -103,20 +152,18 @@ impl Drop for Running {
     }
 }
 struct Connected {
+    admission_deadline: tokio::time::Instant,
     connection: Connection,
-    server: tokio::task::JoinHandle<()>,
-    _permit: tokio::sync::OwnedSemaphorePermit,
+    server: Option<tokio::task::JoinHandle<()>>,
+    _permit: super::connections::Permit,
 }
 impl Drop for Connected {
     fn drop(&mut self) {
         self.connection.close(0u32.into(), b"manual link ended");
-        self.server.abort();
+        if let Some(server) = &self.server {
+            server.abort();
+        }
     }
-}
-struct Child {
-    peer: String,
-    link: Arc<Connected>,
-    control: Control,
 }
 
 fn protocol(message: &str) -> Error {
@@ -166,9 +213,21 @@ impl Peer {
             .bind()
             .await
             .map_err(|_| protocol("could not bind peer endpoint"))?;
+        Ok(Self::with_endpoint(
+            store, identity, membership, endpoint, lookup, relay,
+        ))
+    }
+    fn with_endpoint(
+        store: Handle,
+        identity: Identity,
+        membership: Membership,
+        endpoint: Endpoint,
+        lookup: MemoryLookup,
+        relay: RelayUrl,
+    ) -> Arc<Self> {
         let discovery = LocalLookup::start(&endpoint, lookup.clone(), &membership);
         let local_error = discovery.as_ref().err().map(bounded);
-        Ok(Arc::new(Self {
+        Arc::new(Self {
             local: endpoint.id().to_string(),
             endpoint,
             local_error,
@@ -178,60 +237,85 @@ impl Peer {
             lookup,
             discovery: discovery.ok(),
             runs: Mutex::new(BTreeMap::new()),
-            outgoing: Semaphore::new(2),
+            outgoing: capacity::Transfers::new(),
             incoming: Semaphore::new(2),
             handshakes: Semaphore::new(8),
-            connections: Arc::new(Semaphore::new(32)),
+            connections: super::connections::Connections::new(membership.members.len()),
             stopped: AtomicBool::new(false),
             roots: AtomicUsize::new(0),
             roots_changed: tokio::sync::Notify::new(),
-        }))
+            connection_idle: tokio::sync::Notify::new(),
+            readers: tokio::sync::Mutex::new(JoinSet::new()),
+            #[cfg(test)]
+            replica_rounds: std::array::from_fn(|_| AtomicUsize::new(0)),
+            #[cfg(test)]
+            delta_transfers: std::array::from_fn(|_| AtomicUsize::new(0)),
+        })
     }
 
     pub(crate) async fn update(&self, membership: &Membership) -> Result<()> {
-        for entry in self.runs.lock().unwrap().values_mut() {
-            if !membership.members.contains(&entry.job.run.initiator)
-                || entry
-                    .parent
-                    .as_ref()
-                    .is_some_and(|parent| !membership.members.contains(parent))
-            {
-                entry.phase = Phase::Cancelled;
-                entry.touched = Instant::now();
-                entry.ended.send_replace(true);
+        {
+            let mut runs = self.runs.lock().unwrap();
+            for entry in runs.values_mut() {
+                if !membership.members.contains(&entry.job.run.initiator)
+                    || entry
+                        .parent
+                        .as_ref()
+                        .is_some_and(|parent| !membership.members.contains(parent))
+                {
+                    entry.phase = Phase::Cancelled;
+                    entry.revoke_sources();
+                    entry.ended.send_replace(true);
+                }
             }
+            runs.retain(|_, entry| {
+                !(*entry.ended.borrow()
+                    && entry
+                        .coordinated
+                        .as_ref()
+                        .is_some_and(|node| node.idle_stamp().is_some()))
+            });
         }
+        self.connections.membership(membership.members.len());
+        while self.connections.excess() && coordinated::release_idle(self).await {}
         if let Some(discovery) = &self.discovery {
             discovery.update_membership(membership)?;
         }
         Ok(())
     }
+    pub(crate) fn uses_service(&self, service: &str) -> bool {
+        service
+            .parse::<RelayUrl>()
+            .is_ok_and(|relay| relay == self.relay)
+    }
     pub(crate) fn running(&self) -> bool {
         !self.stopped.load(Ordering::Acquire)
+    }
+    pub(crate) fn job_revision(&self, run: &str) -> Option<u64> {
+        self.runs
+            .lock()
+            .unwrap()
+            .get(run)
+            .map(|entry| entry.progress.revision())
     }
     pub(crate) fn status(&self) -> super::status::Transport {
         use iroh::Watcher;
         let runs = self.runs.lock().unwrap();
-        let mut jobs: Vec<_> = runs
+        let jobs: Vec<_> = runs
             .iter()
-            .filter(|(_, entry)| !entry.phase.is_terminal())
+            .filter(|(_, entry)| {
+                !entry.phase.is_terminal()
+                    && entry
+                        .coordinated
+                        .as_ref()
+                        .is_none_or(|node| node.idle_stamp().is_none())
+            })
             .map(|(id, entry)| super::status::Job {
                 id: id.clone(),
                 phase: entry.phase,
                 report: entry.report.clone(),
             })
             .collect();
-        if let Some((id, entry)) = runs
-            .iter()
-            .filter(|(_, entry)| entry.phase.is_terminal())
-            .max_by_key(|(_, entry)| entry.touched)
-        {
-            jobs.push(super::status::Job {
-                id: id.clone(),
-                phase: entry.phase,
-                report: entry.report.clone(),
-            });
-        }
         super::status::Transport {
             ready: !self.stopped.load(Ordering::Acquire),
             relay_connected: self
@@ -259,7 +343,21 @@ impl Peer {
         if let Some(discovery) = &self.discovery {
             discovery.stop();
         }
+        {
+            let mut runs = self.runs.lock().unwrap();
+            for entry in runs.values_mut() {
+                entry.phase = Phase::Cancelled;
+                entry.ended.send_replace(true);
+            }
+            runs.retain(|_, entry| {
+                !entry
+                    .coordinated
+                    .as_ref()
+                    .is_some_and(|node| node.idle_stamp().is_some())
+            });
+        }
         self.endpoint.close().await;
+        self.readers.lock().await.shutdown().await;
         tokio::time::timeout(wire::WAIT, async {
             loop {
                 let changed = self.roots_changed.notified();
@@ -288,35 +386,22 @@ impl Peer {
                     let peer = self.clone();
                     connections.spawn(async move {
                         let _permit = permit;
-                        if let Ok(Ok(connection)) = tokio::time::timeout(wire::WAIT, incoming).await { peer.clone().serve_connection(connection, true).await; }
+                        if let Ok(Ok(connection)) = tokio::time::timeout(wire::WAIT, incoming).await {
+                            peer.clone().serve_connection(connection, true).await;
+                        }
                     });
                 }
                 _ = connections.join_next(), if !connections.is_empty() => (),
             }
         }
-        connections.abort_all();
         while connections.join_next().await.is_some() {}
     }
 
     async fn authorized(&self, peer: &str) -> Result<()> {
-        self.store
-            .step(Step::Peer {
-                peer: peer.into(),
-                request: Request::Needs { entries: vec![] },
-            })
-            .await?;
+        self.store.step(Step::Authorize(peer.into())).await?;
         Ok(())
     }
-    async fn send(&self, send: &mut SendStream, frame: Frame, peer: &str) -> Result<()> {
-        wire::send(send, frame, &self.store, peer).await
-    }
-
-    async fn send_proof(
-        &self,
-        send: &mut SendStream,
-        recv: &mut RecvStream,
-        peer: &str,
-    ) -> Result<()> {
+    async fn send_proof(&self, send: &mut SendStream, recv: &mut RecvStream) -> Result<()> {
         let mut cursor = 0;
         loop {
             let Value::History(events) = self.store.step(Step::History(cursor)).await? else {
@@ -326,13 +411,12 @@ impl Peer {
             if let Some((last, _)) = events.last() {
                 cursor = *last;
             }
-            self.send(
+            wire::send(
                 send,
                 Frame::Proof {
                     events: events.into_iter().map(|(_, event)| event).collect(),
                     done,
                 },
-                peer,
             )
             .await?;
             if !matches!(wire::receive_limit(recv, 4096).await?, Frame::Ack) {
@@ -343,12 +427,7 @@ impl Peer {
             }
         }
     }
-    async fn receive_proof(
-        &self,
-        send: &mut SendStream,
-        recv: &mut RecvStream,
-        peer: &str,
-    ) -> Result<()> {
+    async fn receive_proof(&self, send: &mut SendStream, recv: &mut RecvStream) -> Result<()> {
         let mut proof = super::proof::Staging::new(&self.store).await?;
         loop {
             let Frame::Proof { events, done } = wire::receive_limit(recv, 512 * 1024).await? else {
@@ -360,7 +439,7 @@ impl Peer {
             for event in events {
                 proof.accept(&self.store, event).await?;
             }
-            self.send(send, Frame::Ack, peer).await?;
+            wire::send(send, Frame::Ack).await?;
             if done {
                 return proof.finish();
             }
@@ -376,20 +455,19 @@ impl Peer {
             .await?
             .ok_or_else(|| Kind::Authentication.error("no trusted mesh membership"))?
             .head;
-        self.send(send, Frame::Hello { version: 1, head }, peer)
-            .await?;
+        wire::send(send, Frame::Hello { version: 2, head }).await?;
         match wire::receive_limit(recv, 4096).await? {
             Frame::Authorized => return self.authorized(peer).await,
             Frame::Ack => (),
             _ => return Err(protocol("membership negotiation expected")),
         }
-        self.send_proof(send, recv, peer).await?;
+        self.send_proof(send, recv).await?;
         if !matches!(wire::receive_limit(recv, 4096).await?, Frame::Authorized) {
             return Err(Kind::Authentication.error("mesh peer: membership authorization denied"));
         }
-        self.receive_proof(send, recv, peer).await?;
+        self.receive_proof(send, recv).await?;
         self.authorized(peer).await?;
-        self.send(send, Frame::Authorized, peer).await
+        wire::send(send, Frame::Authorized).await
     }
     async fn handshake_server(
         &self,
@@ -407,13 +485,13 @@ impl Peer {
         }
         if current.head == head {
             self.authorized(peer).await?;
-            return self.send(send, Frame::Authorized, peer).await;
+            return wire::send(send, Frame::Authorized).await;
         }
-        self.send(send, Frame::Ack, peer).await?;
-        self.receive_proof(send, recv, peer).await?;
+        wire::send(send, Frame::Ack).await?;
+        self.receive_proof(send, recv).await?;
         self.authorized(peer).await?;
-        self.send(send, Frame::Authorized, peer).await?;
-        self.send_proof(send, recv, peer).await?;
+        wire::send(send, Frame::Authorized).await?;
+        self.send_proof(send, recv).await?;
         if !matches!(wire::receive_limit(recv, 4096).await?, Frame::Authorized) {
             return Err(
                 Kind::Authentication.error("mesh peer: peer did not authorize this endpoint")
@@ -428,11 +506,48 @@ impl Peer {
         Ok(())
     }
     async fn connect(self: &Arc<Self>, peer: &str) -> Result<Arc<Connected>> {
-        let permit = self
-            .connections
-            .clone()
-            .try_acquire_owned()
-            .map_err(|_| Kind::Capacity.error("mesh connection capacity reached"))?;
+        self.connect_with_routes(
+            peer,
+            super::scheduler::Routes {
+                direct: true,
+                relay: true,
+            },
+            &startup::DialState::default(),
+            Kind::Timeout,
+        )
+        .await
+    }
+    async fn connect_with_routes(
+        self: &Arc<Self>,
+        peer: &str,
+        routes: super::scheduler::Routes,
+        state: &startup::DialState,
+        timeout_kind: Kind,
+    ) -> Result<Arc<Connected>> {
+        self.dial(peer, routes, state, timeout_kind, true).await
+    }
+    fn has_direct_route(&self, peer: &str) -> bool {
+        !self.endpoint.bound_sockets().is_empty()
+            && unhex(peer)
+                .ok()
+                .and_then(|bytes| PublicKey::from_bytes(&bytes).ok())
+                .and_then(|id| self.lookup.get_endpoint_info(id))
+                .is_some_and(|info| info.to_endpoint_addr().ip_addrs().next().is_some())
+    }
+    async fn dial(
+        self: &Arc<Self>,
+        peer: &str,
+        routes: super::scheduler::Routes,
+        state: &startup::DialState,
+        timeout_kind: Kind,
+        serving: bool,
+    ) -> Result<Arc<Connected>> {
+        use iroh::endpoint::{ConnectError, ConnectOptions, InitialPath};
+        if !routes.relay && !(routes.direct && self.has_direct_route(peer)) {
+            return Err(Kind::Unresolved.error("no known direct route to target"));
+        }
+        let permit = coordinated::connection_permit(self).await?;
+        let admission_deadline = tokio::time::Instant::now() + Duration::from_secs(10);
         let id = PublicKey::from_bytes(&unhex(peer)?).map_err(|_| protocol("invalid peer key"))?;
         if self.discovery.as_ref().is_some_and(LocalLookup::is_running) {
             use iroh::Watcher;
@@ -457,23 +572,94 @@ impl Peer {
         if let Some(info) = self.lookup.get_endpoint_info(id) {
             address.addrs.extend(info.to_endpoint_addr().addrs);
         }
-        let connection =
-            tokio::time::timeout(Duration::from_secs(3), self.endpoint.connect(address, ALPN))
+        // Read the direct candidates after passive readiness, including any
+        // mDNS address learned while a cold relay session was still starting.
+        let direct = routes.direct
+            && !self.endpoint.bound_sockets().is_empty()
+            && address.ip_addrs().next().is_some();
+        state.selected(direct);
+        let initial_path = match (direct, routes.relay) {
+            (true, true) => InitialPath::All,
+            (true, false) => InitialPath::DirectOnly,
+            (false, true) => InitialPath::RelayOnly,
+            (false, false) => return Err(Kind::Unresolved.error("no known direct route to target")),
+        };
+        let mut observation = routes
+            .relay
+            .then(|| self.endpoint.observe_relay_dial(self.relay.clone(), id))
+            .flatten();
+        let dial = async {
+            let connecting = self
+                .endpoint
+                .connect_with_opts(
+                    address,
+                    ALPN,
+                    ConnectOptions::new().with_initial_path(initial_path),
+                )
                 .await
-                .map_err(|_| {
-                    Kind::Offline.error("peer is not reachable now; it may be asleep or offline")
-                })?
-                .map_err(Kind::connect)?;
-        let server_peer = self.clone();
-        let server_connection = connection.clone();
-        let server = tokio::spawn(async move {
-            server_peer.serve_connection(server_connection, false).await;
-        });
+                .map_err(ConnectError::from)?;
+            connecting.await.map_err(ConnectError::from)
+        };
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(3);
+        state.started(deadline);
+        let connecting = tokio::time::timeout_at(deadline, dial);
+        tokio::pin!(connecting);
+        let connection = loop {
+            tokio::select! {
+                biased;
+                result = &mut connecting => break result.map_err(|_| {
+                    timeout_kind.error("peer is not reachable now; it may be asleep or offline")
+                })?.map_err(Kind::connect)?,
+                _ = async { observation.as_mut().unwrap().observation().await }, if observation.is_some() => {
+                    let outcome = state.observed(observation.take().unwrap());
+                    if outcome.is_some_and(|reply| reply.outcome == iroh::endpoint::RelayDialOutcome::NotRegistered)
+                        && !direct {
+                            tokio::select! {
+                                biased;
+                                result = &mut connecting => break result.map_err(|_| {
+                                    timeout_kind.error("peer is not reachable now; it may be asleep or offline")
+                                })?.map_err(Kind::connect)?,
+                                _ = std::future::ready(()) => {
+                                    return Err(Kind::Timeout.error(
+                                        "peer is not registered at its relay for this dial attempt",
+                                    ));
+                                },
+                            }
+                    }
+                }
+            }
+        };
+        let server = serving.then(|| self.start_server(&connection));
         Ok(Arc::new(Connected {
+            admission_deadline,
             connection,
             server,
             _permit: permit,
         }))
+    }
+
+    fn hints(&self, job: &SignedRun) -> Vec<String> {
+        job.run
+            .cohort
+            .iter()
+            .filter(|target| *target != &self.local && !job.path.contains(target))
+            .filter(|target| {
+                unhex::<32>(target)
+                    .ok()
+                    .and_then(|bytes| PublicKey::from_bytes(&bytes).ok())
+                    .and_then(|id| self.lookup.get_endpoint_info(id))
+                    .is_some_and(|info| info.to_endpoint_addr().ip_addrs().next().is_some())
+            })
+            .cloned()
+            .collect()
+    }
+
+    fn start_server(self: &Arc<Self>, connection: &Connection) -> tokio::task::JoinHandle<()> {
+        let peer = self.clone();
+        let connection = connection.clone();
+        tokio::spawn(async move {
+            peer.serve_connection(connection, false).await;
+        })
     }
 
     async fn serve_connection(self: Arc<Self>, connection: Connection, inbound: bool) {
@@ -485,46 +671,98 @@ impl Peer {
                     connection.close(Kind::Timeout.code().into(), b"idle mesh connection"); break;
                 }
                 next = connection.accept_bi(), if streams.len() < 8 => {
-                    let Ok((mut send, mut recv)) = next else { break; };
+                    let Ok((send, recv)) = next else { break; };
                     let peer = self.clone(); let connection = connection.clone();
                     idle_since = tokio::time::Instant::now();
-                    streams.spawn(async move {
-                        let remote = connection.remote_id().to_string();
-                        let result = async {
-                            let handshake = tokio::time::timeout(wire::WAIT, peer.handshakes.acquire()).await
-                                .map_err(|_| Kind::Capacity.error("mesh handshake capacity reached"))?
-                                .map_err(|_| Kind::Cancelled.error("mesh peer: endpoint closing"))?;
-                            match wire::receive_limit(&mut recv, 16 * 1024).await? {
-                                Frame::Hello { version: 1, head } => {
-                                    tokio::time::timeout(Duration::from_secs(300), peer.handshake_server(&mut send, &mut recv, &remote, &head)).await.map_err(|_| Kind::Timeout.error("membership handshake timed out"))??;
-                                    drop(handshake);
-                                    let mut control = Control::new(send, recv, peer.store.clone(), remote.clone());
-                                    let Frame::Begin(job) = tokio::time::timeout(wire::WAIT, control.receive()).await.map_err(|_| Kind::Timeout.error("mesh job begin timed out"))?? else { return Err(protocol("manual job begin expected")); };
-                                    peer.serve_job(connection.clone(), control, job).await
-                                }
-                                Frame::Replica { run } => { drop(handshake); peer.serve_replica(&mut send, &mut recv, &remote, &run).await }
-                                Frame::Hello { .. } => Err(Kind::Version.error("unsupported mesh version")),
-                                _ => Err(protocol("unsupported mesh stream")),
-                            }
-                        }.await;
-                        if let Err(error) = result { connection.close(Kind::of(&error).code().into(), b"mesh stream failed"); }
-                    });
+                    streams.spawn(peer.serve_stream(connection, send, recv));
                 }
                 _ = streams.join_next(), if !streams.is_empty() => idle_since = tokio::time::Instant::now(),
             }
         }
-        streams.abort_all();
+        // Job owners must observe closure, fence work and settle their
+        // publication/idle-role state before their stream future is dropped.
         while streams.join_next().await.is_some() {}
+    }
+
+    async fn serve_stream(
+        self: Arc<Self>,
+        connection: Connection,
+        mut send: SendStream,
+        mut recv: RecvStream,
+    ) {
+        let remote = connection.remote_id().to_string();
+        let mut replica = false;
+        let result = async {
+            let handshake = tokio::time::timeout(wire::WAIT, self.handshakes.acquire())
+                .await
+                .map_err(|_| Kind::Capacity.error("mesh handshake capacity reached"))?
+                .map_err(|_| Kind::Cancelled.error("mesh peer: endpoint closing"))?;
+            match wire::receive_limit(&mut recv, 16 * 1024).await? {
+                Frame::Hello { version: 2, head } => {
+                    tokio::time::timeout(
+                        Duration::from_secs(300),
+                        self.handshake_server(&mut send, &mut recv, &remote, &head),
+                    )
+                    .await
+                    .map_err(|_| Kind::Timeout.error("membership handshake timed out"))??;
+                    drop(handshake);
+                    let mut control = Control::new(send, recv);
+                    let begin = tokio::time::timeout(wire::WAIT, control.receive())
+                        .await
+                        .map_err(|_| Kind::Timeout.error("mesh job begin timed out"))??;
+                    match begin {
+                        Frame::Begin {
+                            job,
+                            replaces_parent,
+                            continuation,
+                            terminal_only,
+                        } => {
+                            coordinated::serve(
+                                self.clone(),
+                                connection.clone(),
+                                control,
+                                job,
+                                replaces_parent,
+                                continuation,
+                                terminal_only,
+                            )
+                            .await
+                        }
+                        _ => Err(protocol("manual job begin expected")),
+                    }
+                }
+                Frame::Replica {
+                    run,
+                    round,
+                    context,
+                    delta,
+                } => {
+                    replica = true;
+                    drop(handshake);
+                    self.serve_replica_stream(
+                        &mut send,
+                        &mut recv,
+                        &remote,
+                        &run,
+                        (round, context, delta),
+                        connection.stable_id(),
+                    )
+                    .await
+                }
+                Frame::Hello { .. } => Err(Kind::Version.error("unsupported mesh version")),
+                _ => Err(protocol("unsupported mesh stream")),
+            }
+        }
+        .await;
+        if let Err(error) = result
+            && !replica
+        {
+            connection.close(Kind::of(&error).code().into(), b"mesh stream failed");
+        }
     }
 
     fn register(&self, job: &SignedRun, parent: Option<&str>) -> Result<(Phase, bool)> {
         let mut runs = self.runs.lock().unwrap();
-        runs.retain(|_, entry| {
-            matches!(
-                entry.phase,
-                Phase::Collecting | Phase::Collected | Phase::Distributing
-            ) || entry.touched.elapsed() < Duration::from_secs(600)
-        });
         if let Some(entry) = runs.get(&job.run.id) {
             if entry.job.run != job.run || entry.job.signature != job.signature {
                 return Err(
@@ -533,25 +771,43 @@ impl Peer {
             }
             return Ok((entry.phase, true));
         }
-        if runs
-            .values()
-            .filter(|entry| !entry.phase.is_terminal())
-            .count()
-            >= 4
-        {
-            return Err(Kind::Capacity.error("mesh peer: manual job capacity reached"));
-        }
-        while runs.len() >= 68 {
-            let oldest = runs
-                .iter()
-                .filter(|(_, entry)| entry.phase.is_terminal())
-                .min_by_key(|(_, entry)| entry.touched)
-                .map(|(id, _)| id.clone());
-            if let Some(id) = oldest {
-                runs.remove(&id);
-            } else {
-                break;
+        let ended: Vec<_> = runs
+            .iter()
+            .filter(|(_, entry)| {
+                *entry.ended.borrow()
+                    && entry
+                        .coordinated
+                        .as_ref()
+                        .is_some_and(|node| node.idle_stamp().is_some())
+            })
+            .map(|(id, _)| id.clone())
+            .collect();
+        for id in ended {
+            if let Some(entry) = runs.remove(&id) {
+                entry.ended.send_replace(true);
             }
+        }
+        if runs.len() >= 4 {
+            let candidate = runs
+                .iter()
+                .filter(|(_, entry)| entry.parent.is_some())
+                .filter_map(|(id, entry)| {
+                    entry
+                        .coordinated
+                        .as_ref()
+                        .and_then(|node| node.idle_stamp())
+                        .map(|at| (at, id.clone()))
+                })
+                .min()
+                .map(|(_, id)| id);
+            if let Some(id) = candidate
+                && let Some(entry) = runs.remove(&id)
+            {
+                entry.ended.send_replace(true);
+            }
+        }
+        if runs.len() >= 4 {
+            return Err(Kind::Capacity.error("mesh peer: role metadata capacity reached"));
         }
         runs.insert(
             job.run.id.clone(),
@@ -561,9 +817,13 @@ impl Peer {
                 children: BTreeSet::new(),
                 phase: Phase::Collecting,
                 report: Report::new(&job.run, &self.local),
-                touched: Instant::now(),
                 progress: Progress::default(),
                 ended: tokio::sync::watch::channel(false).0,
+                reads: BTreeMap::new(),
+                coordinated: None,
+                terminal_only: false,
+                data_round: 0,
+                transfers: 0,
             },
         );
         Ok((Phase::Collecting, false))
@@ -573,10 +833,19 @@ impl Peer {
             // Accepted items update the run immediately, even if a later pull
             // fails before its aggregate result returns to the phase coordinator.
             report.received = entry.report.received;
+            if let Some(current) = &entry.report.traversal
+                && report
+                    .traversal
+                    .as_ref()
+                    .is_none_or(|incoming| current.round >= incoming.round)
+            {
+                report.traversal = Some(current.clone());
+            }
+            entry.progress.advance();
             entry.phase = phase;
             entry.report = report.clone();
-            entry.touched = Instant::now();
             if phase.is_terminal() {
+                entry.revoke_sources();
                 entry.ended.send_replace(true);
             }
         }
@@ -604,531 +873,132 @@ impl Peer {
         job.verify(&frozen, &current)
     }
 
-    async fn child(
-        self: &Arc<Self>,
+    pub(crate) async fn sync_started(
+        self: Arc<Self>,
+        run: String,
+        startup: Startup,
+    ) -> Result<Report> {
+        coordinated::synchronize_started(self, run, startup).await
+    }
+    async fn pull_round(
+        &self,
+        connection: &Connection,
         peer: &str,
-        job: &SignedRun,
-        link: Arc<Connected>,
-    ) -> Result<Option<Child>> {
-        let (mut send, mut recv) = link.connection.open_bi().await.map_err(Kind::connection)?;
-        self.handshake_client(&mut send, &mut recv, peer).await?;
-        let mut control = Control::new(send, recv, self.store.clone(), peer.into());
-        control.track(self.progress(&job.run.id)?, true);
-        control.send(Frame::Begin(job.clone())).await?;
-        match control.receive().await? {
-            Frame::Accepted {
-                duplicate: true, ..
-            } => Ok(None),
-            Frame::Accepted {
-                phase: Phase::Collecting,
-                duplicate: false,
-            } => Ok(Some(Child {
-                peer: peer.into(),
-                link,
-                control,
-            })),
-            _ => Err(protocol("invalid manual job acceptance")),
-        }
-    }
-
-    fn collect<'a>(
-        self: &'a Arc<Self>,
-        job: &'a SignedRun,
-    ) -> Pin<Box<dyn Future<Output = (Report, Vec<Child>)> + Send + 'a>> {
-        Box::pin(async move {
-            let mut report = Report::new(&job.run, &self.local);
-            let mut children = Vec::new();
-            let mut targets: VecDeque<_> = job
-                .run
-                .cohort
-                .iter()
-                .filter(|peer| {
-                    !job.path.contains(peer) && job.path.len() <= usize::from(job.run.max_hops)
-                })
-                .cloned()
-                .collect();
-            let mut probes = JoinSet::new();
-            let mut ready = BTreeMap::new();
-            for target in targets.drain(..targets.len().min(8)) {
-                let owner = self.clone();
-                probes.spawn(async move {
-                    let result = owner.connect(&target).await;
-                    (target, result)
-                });
-            }
-            for peer in &job.run.cohort {
-                if let Ok(progress) = self.progress(&job.run.id) {
-                    progress.advance();
-                }
-                if self.stopped.load(Ordering::Acquire) {
-                    report.failures.push(failure(
-                        &self.local,
-                        Phase::Cancelled,
-                        &Kind::Cancelled.error("mesh peer: transport stopped"),
-                    ));
-                    break;
-                }
-                if job.path.contains(peer) {
-                    continue;
-                }
-                if job.path.len() > usize::from(job.run.max_hops) {
-                    report.failures.push(failure(
-                        peer,
-                        Phase::Collecting,
-                        &Kind::HopLimit.error("mesh peer: propagation hop limit reached"),
-                    ));
-                    continue;
-                }
-                let link = loop {
-                    if let Some(result) = ready.remove(peer) {
-                        break result;
-                    }
-                    match probes.join_next().await {
-                        Some(Ok((target, result))) => {
-                            ready.insert(target, result);
-                        }
-                        Some(Err(_)) => continue,
-                        None => break Err(Kind::Cancelled.error("peer connection probe stopped")),
-                    }
-                };
-                if let Some(target) = targets.pop_front() {
-                    let owner = self.clone();
-                    probes.spawn(async move {
-                        let result = owner.connect(&target).await;
-                        (target, result)
-                    });
-                }
-                let result = async {
-                    let mut link = link?;
-                    if link.connection.close_reason().is_some() {
-                        drop(link);
-                        link = self.connect(peer).await?;
-                    }
-                    let Some(mut child) =
-                        tokio::time::timeout(Duration::from_secs(10), self.child(peer, job, link))
-                            .await
-                            .map_err(|_| {
-                                Kind::Timeout
-                            .error("peer did not accept the sync job before the admission deadline")
-                            })??
-                    else {
-                        return Ok(None);
-                    };
-                    if let Some(entry) = self.runs.lock().unwrap().get_mut(&job.run.id) {
-                        entry.children.insert(peer.clone());
-                    }
-                    let Frame::Collected(mut child_report) = child.control.receive().await? else {
-                        return Err(protocol("collection result expected"));
-                    };
-                    self.validate_report(&child_report, job)?;
-                    child_report.received =
-                        self.pull(&child.link.connection, peer, &job.run.id).await?;
-                    Ok::<_, Error>(Some((child, child_report)))
-                }
-                .await;
-                match result {
-                    Ok(Some((child, child_report))) => {
-                        report.received += child_report.received;
-                        report.merge_collected(&child_report);
-                        children.push(child);
-                    }
-                    Ok(None) => (),
-                    Err(error) => report
-                        .failures
-                        .push(failure(peer, Phase::Collecting, &error)),
-                }
-            }
-            report.normalize();
-            (report, children)
-        })
-    }
-
-    fn validate_report(&self, report: &Report, job: &SignedRun) -> Result<()> {
-        if report.run != job.run.id
-            || report.cohort != job.run.cohort
-            || report.collected.len() > 256
-            || report.distributed.len() > 256
-            || report.failures.len() > 512
-            || report.failures.iter().any(|failure| {
-                !job.run.cohort.contains(&failure.peer) || failure.message.len() > 512
-            })
-            || report
-                .collected
-                .iter()
-                .chain(&report.distributed)
-                .any(|peer| !job.run.cohort.contains(peer))
-        {
-            return Err(protocol("invalid delegated job report"));
-        }
-        Ok(())
-    }
-
-    async fn distribute(&self, job: &SignedRun, report: &mut Report, children: &mut [Child]) {
-        report.distributed.push(self.local.clone());
-        for child in children {
-            let result = async {
-                child.control.send(Frame::Distribute).await?;
-                let Frame::Completed(child_report) = child.control.receive().await? else {
-                    return Err(protocol("distribution result expected"));
-                };
-                self.validate_report(&child_report, job)?;
-                Ok(child_report)
-            }
-            .await;
-            match result {
-                Ok(child_report) => report.merge_distributed(&child_report),
-                Err(error) => {
-                    report
-                        .failures
-                        .push(failure(&child.peer, Phase::Distributing, &error))
-                }
-            }
-        }
-        report.normalize();
-    }
-
-    pub(crate) async fn sync(self: Arc<Self>, run: String) -> Result<Report> {
-        self.store.step(Step::Finish).await?;
-        let membership = store::membership(&self.store, None)
-            .await?
-            .ok_or_else(|| protocol("store is not enrolled"))?;
-        let job = SignedRun::new(&self.key, &membership, run)?;
-        self.verify_job(&job).await?;
-        if self.stopped.load(Ordering::Acquire) {
-            return Err(Kind::Cancelled.error("mesh peer: peer transport stopped"));
-        }
-        self.register(&job, None)?;
-        let mut running = Running::new(&self, &job.run.id, true);
-        let (mut report, mut children) = self.collect(&job).await;
-        self.phase(&job.run.id, Phase::Distributing, &mut report);
-        self.distribute(&job, &mut report, &mut children).await;
-        self.store.step(Step::Finish).await?;
-        self.phase(
-            &job.run.id,
-            if report.complete || report.unavailable_only() {
-                Phase::Complete
-            } else {
-                Phase::Failed
-            },
-            &mut report,
-        );
-        running.finished = true;
-        Ok(report)
-    }
-
-    async fn serve_job(
-        self: &Arc<Self>,
-        connection: Connection,
-        mut control: Control,
-        mut job: SignedRun,
-    ) -> Result<()> {
-        let parent = connection.remote_id().to_string();
-        self.verify_job(&job).await?;
-        if job.path.last() != Some(&parent) || job.path.len() > usize::from(job.run.max_hops) {
-            return Err(protocol("invalid forwarding path or hop limit"));
-        }
-        if !job.path.contains(&self.local) {
-            job.path.push(self.local.clone());
-        } else if !self.runs.lock().unwrap().contains_key(&job.run.id) {
-            return Err(protocol("cyclic forwarding path without a registered run"));
-        }
-        let (phase, duplicate) = self.register(&job, Some(&parent))?;
-        control.track(self.progress(&job.run.id)?, false);
-        let mut running = (!duplicate).then(|| Running::new(self, &job.run.id, false));
-        control.send(Frame::Accepted { phase, duplicate }).await?;
-        if duplicate {
-            return Ok(());
-        }
-        let mut ended = self
-            .runs
-            .lock()
-            .unwrap()
-            .get(&job.run.id)
-            .unwrap()
-            .ended
-            .subscribe();
-        let result = async {
-            let collection = self.collect(&job);
-            tokio::pin!(collection);
-            let (mut report, mut children) = loop {
-                tokio::select! {
-                    result = &mut collection => break result,
-                    request = control.receive() => match request? {
-                        Frame::Distribute => control.send(Frame::Accepted { phase: Phase::Collecting, duplicate: true }).await?,
-                        _ => return Err(protocol("unexpected collection control message")),
-                    }
-                }
-            };
-            self.store.step(Step::Finish).await?;
-            self.phase(&job.run.id, Phase::Collected, &mut report);
-            control.send(Frame::Collected(report.clone())).await?;
-            if !matches!(control.receive().await?, Frame::Distribute) {
-                return Err(protocol("distribution request expected"));
-            }
-            self.phase(&job.run.id, Phase::Distributing, &mut report);
-            {
-                let distribution = async {
-                    report.received += self.pull(&connection, &parent, &job.run.id).await?;
-                    self.distribute(&job, &mut report, &mut children).await;
-                    self.store.step(Step::Finish).await?;
-                    Ok::<_, Error>(())
-                };
-                tokio::pin!(distribution);
-                loop {
-                    tokio::select! {
-                        result = &mut distribution => { result?; break; }
-                        request = control.receive() => match request? {
-                                Frame::Distribute => control.send(Frame::Accepted { phase: Phase::Distributing, duplicate: true }).await?,
-                            _ => return Err(protocol("unexpected distribution control message")),
-                        }
-                    }
-                }
-            }
-            control.send(Frame::Completed(report.clone())).await?;
-            self.phase(&job.run.id, Phase::Complete, &mut report);
-            Ok(())
-        };
-        let result = tokio::select! {
-            biased;
-            _ = ended.changed() => Err(Kind::Authentication.error("mesh peer: manual job authorization ended")),
-            result = result => result,
-        };
-        if let Err(error) = &result {
-            control.fail(Kind::of(error)).await;
-            let mut report = Report::new(&job.run, &self.local);
-            report
-                .failures
-                .push(failure(&self.local, Phase::Cancelled, error));
-            self.phase(&job.run.id, Phase::Cancelled, &mut report);
-            let _ = self.store.step(Step::Finish).await;
-        }
-        if result.is_ok()
-            && let Some(running) = &mut running
-        {
-            running.finished = true;
-        }
-        result
-    }
-
-    async fn pull(&self, connection: &Connection, peer: &str, run: &str) -> Result<u64> {
+        run: &str,
+        round: (u8, u64),
+        delta: bool,
+    ) -> Result<u64> {
         let _permit = tokio::time::timeout(wire::WAIT, self.outgoing.acquire())
             .await
             .map_err(|_| Kind::Capacity.error("outgoing mesh transfers are busy"))?
             .map_err(|_| Kind::Cancelled.error("mesh peer: endpoint closing"))?;
         self.authorized(peer).await?;
-        let progress = self.progress(run)?;
-        progress.advance();
-        let (mut send, mut recv) = connection.open_bi().await.map_err(Kind::connection)?;
-        self.send(&mut send, Frame::Replica { run: run.into() }, peer)
-            .await?;
-        let mut changed = 0;
-        let mut batch_items = 0;
-        let mut batch_bytes = 0;
-        let result = async {
-            for tombstones in [true, false] {
-                let mut after = None;
-                loop {
-                    self.send(
-                        &mut send,
-                        Frame::Request(Request::Inventory {
-                            tombstones,
-                            after: after.clone(),
-                            scope: None,
-                        }),
-                        peer,
-                    )
-                    .await?;
-                    let Frame::Response(Response::Entries { entries }) =
-                        wire::receive_progress(&mut recv, &progress).await?
-                    else {
-                        return Err(protocol("inventory reply expected"));
-                    };
-                    if entries.len() > 256
-                        || entries.windows(2).any(|p| p[0].id >= p[1].id)
-                        || entries.iter().any(|entry| {
-                            after.as_ref().is_some_and(|after| &entry.id <= after)
-                                || entry.hash.is_none() != tombstones
-                        })
-                    {
-                        return Err(protocol("invalid inventory page"));
-                    }
-                    let done = entries.len() < 256;
-                    after = entries.last().map(|entry| entry.id.clone());
-                    for entry in entries {
-                        let Value::Replica(Response::Needed { ids }) = self
-                            .store
-                            .step(Step::Peer {
-                                peer: peer.into(),
-                                request: Request::Needs {
-                                    entries: vec![entry.clone()],
-                                },
-                            })
-                            .await?
-                        else {
-                            return Err(protocol("needs reply expected"));
-                        };
-                        if ids.is_empty() {
-                            continue;
-                        }
-                        self.send(
-                            &mut send,
-                            Frame::Request(Request::Get {
-                                id: entry.id.clone(),
-                                scope: None,
-                            }),
-                            peer,
-                        )
-                        .await?;
-                        let Frame::Response(Response::Item { item }) =
-                            wire::receive_progress(&mut recv, &progress).await?
-                        else {
-                            return Err(protocol("item reply expected"));
-                        };
-                        let Some(item) = item else {
-                            continue;
-                        };
-                        if item.id != entry.id || item.envelope_hash != entry.hash {
-                            return Err(
-                                Kind::Conflict.error("mesh peer: item does not match inventory")
-                            );
-                        }
-                        let item_bytes = item.envelope.as_ref().map_or(0, String::len);
-                        let Value::Replica(Response::Applied { changed: applied }) = self
-                            .store
-                            .step(Step::Peer {
-                                peer: peer.into(),
-                                request: Request::Apply { item, scope: None },
-                            })
-                            .await?
-                        else {
-                            return Err(protocol("apply reply expected"));
-                        };
-                        changed += u64::from(applied);
-                        if applied && let Some(entry) = self.runs.lock().unwrap().get_mut(run) {
-                            entry.report.received += 1;
-                        }
-                        batch_items += usize::from(applied);
-                        batch_bytes += if applied { item_bytes } else { 0 };
-                        if batch_items >= 256 || batch_bytes >= 4 * 1024 * 1024 {
-                            self.store.step(Step::Finish).await?;
-                            batch_items = 0;
-                            batch_bytes = 0;
-                        }
-                    }
-                    if done {
-                        break;
-                    }
-                }
-            }
-            self.send(&mut send, Frame::Request(Request::Finish), peer)
-                .await?;
-            if !matches!(
-                wire::receive_progress(&mut recv, &progress).await?,
-                Frame::Response(Response::Done)
-            ) {
-                return Err(protocol("replica completion expected"));
-            }
-            Ok(())
+        #[cfg(test)]
+        if delta {
+            self.delta_transfers[0].fetch_add(1, Ordering::Relaxed);
         }
-        .await;
-        // Accepted originals publish even when a later item or branch failed.
-        let published = self.store.step(Step::Finish).await;
-        published?;
-        result?;
-        Ok(changed)
+        let (changed, fallback) = self
+            .pull_pipeline(connection, peer, run, round, delta)
+            .await?;
+        if fallback {
+            #[cfg(test)]
+            self.delta_transfers[1].fetch_add(1, Ordering::Relaxed);
+            let (more, _) = self
+                .pull_pipeline(connection, peer, run, round, false)
+                .await?;
+            Ok(changed + more)
+        } else {
+            Ok(changed)
+        }
     }
-
-    async fn serve_replica(
+    async fn serve_replica_stream(
         &self,
         send: &mut SendStream,
         recv: &mut RecvStream,
         peer: &str,
         run: &str,
+        round: (u8, u64, bool),
+        connection: usize,
     ) -> Result<()> {
+        let result = self
+            .serve_replica_round(send, recv, peer, run, round, connection)
+            .await;
+        if let Err(error) = &result {
+            let code = Kind::of(error).code();
+            let _ = send.reset(code.into());
+            let _ = recv.stop(code.into());
+        }
+        result
+    }
+    async fn serve_replica_round(
+        &self,
+        send: &mut SendStream,
+        recv: &mut RecvStream,
+        peer: &str,
+        run: &str,
+        operation: (u8, u64, bool),
+        connection: usize,
+    ) -> Result<()> {
+        let (round, context, delta) = operation;
+        #[cfg(test)]
+        if let round @ 1..=2 = round {
+            self.replica_rounds[usize::from(round - 1)].fetch_add(1, Ordering::Relaxed);
+        }
         let _permit = tokio::time::timeout(wire::WAIT, self.incoming.acquire())
             .await
             .map_err(|_| Kind::Capacity.error("incoming mesh transfers are busy"))?
             .map_err(|_| Kind::Cancelled.error("mesh peer: endpoint closing"))?;
         self.authorized(peer).await?;
         let progress = self.progress(run)?;
-        let mut ended = {
+        let (mut ended, job, source_stream, scope) = {
             let runs = self.runs.lock().unwrap();
             let entry = runs
                 .get(run)
                 .ok_or_else(|| Kind::Authentication.error("mesh peer: unknown manual run"))?;
-            if !entry.serves(peer) {
+            if !entry.serves_round(peer, round) {
                 return Err(Kind::Authentication
                     .error("mesh peer: replica request is outside the active job phase"));
             }
-            entry.ended.subscribe()
+            let source_stream = entry
+                .reads
+                .get(peer)
+                .ok_or_else(|| Kind::Authentication.error("no current source operation"))?
+                .claim(round, context, connection, delta)?;
+            let scope = source_stream.scope.clone();
+            (
+                entry.ended.subscribe(),
+                Arc::new(entry.job.clone()),
+                source_stream,
+                scope,
+            )
         };
         if *ended.borrow() {
             return Err(Kind::Cancelled.error("mesh peer: manual job ended"));
         }
-        self.store.step(Step::Finish).await?;
-        let Value::SourceBudget(mut remaining) =
-            self.store.step(Step::SourceBudget(peer.into())).await?
+        self.store.step(Step::Finish(None)).await?;
+        let Value::SourceSnapshot(cutoff) =
+            self.store.step(Step::SourceSnapshot(peer.into())).await?
         else {
-            return Err(protocol("source budget expected"));
+            return Err(protocol("source snapshot expected"));
         };
-        let serve = async {
-            loop {
-                let Frame::Request(request) = wire::receive(recv).await? else {
-                    return Err(protocol("replica request expected"));
-                };
-                {
-                    let runs = self.runs.lock().unwrap();
-                    let entry = runs.get(run).ok_or_else(|| {
-                        Kind::Authentication.error("mesh peer: unknown manual run")
-                    })?;
-                    if !entry.serves(peer) {
-                        return Err(Kind::Authentication
-                            .error("mesh peer: replica request is outside the active job phase"));
-                    }
-                }
-                if !matches!(
-                    request,
-                    Request::Inventory { scope: None, .. }
-                        | Request::Get { scope: None, .. }
-                        | Request::Finish
-                ) {
-                    return Err(protocol("mesh source streams are read-only"));
-                }
-                let inventory = match &request {
-                    Request::Inventory { tombstones, .. } => Some(usize::from(*tombstones)),
-                    _ => None,
-                };
-                let finish = matches!(request, Request::Finish);
-                let Value::Replica(mut response) = self
-                    .store
-                    .step(Step::Peer {
-                        peer: peer.into(),
-                        request,
-                    })
-                    .await?
-                else {
-                    return Err(protocol("unexpected source replica reply"));
-                };
-                if let (Some(class), Response::Entries { entries }) = (inventory, &mut response) {
-                    entries.truncate(remaining[class].min(entries.len() as u64) as usize);
-                    remaining[class] -= entries.len() as u64;
-                }
-                wire::send_progress(
-                    send,
-                    Frame::Response(response),
-                    &self.store,
-                    peer,
-                    &progress,
-                )
-                .await?;
-                if finish {
-                    return Ok(());
-                }
-            }
+        let mut source = replica::ReplicaSource {
+            peer: self,
+            remote: peer,
+            run,
+            round,
+            delta,
+            job,
+            stream: source_stream,
+            cutoff,
+            progress,
+            delta_started: false,
+            revision: None,
         };
+        let serve = source.serve(send, recv);
         tokio::select! {
             biased;
             _ = ended.changed() => Err(Kind::Cancelled.error("mesh peer: manual job ended")),
+            _ = scope.ended() => Err(Kind::Cancelled.error("source operation ended")),
             result = serve => result,
         }
     }
@@ -1137,44 +1007,6 @@ impl Peer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn replica_sources_are_bound_to_the_current_phase_and_tree_role() {
-        let job = SignedRun {
-            run: super::super::jobs::Run {
-                version: 1,
-                id: "run".into(),
-                initiator: "root".into(),
-                head: "head".into(),
-                cohort: vec![],
-                max_hops: 16,
-            },
-            signature: String::new(),
-            path: vec![],
-        };
-        let mut entry = Entry {
-            report: Report::new(&job.run, "local"),
-            job,
-            parent: Some("parent".into()),
-            children: BTreeSet::from(["child".into()]),
-            phase: Phase::Collecting,
-            touched: Instant::now(),
-            progress: Progress::default(),
-            ended: tokio::sync::watch::channel(false).0,
-        };
-        for phase in [
-            Phase::Collecting,
-            Phase::Collected,
-            Phase::Distributing,
-            Phase::Complete,
-            Phase::Failed,
-            Phase::Cancelled,
-        ] {
-            entry.phase = phase;
-            assert_eq!(entry.serves("parent"), phase == Phase::Collected);
-            assert_eq!(entry.serves("child"), phase == Phase::Distributing);
-            assert!(!entry.serves("other"));
-        }
-    }
     #[tokio::test]
     #[ignore = "requires native loopback UDP"]
     async fn equal_heads_skip_proofs_without_authorizing_an_unknown_endpoint() {
@@ -1188,12 +1020,9 @@ mod tests {
             while let Some(job) = jobs.recv().await {
                 let result = match job.step {
                     Step::Membership(None) => Ok(Value::Membership(Some(state.clone()))),
-                    Step::Peer {
-                        peer,
-                        request: Request::Needs { entries },
-                    } if entries.is_empty() => {
+                    Step::Authorize(peer) => {
                         if state.members.contains(&peer) {
-                            Ok(Value::Replica(Response::Needed { ids: vec![] }))
+                            Ok(Value::Done)
                         } else {
                             Err(Kind::Authentication.error("unknown peer"))
                         }
@@ -1254,16 +1083,18 @@ mod tests {
                 wire::send(
                     &mut send,
                     Frame::Hello {
-                        version: 1,
+                        version: 2,
                         head: membership.head.clone(),
                     },
-                    &store,
-                    &peer.local,
                 )
                 .await
                 .unwrap();
                 let (mut reply, mut request) = server.accept_bi().await.unwrap();
-                let Frame::Hello { head, .. } = wire::receive(&mut request).await.unwrap() else {
+                let Frame::Hello { head, .. } =
+                    wire::receive_limit(&mut request, crate::sync::protocol::MAX_FRAME)
+                        .await
+                        .unwrap()
+                else {
                     panic!("hello expected");
                 };
                 let outcome = peer
@@ -1272,7 +1103,9 @@ mod tests {
                 if known {
                     outcome.unwrap();
                     assert!(matches!(
-                        wire::receive(&mut recv).await.unwrap(),
+                        wire::receive_limit(&mut recv, crate::sync::protocol::MAX_FRAME)
+                            .await
+                            .unwrap(),
                         Frame::Authorized
                     ));
                 } else {
