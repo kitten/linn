@@ -11,6 +11,10 @@
 //!
 //! [module docs]: crate
 
+pub(crate) mod relay_dial;
+pub use relay_dial::{
+    RelayDial, RelayDialObservation, RelayDialOutcome, TargetWatch, TargetWatchEvent,
+};
 use std::{collections::BTreeSet, net::SocketAddr, pin::Pin, sync::Arc};
 
 #[cfg(not(wasm_browser))]
@@ -952,6 +956,21 @@ pub enum ConnectError {
 }
 
 impl Endpoint {
+    /// Observe registration changes for one unresolved job target; unsupported relays return unknown.
+    pub fn watch_target_registration(
+        &self,
+        relay: RelayUrl,
+        target: EndpointId,
+    ) -> Option<TargetWatch> {
+        self.inner.relay_dials.watch(relay, target)
+    }
+
+    /// Observe a single relay dial using the optional correlated Linn extension.
+    /// Unsupported relays yield no observation; normal connect timeouts still apply.
+    pub fn observe_relay_dial(&self, relay: RelayUrl, target: EndpointId) -> Option<RelayDial> {
+        self.inner.relay_dials.register(relay, target)
+    }
+
     // The ordering of public methods is reflected directly in the documentation.  This is
     // roughly ordered by what is most commonly needed by users, but grouped in similar
     // items.
@@ -1158,7 +1177,12 @@ impl Endpoint {
             .static_config
             .create_client_config(alpn_protocols, transport_config.clone());
 
-        let dest_addr = mapped_addr.private_socket_addr();
+        let dest_addr = if options.initial_path == InitialPath::All {
+            mapped_addr.private_socket_addr()
+        } else {
+            self.inner
+                .initial_path_addr(endpoint_id, options.initial_path)
+        };
         let server_name = &tls::name::encode(endpoint_id);
         let connect =
             self.inner
@@ -1793,9 +1817,25 @@ impl Endpoint {
     }
 }
 
+/// Routes eligible for the initial packets of this connection attempt.
+///
+/// This does not isolate or clear shared endpoint path state, and authenticated
+/// connections retain ordinary path management after the handshake.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum InitialPath {
+    /// Use ordinary Iroh path selection.
+    #[default]
+    All,
+    /// Try all known IP candidates without sending relay Initials.
+    DirectOnly,
+    /// Try relay candidates without repeating direct Initials.
+    RelayOnly,
+}
+
 /// Options for the [`Endpoint::connect_with_opts`] function.
 #[derive(Default, Debug, Clone)]
 pub struct ConnectOptions {
+    initial_path: InitialPath,
     transport_config: Option<QuicTransportConfig>,
     additional_alpns: Vec<Vec<u8>>,
 }
@@ -1807,6 +1847,12 @@ impl ConnectOptions {
     /// as [`Endpoint::connect`], e.g. a default [`QuicTransportConfig`].
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Restricts Initial packets for this attempt without changing other connections.
+    pub fn with_initial_path(mut self, path: InitialPath) -> Self {
+        self.initial_path = path;
+        self
     }
 
     /// Sets the QUIC transport config options for this connection.

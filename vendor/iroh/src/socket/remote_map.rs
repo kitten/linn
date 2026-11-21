@@ -75,6 +75,8 @@ pub(crate) struct RemoteMap {
 pub(crate) struct MappedAddrs {
     /// The mapping between [`EndpointId`]s and [`EndpointIdMappedAddr`]s.
     pub(super) endpoint_addrs: AddrMap<EndpointId, EndpointIdMappedAddr>,
+    pub(super) initial_addrs:
+        AddrMap<(EndpointId, crate::endpoint::InitialPath), EndpointIdMappedAddr>,
     /// The mapping between endpoints via a relay and their [`RelayMappedAddr`]s.
     pub(super) relay_addrs: AddrMap<(RelayUrl, EndpointId), RelayMappedAddr>,
     /// The mapping between custom transport addresses and their [`CustomMappedAddr`]s.
@@ -560,6 +562,7 @@ mod tests {
                             contents: Bytes::from_static(b"initial"),
                             segment_size: None,
                         },
+                        crate::endpoint::InitialPath::All,
                     ),
                 )
                 .await;

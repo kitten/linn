@@ -33,7 +33,7 @@ pub use self::{
 use super::{MappedAddrs, Source};
 use crate::{
     address_lookup::{AddressLookupFailed, AddressLookupServices, Item as AddressLookupItem},
-    endpoint::DirectAddr,
+    endpoint::{DirectAddr, InitialPath},
     socket::{
         Metrics as SocketMetrics, RELAY_PATH_MAX_IDLE_TIMEOUT,
         remote_map::remote_state::path_watcher::PathStateSender,
@@ -357,9 +357,9 @@ impl RemoteStateActor {
         send_tasks: &mut FuturesUnorderedBounded<Boxed<()>>,
     ) {
         match msg {
-            RemoteStateMessage::SendDatagram(sender, transmit) => {
+            RemoteStateMessage::SendDatagram(sender, transmit, initial_path) => {
                 self.state
-                    .handle_msg_send_datagram(sender, transmit, send_tasks);
+                    .handle_msg_send_datagram(sender, transmit, initial_path, send_tasks);
             }
             RemoteStateMessage::AddConnection(handle, tx) => {
                 self.handle_msg_add_connection(handle, tx);
@@ -416,6 +416,7 @@ impl RemoteStateActor {
                 handle: conn.weak_handle(),
                 path_state: path_state_sender,
                 paths: Default::default(),
+                closing_paths: Default::default(),
                 has_been_direct: false,
             })
             .into_mut();
@@ -690,7 +691,7 @@ impl RemoteStateActor {
             return;
         };
 
-        for (conn_id, conn_state) in self.connections.iter() {
+        for (conn_id, conn_state) in self.connections.iter_mut() {
             let Some(conn) = conn_state.handle.upgrade() else {
                 continue;
             };
@@ -699,10 +700,39 @@ impl RemoteStateActor {
             self.state
                 .open_path_on_conn(*conn_id, conn_state, &conn, &selected);
 
+            // A preference learned on another connection is not a replacement
+            // for this connection's usable paths until it is established here.
+            let selected_open = conn_state.paths.iter().any(|(id, addr)| {
+                !conn_state.closing_paths.contains(id)
+                    && addr == &selected
+                    && conn
+                        .path(*id)
+                        .is_some_and(|path| path.network_path().is_ok())
+            });
+            if !selected_open {
+                continue;
+            }
+            let mut live_ip_paths = conn_state
+                .paths
+                .iter()
+                .filter(|(id, addr)| {
+                    !conn_state.closing_paths.contains(*id)
+                        && addr.is_ip()
+                        && conn
+                            .path(**id)
+                            .is_some_and(|path| path.network_path().is_ok())
+                })
+                .count();
             for (path_id, path_fourtuple) in conn_state.paths.iter() {
+                if conn_state.closing_paths.contains(path_id) {
+                    continue;
+                }
                 let Some(path) = conn.path(*path_id) else {
                     continue;
                 };
+                if path.network_path().is_err() {
+                    continue;
+                }
 
                 // Closes redundant IP paths so that at most one remains per connection.
                 //
@@ -712,7 +742,7 @@ impl RemoteStateActor {
                 if conn.side().is_client()
                     && path_fourtuple.is_ip()
                     && path_fourtuple != &selected
-                    && conn_state.paths.values().filter(|a| a.is_ip()).count() > 1
+                    && live_ip_paths > 1
                 {
                     trace!(?path_fourtuple, %conn_id, %path_id, "closing direct path");
                     match path.close() {
@@ -722,10 +752,10 @@ impl RemoteStateActor {
                         Err(noq_proto::ClosePathError::LastOpenPath) => {
                             error!("could not close last open path");
                         }
-                        Err(noq_proto::ClosePathError::ClosedPath) => {
-                            // We already closed this.
+                        Err(noq_proto::ClosePathError::ClosedPath) | Ok(()) => {
+                            conn_state.closing_paths.insert(*path_id);
+                            live_ip_paths -= 1;
                         }
-                        Ok(()) => {}
                     }
                     continue;
                 }
@@ -794,6 +824,7 @@ impl State {
         &mut self,
         sender: Box<TransportsSender>,
         transmit: OwnedTransmit,
+        initial_path: InitialPath,
         send_tasks: &mut FuturesUnorderedBounded<Boxed<()>>,
     ) {
         // Sending datagrams might fail, e.g. because we don't have the right transports set
@@ -802,7 +833,9 @@ impl State {
         // though we might not have a relay transport or ip-capable transport set up.
         // So these errors must not be fatal for this actor (or even this operation).
 
-        let targets = if let Some(addr) = self.selected_path.as_ref() {
+        let targets = if initial_path == InitialPath::All
+            && let Some(addr) = self.selected_path.as_ref()
+        {
             trace!(?addr, "sending datagram to selected path");
 
             // TODO(Frando): We might want to include a local IP here in the future, if we confidently
@@ -820,6 +853,14 @@ impl State {
 
             let mut targets = SmallVec::new();
             for addr in self.paths.addrs() {
+                if !matches!(
+                    (initial_path, &addr),
+                    (InitialPath::All, _)
+                        | (InitialPath::DirectOnly, transports::Addr::Ip(_))
+                        | (InitialPath::RelayOnly, transports::Addr::Relay(_, _))
+                ) {
+                    continue;
+                }
                 // We never want to send to our local addresses.
                 // The local address set is updated in the main loop so we can use `peek` here.
                 if let transports::Addr::Ip(sockaddr) = addr
@@ -1191,7 +1232,7 @@ pub(crate) enum RemoteStateMessage {
     /// operation with a bunch more copying.  So it should only be used for sending QUIC
     /// Initial packets.
     #[debug("SendDatagram(..)")]
-    SendDatagram(Box<TransportsSender>, OwnedTransmit),
+    SendDatagram(Box<TransportsSender>, OwnedTransmit, InitialPath),
     /// Adds an active connection to this remote endpoint.
     ///
     /// The actor will downgrade the connection to a [`noq::WeakConnectionHandle`] as soon
@@ -1275,6 +1316,9 @@ struct ConnectionState {
     /// event. The noq established event is only emitted once at least one datagram is
     /// received from the peer on the path.
     paths: FxHashMap<PathId, transports::FourTuple>,
+    /// Exclude local closures until their delayed Abandoned event removes the
+    /// cached entry. This set remains a subset of `paths`.
+    closing_paths: BTreeSet<PathId>,
     /// Whether this connection has ever had a direct path.
     ///
     /// Used for recording metrics.
@@ -1314,6 +1358,7 @@ impl ConnectionState {
         path_id: &PathId,
         conn: &noq::Connection,
     ) -> Option<transports::FourTuple> {
+        self.closing_paths.remove(path_id);
         let addr = self.paths.remove(path_id)?;
         self.path_state.record_abandoned(*path_id, conn);
         Some(addr)
@@ -1380,9 +1425,13 @@ impl<'a> PathSelectionContext<'a> {
                     .values()
                     .filter_map(|state| state.handle.upgrade().map(|conn| (state, conn)))
                     .flat_map(|(state, conn)| {
-                        state.paths.iter().map(move |(path_id, addr)| {
-                            PathSelectionData::live(addr, *path_id, conn.clone())
-                        })
+                        state
+                            .paths
+                            .iter()
+                            .filter(move |(id, _)| !state.closing_paths.contains(*id))
+                            .map(move |(path_id, addr)| {
+                                PathSelectionData::live(addr, *path_id, conn.clone())
+                            })
                     }),
             ),
             #[cfg(test)]

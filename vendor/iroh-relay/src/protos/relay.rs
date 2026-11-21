@@ -71,6 +71,13 @@ pub enum Error {
 #[derive(Debug, Clone, PartialEq, Eq, strum::Display)]
 #[non_exhaustive]
 pub enum RelayToClientMsg {
+    /// Negotiated registration-change trigger, never peer admission.
+    TargetRegistered {
+        /// Target endpoint.
+        target: EndpointId,
+        /// Opaque job-scoped subscription token.
+        token: [u8; 16],
+    },
     /// Represents datagrams sent from relays (originally sent to them by another client).
     Datagrams {
         /// The [`EndpointId`] of the original sender.
@@ -81,6 +88,15 @@ pub enum RelayToClientMsg {
     /// Indicates that the client identified by the underlying public key had previously sent you a
     /// packet but has now disconnected from the relay.
     EndpointGone(EndpointId),
+    /// An attempt-correlated reply, only on a negotiated Linn relay connection.
+    DialStatus {
+        /// Target endpoint checked by this attempt.
+        target: EndpointId,
+        /// Opaque, fresh attempt token.
+        token: [u8; 16],
+        /// Whether the target was registered when the check was processed.
+        registered: bool,
+    },
     /// A one-way message from relay to client, declaring the connection health state.
     Status(Status),
     /// A one-way message from relay to client, advertising that the relay is restarting.
@@ -175,6 +191,27 @@ impl Status {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ClientToRelayMsg {
+    /// Subscribe to unresolved target registration.
+    TargetWatch {
+        /// Target endpoint.
+        target: EndpointId,
+        /// Opaque job-scoped subscription token.
+        token: [u8; 16],
+    },
+    /// Retire a subscription on its observer connection.
+    TargetUnwatch {
+        /// Target endpoint.
+        target: EndpointId,
+        /// Opaque job-scoped subscription token.
+        token: [u8; 16],
+    },
+    /// A negotiated Linn check tied to one connection attempt, not a keepalive.
+    DialCheck {
+        /// Target endpoint.
+        target: EndpointId,
+        /// Fresh attempt token.
+        token: [u8; 16],
+    },
     /// Request from the client to the server to reply to the
     /// other side with a [`RelayToClientMsg::Pong`] with the given payload.
     Ping([u8; 8]),
@@ -315,6 +352,8 @@ impl RelayToClientMsg {
                 }
             }
             Self::EndpointGone { .. } => FrameType::EndpointGone,
+            Self::DialStatus { .. } => FrameType::DialStatus,
+            Self::TargetRegistered { .. } => FrameType::TargetRegistered,
             Self::Ping { .. } => FrameType::Ping,
             Self::Pong { .. } => FrameType::Pong,
             Self::Status { .. } => FrameType::Status,
@@ -344,6 +383,19 @@ impl RelayToClientMsg {
             }
             Self::EndpointGone(endpoint_id) => {
                 dst.put(endpoint_id.as_ref());
+            }
+            Self::TargetRegistered { target, token } => {
+                dst.put(target.as_ref());
+                dst.put_slice(token);
+            }
+            Self::DialStatus {
+                target,
+                token,
+                registered,
+            } => {
+                dst.put(target.as_ref());
+                dst.put_slice(token);
+                dst.put_u8(u8::from(*registered));
             }
             Self::Ping(data) => {
                 dst.put(&data[..]);
@@ -376,6 +428,8 @@ impl RelayToClientMsg {
                 + datagrams.encoded_len()
             }
             Self::EndpointGone(_) => 32,
+            Self::DialStatus { .. } => 49,
+            Self::TargetRegistered { .. } => 48,
             Self::Ping(_) | Self::Pong(_) => 8,
             Self::Status(status) => status.encoded_len(),
             Self::Restarting { .. } => {
@@ -417,6 +471,25 @@ impl RelayToClientMsg {
                 Self::Datagrams {
                     remote_endpoint_id,
                     datagrams,
+                }
+            }
+            FrameType::TargetRegistered => {
+                ensure!(content.len() == 48, Error::InvalidFrame);
+                Self::TargetRegistered {
+                    target: cache.key_from_slice(&content[..32])?,
+                    token: content[32..48]
+                        .try_into()
+                        .map_err(|_| e!(Error::InvalidFrame))?,
+                }
+            }
+            FrameType::DialStatus => {
+                ensure!(content.len() == 49 && content[48] <= 1, Error::InvalidFrame);
+                Self::DialStatus {
+                    target: cache.key_from_slice(&content[..32])?,
+                    token: content[32..48]
+                        .try_into()
+                        .map_err(|_| e!(Error::InvalidFrame))?,
+                    registered: content[48] == 1,
                 }
             }
             FrameType::EndpointGone => {
@@ -482,6 +555,9 @@ impl RelayToClientMsg {
 impl ClientToRelayMsg {
     pub(crate) fn typ(&self) -> FrameType {
         match self {
+            Self::DialCheck { .. } => FrameType::DialCheck,
+            Self::TargetWatch { .. } => FrameType::TargetWatch,
+            Self::TargetUnwatch { .. } => FrameType::TargetUnwatch,
             Self::Datagrams { datagrams, .. } => {
                 if datagrams.segment_size.is_some() {
                     FrameType::ClientToRelayDatagramBatch
@@ -504,6 +580,12 @@ impl ClientToRelayMsg {
     pub(crate) fn write_to<O: BufMut>(&self, mut dst: O) -> O {
         dst = self.typ().write_to(dst);
         match self {
+            Self::DialCheck { target, token }
+            | Self::TargetWatch { target, token }
+            | Self::TargetUnwatch { target, token } => {
+                dst.put(target.as_ref());
+                dst.put_slice(token);
+            }
             Self::Datagrams {
                 dst_endpoint_id,
                 datagrams,
@@ -523,6 +605,7 @@ impl ClientToRelayMsg {
 
     pub(crate) fn encoded_len(&self) -> usize {
         let payload_len = match self {
+            Self::DialCheck { .. } | Self::TargetWatch { .. } | Self::TargetUnwatch { .. } => 48,
             Self::Ping(_) | Self::Pong(_) => 8,
             Self::Datagrams { datagrams, .. } => {
                 32 // endpoint id
@@ -546,6 +629,27 @@ impl ClientToRelayMsg {
         );
 
         let res = match frame_type {
+            FrameType::TargetWatch | FrameType::TargetUnwatch => {
+                ensure!(content.len() == 48, Error::InvalidFrame);
+                let target = cache.key_from_slice(&content[..32])?;
+                let token = content[32..48]
+                    .try_into()
+                    .map_err(|_| e!(Error::InvalidFrame))?;
+                if frame_type == FrameType::TargetWatch {
+                    Self::TargetWatch { target, token }
+                } else {
+                    Self::TargetUnwatch { target, token }
+                }
+            }
+            FrameType::DialCheck => {
+                ensure!(content.len() == 48, Error::InvalidFrame);
+                Self::DialCheck {
+                    target: cache.key_from_slice(&content[..32])?,
+                    token: content[32..48]
+                        .try_into()
+                        .map_err(|_| e!(Error::InvalidFrame))?,
+                }
+            }
             FrameType::ClientToRelayDatagram | FrameType::ClientToRelayDatagramBatch => {
                 ensure!(content.len() >= EndpointId::LENGTH, Error::InvalidFrame);
 

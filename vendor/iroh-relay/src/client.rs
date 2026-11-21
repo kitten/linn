@@ -317,6 +317,18 @@ impl ClientBuilder {
             // `Sink::send` (which calls `Sink::flush`) in the `ActiveRelayActor`.
             .config(tokio_websockets::Config::default().flush_threshold(usize::MAX));
 
+        builder = builder
+            .add_header(
+                http::header::HeaderName::from_static("x-linn-dial-check"),
+                HeaderValue::from_static("1"),
+            )
+            .expect("valid extension header");
+        builder = builder
+            .add_header(
+                http::header::HeaderName::from_static("x-linn-target-watch"),
+                HeaderValue::from_static("1"),
+            )
+            .expect("valid extension header");
         if let Some(token) = self.auth_token.as_ref() {
             let value = HeaderValue::from_str(&format!("Bearer {token}"))
                 .map_err(|_| e!(ConnectError::InvalidAuthToken))?;
@@ -354,6 +366,14 @@ impl ClientBuilder {
                 })
             })?;
 
+        let target_watch = response
+            .headers()
+            .get("x-linn-target-watch")
+            .is_some_and(|v| v == "1");
+        let dial_check = response
+            .headers()
+            .get("x-linn-dial-check")
+            .is_some_and(|value| value == "1");
         let conn = Conn::new(
             conn,
             self.key_cache.clone(),
@@ -367,6 +387,8 @@ impl ClientBuilder {
         Ok(Client {
             conn,
             local_addr: Some(local_addr),
+            dial_check,
+            target_watch,
         })
     }
 
@@ -439,6 +461,8 @@ impl ClientBuilder {
         Ok(Client {
             conn,
             local_addr: None,
+            dial_check: false,
+            target_watch: false,
         })
     }
 }
@@ -447,10 +471,22 @@ impl ClientBuilder {
 #[derive(Debug)]
 pub struct Client {
     conn: Conn,
+    dial_check: bool,
+    target_watch: bool,
     local_addr: Option<SocketAddr>,
 }
 
 impl Client {
+    /// Whether unresolved-target registration notifications were negotiated.
+    pub fn supports_target_watch(&self) -> bool {
+        self.target_watch
+    }
+
+    /// Whether this connection negotiated the Linn correlated dial extension.
+    pub fn supports_dial_check(&self) -> bool {
+        self.dial_check
+    }
+
     /// Splits the client into a sink and a stream.
     pub fn split(self) -> (ClientStream, ClientSink) {
         let (sink, stream) = split(self.conn);

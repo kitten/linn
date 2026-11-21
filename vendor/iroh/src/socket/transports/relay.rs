@@ -432,6 +432,7 @@ mod tests {
     /// relay watcher is left unset), just so we get a real `poll_recv` to exercise.
     fn test_relay_transport() -> (RelayTransport, mpsc::Sender<RelayRecvDatagram>) {
         let config = RelayActorConfig {
+            dial_checks: std::sync::Arc::default(),
             my_relay: HomeRelayWatch::default(),
             secret_key: SecretKey::from_bytes(&[7u8; 32]),
             dns_resolver: DnsResolver::new(),

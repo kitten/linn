@@ -334,6 +334,7 @@ impl ShutdownState {
 /// possible.
 #[derive(Debug)]
 pub(crate) struct Socket {
+    pub(crate) relay_dials: Arc<crate::endpoint::relay_dial::Registry>,
     /// Read-only view of the per-remote `RemoteStateActor` inboxes.
     ///
     /// Lets callers send to an existing `RemoteStateActor` without going through
@@ -919,7 +920,9 @@ impl EndpointInner {
 
         let ipv6_reported = Arc::new(AtomicBool::new(false));
 
+        let relay_dials = Arc::new(crate::endpoint::relay_dial::Registry::default());
         let relay_actor_config = RelayActorConfig {
+            dial_checks: relay_dials.clone(),
             my_relay: HomeRelayWatch::default(),
             secret_key: secret_key.clone(),
             #[cfg(not(wasm_browser))]
@@ -985,6 +988,7 @@ impl EndpointInner {
         let home_relay_watch = transports.home_relay_watch();
 
         let sock = Arc::new(Socket {
+            relay_dials,
             remote_actors: remote_map.senders(),
             shutdown: shutdown_state,
             ipv6_reported,
@@ -1332,6 +1336,17 @@ impl EndpointInner {
             Ok(()) => Ok(Ok(self.mapped_addrs.endpoint_addrs.get(&remote_id))),
             Err(err) => Ok(Err(err)),
         }
+    }
+
+    pub(crate) fn initial_path_addr(
+        &self,
+        id: EndpointId,
+        path: crate::endpoint::InitialPath,
+    ) -> SocketAddr {
+        self.mapped_addrs
+            .initial_addrs
+            .get(&(id, path))
+            .private_socket_addr()
     }
 
     /// Fetches the [`RemoteInfo`] about a remote from the `RemoteStateActor`.

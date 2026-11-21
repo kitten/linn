@@ -62,6 +62,16 @@ pub enum FrameType {
     ///
     /// [`Status`]: super::relay::Status
     Status = 13,
+    /// Negotiated Linn per-dial check: target key and 16-byte attempt token.
+    DialCheck = 14,
+    /// Negotiated Linn reply: target, token, and registered byte.
+    DialStatus = 15,
+    /// Negotiated unresolved-target registration subscription.
+    TargetWatch = 16,
+    /// Retire one subscription on the same observer connection.
+    TargetUnwatch = 17,
+    /// Correlated registration notification; a retry trigger only.
+    TargetRegistered = 18,
 }
 
 #[stack_error(derive, add_meta)]

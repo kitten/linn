@@ -164,6 +164,7 @@ struct ActiveRelayActor {
     stop_token: CancellationToken,
     metrics: Arc<SocketMetrics>,
     my_relay: HomeRelayWatch,
+    dial_checks: Arc<crate::endpoint::relay_dial::Registry>,
 }
 
 #[derive(Debug)]
@@ -209,6 +210,7 @@ struct ActiveRelayActorOptions {
     stop_token: CancellationToken,
     metrics: Arc<SocketMetrics>,
     my_relay: HomeRelayWatch,
+    dial_checks: Arc<crate::endpoint::relay_dial::Registry>,
 }
 
 /// Configuration needed to create a connection to a relay server.
@@ -282,6 +284,7 @@ impl ActiveRelayActor {
             stop_token,
             metrics,
             my_relay,
+            dial_checks,
         } = opts;
         let relay_client_builder = Self::create_relay_builder(url.clone(), connection_opts);
         ActiveRelayActor {
@@ -297,6 +300,7 @@ impl ActiveRelayActor {
             stop_token,
             metrics,
             my_relay,
+            dial_checks,
         }
     }
 
@@ -603,10 +607,14 @@ impl ActiveRelayActor {
             home_relay = self.is_home_relay,
         );
 
+        let dial_check = client.supports_dial_check();
+        let target_watch = client.supports_target_watch();
+        let generation = self.dial_checks.connected(self.url.clone());
         let (mut client_stream, client_sink) = client.split();
         let mut client_sink = client_sink.sink_map_err(|e| e!(RunError::ClientStreamWrite, e));
 
         let mut state = ConnectedRelayState {
+            generation: generation.number,
             ping_tracker: PingTracker::default(),
             endpoints_present: BTreeSet::new(),
             last_packet_src: None,
@@ -626,6 +634,25 @@ impl ActiveRelayActor {
         ping_interval.set_missed_tick_behavior(MissedTickBehavior::Delay);
 
         let res = loop {
+            for command in
+                self.dial_checks
+                    .watch_commands(&self.url, generation.number, target_watch)
+            {
+                let message = if command.subscribe {
+                    ClientToRelayMsg::TargetWatch {
+                        target: command.target,
+                        token: command.token,
+                    }
+                } else {
+                    ClientToRelayMsg::TargetUnwatch {
+                        target: command.target,
+                        token: command.token,
+                    }
+                };
+                let fut = client_sink.send(message);
+                self.run_sending(fut, &mut state, &mut client_stream)
+                    .await?;
+            }
             if let Some(data) = state.pong_pending.take() {
                 let fut = client_sink.send(ClientToRelayMsg::Pong(data));
                 self.run_sending(fut, &mut state, &mut client_stream)
@@ -633,6 +660,7 @@ impl ActiveRelayActor {
             }
             tokio::select! {
                 biased;
+                _ = self.dial_checks.changed.notified() => {},
                 _ = self.stop_token.cancelled() => {
                     debug!("Shutdown.");
                     break Ok(());
@@ -721,6 +749,12 @@ impl ActiveRelayActor {
                     let mut packet_stream = n0_future::stream::iter(packet_iter);
                     let fut = client_sink.send_all(&mut packet_stream);
                     self.run_sending(fut, &mut state, &mut client_stream).await?;
+                    if dial_check {
+                        for (target, token) in self.dial_checks.requests(&self.url, generation.number) {
+                            let fut = client_sink.send(ClientToRelayMsg::DialCheck { target, token });
+                            self.run_sending(fut, &mut state, &mut client_stream).await?;
+                        }
+                    }
                 }
                 msg = client_stream.next() => {
                     let Some(msg) = msg else {
@@ -777,6 +811,18 @@ impl ActiveRelayActor {
                 }) {
                     warn!("Dropping received relay packet: {err:#}");
                 }
+            }
+            RelayToClientMsg::TargetRegistered { target, token } => {
+                self.dial_checks
+                    .registered(&self.url, state.generation, target, token);
+            }
+            RelayToClientMsg::DialStatus {
+                target,
+                token,
+                registered,
+            } => {
+                self.dial_checks
+                    .reply(&self.url, state.generation, target, token, registered);
             }
             RelayToClientMsg::EndpointGone(endpoint_id) => {
                 state.endpoints_present.remove(&endpoint_id);
@@ -898,6 +944,7 @@ impl ActiveRelayActor {
 /// [`ActiveRelayActor::run_sending`].
 #[derive(Debug)]
 struct ConnectedRelayState {
+    generation: u64,
     /// Tracks pings we have sent, awaits pong replies.
     ping_tracker: PingTracker,
     /// Endpoints which are reachable via this relay server.
@@ -969,6 +1016,7 @@ pub(super) struct RelayActor {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Config {
+    pub dial_checks: Arc<crate::endpoint::relay_dial::Registry>,
     pub my_relay: HomeRelayWatch,
     pub secret_key: SecretKey,
     #[cfg(not(wasm_browser))]
@@ -1416,6 +1464,7 @@ impl RelayActor {
             stop_token: self.cancel_token.child_token(),
             metrics: self.config.metrics.clone(),
             my_relay: self.config.my_relay.clone(),
+            dial_checks: self.config.dial_checks.clone(),
         };
         let actor = ActiveRelayActor::new(opts);
         self.active_relay_tasks.spawn(
@@ -1585,6 +1634,7 @@ mod tests {
     async fn close_all_active_relays_survives_a_cancelled_task() {
         let (relay_datagram_recv_queue, _recv_rx) = mpsc::channel(1);
         let config = Config {
+            dial_checks: Arc::default(),
             my_relay: Default::default(),
             secret_key: SecretKey::from_bytes(&[0u8; 32]),
             dns_resolver: DnsResolver::new(),
@@ -1642,6 +1692,7 @@ mod tests {
             stop_token,
             metrics,
             my_relay: Default::default(),
+            dial_checks: Arc::default(),
         };
         let task = tokio::spawn(ActiveRelayActor::new(opts).run().instrument(span));
         AbortOnDropHandle::new(task)
@@ -2008,6 +2059,7 @@ mod tests {
             stop_token: CancellationToken::new(),
             metrics: Default::default(),
             my_relay: Default::default(),
+            dial_checks: Arc::default(),
         };
         let mut actor = ActiveRelayActor::new(opts);
 

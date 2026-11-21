@@ -245,6 +245,8 @@ async fn rate_limited_signal(rx: &mut Option<watch::Receiver<u64>>) -> bool {
 #[allow(missing_docs)]
 #[non_exhaustive]
 pub enum HandleFrameError {
+    #[error("Linn relay extensions were not negotiated")]
+    UnnegotiatedLinnExtension {},
     #[error(transparent)]
     ForwardPacket { source: ForwardPacketError },
     #[error("Stream terminated")]
@@ -496,6 +498,12 @@ where
         };
 
         match frame {
+            // The native server does not negotiate this Worker extension.
+            ClientToRelayMsg::DialCheck { .. }
+            | ClientToRelayMsg::TargetWatch { .. }
+            | ClientToRelayMsg::TargetUnwatch { .. } => {
+                return Err(e!(HandleFrameError::UnnegotiatedLinnExtension));
+            }
             ClientToRelayMsg::Datagrams {
                 dst_endpoint_id: dst_key,
                 datagrams,
