@@ -661,6 +661,7 @@ mod tests {
             states.insert(state.head.clone(), state);
         }
         // Recreate schema 7's per-event caches, then perform the actual migration.
+        crate::storage::migrations::remove_size_schema_for_legacy_fixture(&replica.db).await;
         for state in states.values() {
             replica
                 .db

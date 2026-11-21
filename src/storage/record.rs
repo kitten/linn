@@ -221,6 +221,7 @@ mod writer_migration_tests {
             ));
         }
         drop(rows);
+        super::super::migrations::remove_size_schema_for_legacy_fixture(&store.db).await;
         store
             .db
             .execute_batch("DROP INDEX records_writer_created; DROP INDEX records_writer_expiry; ALTER TABLE records DROP COLUMN writer; DROP TABLE mesh_pending; DROP TABLE mesh_conflicts; DROP TABLE mesh_roots; DROP TABLE mesh_event_ids; DROP TABLE mesh_successors; DROP TABLE mesh_membership_states; DROP TABLE mesh_events; DROP TABLE mesh_identity; DROP TABLE sync_state; DROP TABLE sync_incoming; DROP INDEX sync_scope_records; PRAGMA user_version=1;")

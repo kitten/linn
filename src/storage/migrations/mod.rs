@@ -13,6 +13,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("0008-membership-cache.sql"),
     include_str!("0009-retire-hints.sql"),
     include_str!("0010-sync-staging.sql"),
+    include_str!("0011-sync-sizes.sql"),
 ];
 pub(super) const VERSION: usize = MIGRATIONS.len();
 
@@ -52,6 +53,30 @@ pub(super) async fn apply(db: &Connection) -> Result<()> {
     apply_steps(db, MIGRATIONS).await
 }
 
+#[cfg(test)]
+pub(crate) async fn remove_size_schema_for_legacy_fixture(db: &Connection) {
+    let mut rows = db
+        .query(
+            "SELECT name FROM sqlite_schema WHERE type='trigger' AND name GLOB 'sync_sizes_*'",
+            (),
+        )
+        .await
+        .unwrap();
+    let mut names = Vec::new();
+    while let Some(row) = rows.next().await.unwrap() {
+        names.push(row.get::<String>(0).unwrap());
+    }
+    drop(rows);
+    for name in names {
+        db.execute_batch(&format!("DROP TRIGGER {name}"))
+            .await
+            .unwrap();
+    }
+    db.execute_batch("DROP VIEW sync_size_source; DROP TABLE sync_sizes;")
+        .await
+        .unwrap();
+}
+
 async fn apply_steps(db: &Connection, steps: &[&str]) -> Result<()> {
     let current = version(db).await?;
     supported(current, steps.len())?;
@@ -88,6 +113,102 @@ async fn apply_steps(db: &Connection, steps: &[&str]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    async fn assert_sizes(db: &Connection, item: &crate::storage::sync::Item) {
+        let encoded = serde_json::to_vec(&crate::mesh::wire::Frame::Response(
+            crate::sync::protocol::Response::Item {
+                item: Some(item.clone()),
+            },
+        ))
+        .unwrap();
+        let mut rows = db
+            .query(
+                "SELECT frame_bytes,envelope_bytes FROM sync_sizes WHERE id=?",
+                [item.id.as_str()],
+            )
+            .await
+            .unwrap();
+        let row = rows.next().await.unwrap().unwrap();
+        assert_eq!(row.get::<i64>(0).unwrap() as usize, encoded.len() + 4);
+        assert_eq!(
+            row.get::<i64>(1).unwrap() as usize,
+            item.envelope.as_ref().map_or(0, String::len)
+        );
+    }
+
+    #[tokio::test]
+    async fn sync_sizes_backfill_and_follow_original_precedence_transactionally() {
+        use crate::storage::sync::Item;
+        let dir = tempfile::tempdir().unwrap();
+        let database = libsql::Builder::new_local(dir.path().join("sizes.db"))
+            .build()
+            .await
+            .unwrap();
+        let db = database.connect().unwrap();
+        apply_steps(&db, &MIGRATIONS[..10]).await.unwrap();
+        fixture(&db).await;
+        let before = originals(&db).await;
+        apply(&db).await.unwrap();
+        assert_eq!(originals(&db).await, before);
+        let item = Item {
+            id: before[0].0.clone(),
+            envelope: Some(String::from_utf8(before[0].2.clone()).unwrap()),
+            envelope_hash: Some(before[0].4.clone()),
+            body_hash: Some(before[0].3.clone()),
+        };
+        assert_sizes(&db, &item).await;
+        let tombstone = Item {
+            envelope: None,
+            envelope_hash: None,
+            body_hash: None,
+            ..item.clone()
+        };
+        for text in ["escaped\"\\\n\t\r\u{0001}", "日本語 🐱 \u{2028}\u{2029}"] {
+            let staged = Item {
+                envelope: Some(
+                    serde_json::json!({"id":item.id,"body":text,"scope":"Org/Repo"}).to_string(),
+                ),
+                ..item.clone()
+            };
+            db.execute(
+                "INSERT OR REPLACE INTO sync_incoming VALUES(?,?)",
+                libsql::params![item.id.as_str(), serde_json::to_vec(&staged).unwrap()],
+            )
+            .await
+            .unwrap();
+            assert_sizes(&db, &staged).await;
+            db.execute("INSERT INTO tombstones VALUES(?)", [item.id.as_str()])
+                .await
+                .unwrap();
+            assert_sizes(&db, &tombstone).await;
+            db.execute("DELETE FROM tombstones WHERE id=?", [item.id.as_str()])
+                .await
+                .unwrap();
+            assert_sizes(&db, &staged).await;
+            db.execute("DELETE FROM sync_incoming WHERE id=?", [item.id.as_str()])
+                .await
+                .unwrap();
+            assert_sizes(&db, &item).await;
+        }
+        let tx = db.transaction().await.unwrap();
+        tx.execute("DELETE FROM records WHERE id=?", [item.id.as_str()])
+            .await
+            .unwrap();
+        let mut rows = tx
+            .query(
+                "SELECT count(*) FROM sync_sizes WHERE id=?",
+                [item.id.as_str()],
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            rows.next().await.unwrap().unwrap().get::<i64>(0).unwrap(),
+            0
+        );
+        drop(rows);
+        tx.rollback().await.unwrap();
+        assert_sizes(&db, &item).await;
+    }
 
     async fn originals(db: &Connection) -> Vec<(String, Vec<u8>, Vec<u8>, String, String)> {
         let mut rows = db

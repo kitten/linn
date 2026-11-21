@@ -47,6 +47,11 @@ def smoke(binary, root, env):
     assert originals(root / "restored.db") == before
     assert json.loads(cli("restored.db", "import", backup, "--json"))["changed"] == 0
     with sqlite3.connect(root / "restored.db") as db:
+        for (name,) in db.execute(
+            "SELECT name FROM sqlite_schema WHERE type='trigger' AND name GLOB 'sync_sizes_*'"
+        ).fetchall():
+            db.execute(f'DROP TRIGGER "{name}"')
+        db.executescript("DROP VIEW sync_size_source; DROP TABLE sync_sizes;")
         assert db.execute("SELECT id FROM tombstones WHERE id=?", (forgotten,)).fetchone()
         # Recreate the supported previous schema, without changing original bytes.
         db.executescript("DROP TABLE mesh_pending; DROP TABLE mesh_conflicts; DROP TABLE mesh_roots; DROP TABLE mesh_event_ids; DROP TABLE mesh_successors; DROP TABLE mesh_membership_states; DROP TABLE mesh_events; DROP TABLE mesh_identity; DROP TABLE sync_incoming; DROP INDEX records_writer_created; DROP INDEX records_writer_expiry; CREATE TABLE sync_remotes(name TEXT PRIMARY KEY,origin TEXT NOT NULL,scope TEXT); INSERT INTO sync_remotes VALUES('old','ssh://retired/store',NULL); PRAGMA user_version=4;")

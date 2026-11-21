@@ -512,6 +512,12 @@ original-scope metadata. Version 8 compacts derived membership caches to current
 heads and indexes representative-root history without changing signed receipts.
 Version 9 removes the unused reserved hint table; discovered addresses live only
 in memory. Version 10 adds the private durable incoming-item staging table.
+Version 11 adds the current-item inventory index: hashes, original scopes,
+encoded response/original-envelope byte sizes and monotonic ordinals. Indexed
+write triggers maintain these in the same transaction as original records,
+incoming staging and tombstones; inventory reads do not load bodies. Preserve
+an existing ID's ordinal through staging/publication and index repair so source
+cutoffs remain stable. This index contains no item history or original copies.
 The legacy `metadata.version` identifies the original format,
 not migration progress.
 
