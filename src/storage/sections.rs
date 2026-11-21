@@ -231,4 +231,18 @@ mod tests {
             "pinned Version foo bar MEM KEY"
         );
     }
+
+    #[test]
+    fn index_crlf_and_cr_cuts_preserve_bytes() {
+        let body = format!("{}\r\r- second\r\n- third\n", "x".repeat(1390));
+        let spans = block_spans(&body, 0..body.len(), 1400);
+        assert_eq!(
+            spans.iter().map(|s| &body[s.clone()]).collect::<String>(),
+            body
+        );
+        assert!(spans.len() > 1);
+        // Vertical tabs and form feeds are NOT boundaries for bytes.splitlines.
+        let text = "a\x0bb\x0cc";
+        assert_eq!(block_spans(text, 0..text.len(), 2).len(), 1);
+    }
 }

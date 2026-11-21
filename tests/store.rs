@@ -74,20 +74,6 @@ async fn identifiers_and_two_porter_tokenizers_stay_distinct() {
     let calls = store.agent("ordering", &Context::default()).await.unwrap();
     assert!(calls[0].cards.iter().any(|c| c.record == "heading"));
 }
-#[test]
-fn index_crlf_and_cr_cuts_preserve_bytes() {
-    let body = format!("{}\r\r- second\r\n- third\n", "x".repeat(1390));
-    let spans = linn::sections::block_spans(&body, 0..body.len(), 1400);
-    assert_eq!(
-        spans.iter().map(|s| &body[s.clone()]).collect::<String>(),
-        body
-    );
-    assert!(spans.len() > 1);
-    // Vertical tabs and form feeds are NOT boundaries for bytes.splitlines.
-    let text = "a\x0bb\x0cc";
-    assert_eq!(linn::sections::block_spans(text, 0..text.len(), 2).len(), 1);
-}
-
 #[tokio::test]
 async fn forgetting_a_close_keeps_projection_until_rebuild() {
     let tmp = tempfile::tempdir().unwrap();
