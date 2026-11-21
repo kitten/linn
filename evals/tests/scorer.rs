@@ -4,6 +4,7 @@ use std::{fs, process::Command};
 #[test]
 fn scores_generated_gold_section_and_silence_without_external_data() {
     let dir = tempfile::tempdir().unwrap();
+    let store = dir.path().join("store.db");
     let records = [
         json!({"id":"r1", "state":"accepted", "kind":"doc", "body":"# Fixture\nfixture_identifier_xyz details.", "label":"Fixture"}),
         json!({"id":"r2", "state":"accepted", "kind":"note", "body":"cross_fixture_abc", "scope":"other/repo"}),
@@ -25,6 +26,8 @@ fn scores_generated_gold_section_and_silence_without_external_data() {
         .unwrap();
     }
     let output = Command::new(env!("CARGO_BIN_EXE_linn-eval"))
+        .arg("--store")
+        .arg(&store)
         .args(["--mode", "all", "--corpus"])
         .arg(dir.path())
         .arg("--pages")
@@ -56,6 +59,8 @@ fn scores_generated_gold_section_and_silence_without_external_data() {
         assert!(event["query_ms"].as_f64().unwrap() >= 0.);
     }
     let neutral = Command::new(env!("CARGO_BIN_EXE_linn-eval"))
+        .arg("--store")
+        .arg(&store)
         .args(["--neutral", "--mode", "all", "--corpus"])
         .arg(dir.path())
         .output()
@@ -77,6 +82,8 @@ fn scores_generated_gold_section_and_silence_without_external_data() {
     assert!(table.contains("INSUFFICIENT-N"));
 
     let complete = Command::new(env!("CARGO_BIN_EXE_linn-eval"))
+        .arg("--store")
+        .arg(&store)
         .args(["--mode", "all", "--corpus"])
         .arg(dir.path())
         .arg("--compare")
@@ -97,6 +104,8 @@ fn scores_generated_gold_section_and_silence_without_external_data() {
     )
     .unwrap();
     let incomplete = Command::new(env!("CARGO_BIN_EXE_linn-eval"))
+        .arg("--store")
+        .arg(&store)
         .args(["--mode", "all", "--corpus"])
         .arg(dir.path())
         .arg("--compare")
@@ -109,6 +118,8 @@ fn scores_generated_gold_section_and_silence_without_external_data() {
     let duplicate = format!("{}\n", json!({"case":"gold","wording":0,"records":["r1"]}));
     fs::write(&comparison, duplicate.repeat(2)).unwrap();
     let duplicates = Command::new(env!("CARGO_BIN_EXE_linn-eval"))
+        .arg("--store")
+        .arg(&store)
         .args(["--mode", "all", "--corpus"])
         .arg(dir.path())
         .arg("--compare")
@@ -119,6 +130,8 @@ fn scores_generated_gold_section_and_silence_without_external_data() {
     assert!(String::from_utf8_lossy(&duplicates.stderr).contains("duplicate page key"));
 
     let benchmark = Command::new(env!("CARGO_BIN_EXE_linn-eval"))
+        .arg("--store")
+        .arg(&store)
         .args([
             "--document-benchmark",
             "--mode",
