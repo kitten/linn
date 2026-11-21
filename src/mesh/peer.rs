@@ -833,6 +833,7 @@ impl Peer {
             // Accepted items update the run immediately, even if a later pull
             // fails before its aggregate result returns to the phase coordinator.
             report.received = entry.report.received;
+            report.sent = entry.report.sent;
             if let Some(current) = &entry.report.traversal
                 && report
                     .traversal

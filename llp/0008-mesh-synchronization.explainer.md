@@ -1401,6 +1401,12 @@ original-byte chunk. Commit pending groups before publishing after 256 changed i
 changed envelopes, and on successful or failed transfer completion. The received counter
 tracks durable new applications to this store immediately, survives a later
 branch failure and does not count duplicates again on retry.
+The `sent` report counter counts complete original-item writes from this store
+in this run (records and tombstones), including repeated delivery to different
+peers. It advances only after a successful complete body write; it is not proof
+of remote application. Preserve it alongside received counts across phase updates.
+Missing replies, inventories and failed partial writes do not increment it.
+Older reports without this additive field deserialize it as zero.
 
 Keep control reading, heartbeat writing and cancellation independent of contact
 and transfer work. Root cancellation or loss of an active parent session cancels its delegated

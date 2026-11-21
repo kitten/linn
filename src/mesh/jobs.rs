@@ -117,6 +117,8 @@ pub struct Report {
     pub distributed: Vec<String>,
     pub failures: Vec<Failure>,
     pub received: u64,
+    #[serde(default)]
+    pub sent: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub traversal: Option<Box<super::status::Traversal>>,
     pub complete: bool,

@@ -153,7 +153,10 @@ impl ReplicaSource<'_> {
                     &self.progress,
                     &scope,
                 )
-                .await?
+                .await?;
+                if let Some(entry) = self.peer.runs.lock().unwrap().get_mut(self.run) {
+                    entry.report.sent += 1;
+                }
             }
             Value::Item(None) => {
                 wire::send_progress(
