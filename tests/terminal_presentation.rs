@@ -464,6 +464,7 @@ fn remaining_command_outcomes_are_readable_without_decorating_bundle_bytes() {
     let list = terminal(command(&db, &["list"]), true);
     let list = String::from_utf8(list.stdout).unwrap();
     assert!(list.contains("Document · Created:") && list.contains("Record ("));
+    assert!(!list.contains("\n  Author:"), "author must not add a line");
     let bundle = dir.path().join("backup.jsonl");
     let exported = terminal(
         command(&db, &["export", "--output", bundle.to_str().unwrap()]),

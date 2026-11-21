@@ -96,7 +96,7 @@ enum Command {
     Sync,
     #[command(
         about = "List current records, newest first; no search terms needed",
-        after_help = "Examples:\n  linn list --kind note --since 7d\n  linn list --scope\n  linn list --scope owner/repo\n  linn list --expiring-within 30d\n\nLists metadata across repositories. Use show <record> to read a record.\nClosed, superseded, expired and unaccepted records are excluded."
+        after_help = "Examples:\n  linn list --kind note --since 7d\n  linn list --author person@example.com\n  linn list --scope\n  linn list --scope owner/repo\n  linn list --expiring-within 30d\n\nLists metadata across repositories. Use show <record> to read a record.\nClosed, superseded, expired and unaccepted records are excluded."
     )]
     List(listing::ListArgs),
     #[command(
@@ -688,18 +688,21 @@ fn render(value: crate::application::Value, json_output: bool, closing: bool) ->
             if json_output {
                 println!("{}", json!({"records":records,"next":next}));
             } else {
+                let local_writer = paths::writer_email();
                 for (i, r) in records.into_iter().enumerate() {
                     let created = if r.created.is_empty() {
                         "unknown"
                     } else {
                         &r.created
                     };
+                    let author = list_author_suffix(r.writer.as_deref(), local_writer.as_deref());
                     let metadata = format!(
-                        "{}  {}  created: {}  expires: {}",
+                        "{}  {}  created: {}  expires: {}{}",
                         r.record,
                         r.kind,
                         created,
-                        r.stale_after.as_deref().unwrap_or("never")
+                        r.stale_after.as_deref().unwrap_or("never"),
+                        author
                     );
                     let label = r.label.replace(['\n', '\r', '\t'], " ");
                     if style.0 {
@@ -707,11 +710,12 @@ fn render(value: crate::application::Value, json_output: bool, closing: bool) ->
                             style.gap();
                         }
                         println!(
-                            "{}\n  {} · Created: {} · Expires: {}\n  {}",
+                            "{}\n  {} · Created: {} · Expires: {}{}\n  {}",
                             style.title(&label),
                             if r.kind == "doc" { "Document" } else { "Note" },
                             created,
                             r.stale_after.as_deref().unwrap_or("never"),
+                            author,
                             style.quiet(&format!("Record ({})", r.record))
                         );
                     } else {
@@ -841,6 +845,16 @@ fn render(value: crate::application::Value, json_output: bool, closing: bool) ->
     };
     Ok(0)
 }
+fn list_author_suffix(writer: Option<&str>, local: Option<&str>) -> String {
+    if writer.is_some() && writer == local {
+        return String::new();
+    }
+    format!(
+        " · Author: {}",
+        writer.unwrap_or("Unknown").replace(['\n', '\r', '\t'], " ")
+    )
+}
+
 fn print_call(store: &crate::application::SearchPage, call: &Call) {
     let style = presentation::current().out;
     if call.cards.is_empty() {
@@ -950,6 +964,23 @@ pub fn report_error(error: &crate::error::Error) {
 #[cfg(test)]
 mod help_context_tests {
     use super::root_help;
+    #[test]
+    fn list_authors_are_inline_and_only_current_git_writer_is_omitted() {
+        assert_eq!(
+            super::list_author_suffix(Some("me@example.com"), Some("me@example.com")),
+            ""
+        );
+        assert_eq!(
+            super::list_author_suffix(Some("you@example.com"), Some("me@example.com")),
+            " · Author: you@example.com"
+        );
+        assert_eq!(super::list_author_suffix(None, None), " · Author: Unknown");
+        assert_eq!(
+            super::list_author_suffix(Some("name\n@example.com"), None),
+            " · Author: name @example.com"
+        );
+    }
+
     #[test]
     fn contextual_discovery_only_applies_to_root_help() {
         for args in [

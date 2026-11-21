@@ -16,6 +16,8 @@ pub struct ListQuery {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ListedRecord {
+    #[serde(default)]
+    pub writer: Option<String>,
     pub record: String,
     pub label: String,
     pub kind: String,
@@ -81,6 +83,7 @@ impl Store {
                         kind: row.get(2)?,
                         created: row.get(3)?,
                         stale_after: (!expires.is_empty()).then_some(expires),
+                        writer: row.get(5)?,
                     });
                 }
                 if records.len() > limit {
@@ -144,7 +147,7 @@ fn list_statement(
         "record_headers h INDEXED BY record_created CROSS JOIN record_read_index r ON r.record=h.record"
     };
     let mut sql = format!(
-        "SELECT h.record,coalesce(json_extract(CAST(h.data AS TEXT),'$.label'),''),{kind},{created},r.expires FROM {from} WHERE (r.eligible&1)!=0"
+        "SELECT h.record,coalesce(json_extract(CAST(h.data AS TEXT),'$.label'),''),{kind},{created},r.expires,json_extract(CAST(h.data AS TEXT),'$.writer') FROM {from} WHERE (r.eligible&1)!=0"
     );
     let mut values: Vec<libsql::Value> = Vec::new();
     if let Some(writer) = &query.writer {
@@ -409,6 +412,8 @@ mod writer_tests {
                 .unwrap();
             assert_eq!(first.records[0].record, if expiry { "a" } else { "b" });
             assert_eq!(second.records[0].record, if expiry { "b" } else { "a" });
+            assert_eq!(first.records[0].writer.as_deref(), Some("a@example.test"));
+            assert_eq!(second.records[0].writer.as_deref(), Some("a@example.test"));
             assert!(second.next.is_none());
             for after in [None, first.next.as_ref()] {
                 for same in [false, true] {

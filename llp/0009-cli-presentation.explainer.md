@@ -107,7 +107,12 @@ Show deletion-marker counts separately when nonzero, with no author attribution.
 
 Human list entries put the original label first, then readable kind and labelled
 creation/expiry values, then the full record ID last on its own dim line. Preserve
-exact timestamps, labels and copyable pagination commands.
+exact timestamps, labels and copyable pagination commands. Append `Author: <email>`
+to the existing metadata line, never add a new line. Omit this suffix only when
+the exact stored writer matches the current effective Git email resolved by the
+CLI; unknown attribution displays `Author: Unknown`. Familiarity or a matching
+name is not sufficient to infer a local author. JSON always retains the stored
+writer, and filters operate on that original value regardless of display omission.
 
 Human daemon output leads with running/stopped state and an optional PID, followed
 by the store path and version. Stopped is neutral; running is green. Human sync

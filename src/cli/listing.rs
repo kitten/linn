@@ -4,7 +4,12 @@ pub(super) struct ListArgs {
     #[arg(long, num_args = 0..=1, default_missing_value = ".", conflicts_with = "cursor",
         help = "Exact repository scope; omit the value or use . for the current repository")]
     scope: Option<String>,
-    #[arg(long, help = "Exact stored writer email", conflicts_with = "cursor")]
+    #[arg(
+        long,
+        visible_alias = "author",
+        help = "Exact stored author email (unverified attribution)",
+        conflicts_with = "cursor"
+    )]
     writer: Option<String>,
     #[arg(long, value_parser = ["note", "doc"], conflicts_with = "cursor")]
     kind: Option<String>,
@@ -73,6 +78,22 @@ mod tests {
             assert_eq!(args.scope.as_deref(), expected);
         }
         assert!(Args::try_parse_from(["linn", "list", "--scope", "--cursor", "token"]).is_err());
+        let cli = Args::try_parse_from(["linn", "list", "--author", "a@example.test"]).unwrap();
+        let Command::List(args) = cli.command else {
+            panic!("expected list");
+        };
+        assert_eq!(args.writer.as_deref(), Some("a@example.test"));
+        assert!(
+            Args::try_parse_from([
+                "linn",
+                "list",
+                "--author",
+                "a@example.test",
+                "--cursor",
+                "token"
+            ])
+            .is_err()
+        );
     }
 
     #[test]

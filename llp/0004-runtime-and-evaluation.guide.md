@@ -400,7 +400,7 @@ There is no writer option or device identifier.
 
 ## `linn list`
 
-`--writer <email>` selects the exact, case-sensitive stored writer value and
+`--writer <email>` (also `--author <email>`) selects the exact, case-sensitive stored writer value and
 combines with all other filters. Missing/null writers do not match. The filter
 is retained by the list cursor; specifying it alongside a cursor is an error.
 Search accepts `writer:<email>` (or a quoted value) with the same comparison;
@@ -433,7 +433,8 @@ not invoke retrieval, POS or embeddings, load bodies, or infer agent sessions.
   displays as never and is excluded by the expiry filter. Use `show <record>`
   to open original bytes. A next cursor is printed only when another row exists.
 - JSON is `{"records":[{"record","label","kind","created","stale_after"}],"next":...}`:
-  creation is the stored string (empty when unknown), expiry and next may be null.
+  creation is the stored string (empty when unknown), expiry and next may be null. Each listed record additionally carries `writer`
+(string or null), including when human presentation omits the local author.
   Exit 0 for a nonempty page, 1 for an empty page, 2 for invalid options/cursors.
   Listing uses the stored timestamp comparison convention; CLI-created dates are UTC.
 

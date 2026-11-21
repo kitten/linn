@@ -509,6 +509,22 @@ async fn writer_filters_list_search_and_replay_without_reassigning_unknowns() {
     );
     let page: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(page["records"][0]["record"], "record-10");
+    assert_eq!(page["records"][0]["writer"], "a@example.test");
+    let alias = cli(
+        &db,
+        &[
+            "list",
+            "--author",
+            "a@example.test",
+            "--limit",
+            "2",
+            "--json",
+        ],
+        None,
+    );
+    assert!(alias.status.success());
+    let alias: Value = serde_json::from_slice(&alias.stdout).unwrap();
+    assert_eq!(alias["records"], page["records"]);
     let cursor = page["next"].as_str().unwrap();
     assert!(
         !cli(
