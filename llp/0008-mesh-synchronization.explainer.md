@@ -441,8 +441,7 @@ address change.
 
 Use a versioned Linn mesh ALPN and bounded authenticated control stream,
 separate from local IPC. Membership exchange precedes data authorization. Adapt
-the bounded wire types in [sync](../src/sync/mod.rs) and
-[framing](../src/sync/protocol.rs), and the merge functions in [replica
+the bounded wire types in [sync](../src/sync.rs), and the merge functions in [replica
 storage](../src/storage/sync.rs) to asynchronous streams; preserve original
 bytes, hashes, tombstone precedence, conflicts and publication recovery
 specified in LLP 0001 and the retained contracts below. Network protocol
