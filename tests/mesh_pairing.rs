@@ -625,8 +625,23 @@ fn offline_daemons_rediscover_changed_loopback_ports() {
         std::thread::sleep(Duration::from_millis(20));
     }
     // Both owners start with an unavailable service, independently, with fresh ports.
-    let after_a = a.ok(&["sync:status", "--json"], None);
-    let after_b = b.ok(&["sync:status", "--json"], None);
+    // Status can arrive before independently scheduled passive transport startup.
+    let ready = |fixture: &Fixture| {
+        let deadline = Instant::now() + Duration::from_secs(15);
+        loop {
+            let status = fixture.ok(&["sync:status", "--json"], None);
+            if status["transport"]["local_discovery"] == true {
+                break status;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "local discovery did not start: {status}"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    };
+    let after_a = ready(&a);
+    let after_b = ready(&b);
     for (before, after) in [(&before_a, &after_a), (&before_b, &after_b)] {
         assert_eq!(before["endpoint"], after["endpoint"]);
         assert_ne!(
