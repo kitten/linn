@@ -9,6 +9,7 @@ use std::{
 struct Fixture {
     root: tempfile::TempDir,
     store: PathBuf,
+    binary: PathBuf,
 }
 impl Fixture {
     fn prompt_join(&self, token: &str) -> Output {
@@ -45,7 +46,7 @@ impl Fixture {
         }
         let mut master = unsafe { File::from_raw_fd(master) };
         let slave = unsafe { File::from_raw_fd(slave) };
-        let mut child = Command::new(env!("CARGO_BIN_EXE_linn"))
+        let mut child = Command::new(&self.binary)
             .arg("--store")
             .arg(&self.store)
             .args(args)
@@ -97,10 +98,14 @@ impl Fixture {
             .unwrap();
         std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
         let store = root.path().join("store.db");
-        Self { root, store }
+        Self {
+            root,
+            store,
+            binary: env!("CARGO_BIN_EXE_linn").into(),
+        }
     }
     fn run(&self, args: &[&str], input: Option<&str>) -> Output {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_linn"))
+        let mut child = Command::new(&self.binary)
             .arg("--store")
             .arg(&self.store)
             .args(args)
@@ -308,13 +313,30 @@ fn joining_supports_arguments_prompt_first_sync_failure_and_self_revocation() {
         &["sync:pair", "-y", "--join", "--sync", "--json"],
         Some(invite["token"].as_str().unwrap()),
     );
+    let joined: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let failures = joined["initial_sync"]["failures"].as_array().unwrap();
+    assert_eq!(failures.len(), 1, "{joined}");
+    assert!(
+        matches!(failures[0]["kind"].as_str(), Some("offline" | "timeout")),
+        "{joined}"
+    );
+    let offline = failures[0]["kind"] == "offline";
+    if offline {
+        assert!(
+            joined["initial_sync"]["traversal"]["relay"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|route| route["target"] == failures[0]["peer"] && route["outcome"] == "gone"),
+            "{joined}"
+        );
+    }
+    // A fresh endpoint may not obtain a correlated relay reply before its dial expires.
     assert_eq!(
         output.status.code(),
-        Some(0),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
+        Some(if offline { 0 } else { 2 }),
+        "{joined}"
     );
-    let joined: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(joined["operation"], "paired");
     assert_eq!(joined["status"]["enabled"], true);
     assert_eq!(joined["initial_sync"]["complete"], false);
@@ -948,4 +970,263 @@ fn sleeping_peers_do_not_block_available_peer_sync() {
         a.ok(&["show", &id, "--all", "--json"], None)["text"],
         "Reachable peers still exchange originals."
     );
+}
+
+// Daemon-only CPU and idle RSS; ps CPU resolution is platform-dependent.
+fn daemon_sample(fixture: &Fixture) -> (f64, u64) {
+    let pid = fixture.ok(&["daemon:status", "--json"], None)["pid"]
+        .as_u64()
+        .unwrap();
+    let output = Command::new("ps")
+        .args(["-p", &pid.to_string(), "-o", "time=", "-o", "rss="])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let output = String::from_utf8(output.stdout).unwrap();
+    let mut values = output.split_whitespace();
+    let time = values.next().unwrap();
+    let seconds = time.split(':').fold(0.0, |total, part| {
+        total * 60.0 + part.parse::<f64>().unwrap()
+    });
+    let rss = values.next().unwrap().parse::<u64>().unwrap() * 1024;
+    (seconds * 1000.0, rss)
+}
+
+/// Controlled measurement: independent stores, matched originals and final acks.
+#[test]
+#[ignore = "run through relay/scripts/sync-bench.ts with a local Worker"]
+fn sync_latency_matched_coverage() {
+    let service = std::env::var("LINN_RELAY_TEST_URL").unwrap();
+    let workload = std::env::var("LINN_SYNC_BENCH_CASE").unwrap();
+    let paths = std::env::var("LINN_SYNC_BENCH_PATHS").unwrap();
+    assert!(["cold", "warm"].contains(&paths.as_str()));
+    let count: usize = std::env::var("LINN_SYNC_BENCH_PEERS")
+        .unwrap_or_else(|_| "5".into())
+        .parse()
+        .unwrap();
+    assert!((5..=20).contains(&count));
+    let peers: Vec<_> = (0..count)
+        .map(|_| {
+            let mut fixture = Fixture::new();
+            if let Some(binary) = std::env::var_os("LINN_SYNC_BENCH_BINARY") {
+                fixture.binary = binary.into();
+            }
+            fixture
+        })
+        .collect();
+    let owner = &peers[0];
+    owner.ok(
+        &[
+            "sync:pair",
+            "-y",
+            "--service",
+            service.trim_end_matches('/'),
+            "--json",
+        ],
+        None,
+    );
+    for peer in &peers[1..] {
+        let invitation = owner.ok(&["sync:pair", "-y", "--json"], None);
+        peer.ok(
+            &[
+                "sync:pair",
+                "-y",
+                "--join",
+                invitation["token"].as_str().unwrap(),
+                "--no-sync",
+                "--json",
+            ],
+            None,
+        );
+    }
+    if paths == "warm" {
+        assert_eq!(owner.ok(&["sync", "--json"], None)["complete"], true);
+    }
+    let mut originals = Vec::new();
+    if matches!(workload.as_str(), "unchanged" | "small-change") {
+        let id = owner.ok(
+            &["add", "-", "--unscoped", "--json"],
+            Some("Shared original present independently before measurement."),
+        )["record"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let bundle = owner.root.path().join("seed.jsonl");
+        let exported = owner.run(
+            &[
+                "export",
+                "--all-states",
+                "--output",
+                bundle.to_str().unwrap(),
+                "--json",
+            ],
+            None,
+        );
+        assert!(
+            exported.status.success(),
+            "{}",
+            String::from_utf8_lossy(&exported.stderr)
+        );
+        for peer in &peers[1..] {
+            peer.ok(&["import", bundle.to_str().unwrap(), "--json"], None);
+        }
+        originals.push((
+            id,
+            "Shared original present independently before measurement.".to_owned(),
+        ));
+    }
+    let reachable = count - usize::from(workload == "sleeping");
+    if workload == "sleeping" {
+        peers[count - 1].ok(&["daemon:stop", "--json"], None);
+    }
+    match workload.as_str() {
+        "initial" | "sleeping" => {
+            for (index, peer) in peers[..reachable].iter().enumerate() {
+                let text =
+                    format!("Original from independent peer {index}; preserve these exact bytes.");
+                let id = peer.ok(&["add", "-", "--unscoped", "--json"], Some(&text))["record"]
+                    .as_str()
+                    .unwrap()
+                    .to_owned();
+                originals.push((id, text));
+            }
+        }
+        "small-change" => {
+            let text = "One new original after independent seed import.";
+            let id = peers[1].ok(&["add", "-", "--unscoped", "--json"], Some(text))["record"]
+                .as_str()
+                .unwrap()
+                .to_owned();
+            originals.push((id, text.into()));
+        }
+        "unchanged" => (),
+        _ => panic!("unknown benchmark workload"),
+    }
+    let inspect = |query: &str| {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                reqwest::get(format!("{}/_inspect{query}", service.trim_end_matches('/')))
+                    .await
+                    .unwrap()
+                    .error_for_status()
+                    .unwrap()
+                    .json::<serde_json::Value>()
+                    .await
+                    .unwrap()
+            })
+    };
+    inspect("?resetTraffic");
+    let (root_cpu_before, root_idle_rss_before) = daemon_sample(owner);
+    let started = std::time::Instant::now();
+    let output = owner.run(&["sync", "--json"], None);
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(output.status.code(), Some(0), "{report}");
+    assert!(
+        report["failures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|failure| workload == "sleeping" && failure["kind"] == "offline"),
+        "{report}"
+    );
+    if workload == "sleeping" {
+        assert_eq!(report["traversal"]["discovery_expired"], false, "{report}");
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(18),
+            "offline classification must finish inside the discovery cap"
+        );
+    }
+    let elapsed = started.elapsed();
+    let (root_cpu_after, root_idle_rss_after) = daemon_sample(owner);
+    let traffic = inspect("")["relayTraffic"].clone();
+    assert_eq!(
+        report["collected"].as_array().unwrap().len(),
+        reachable,
+        "{report}"
+    );
+    assert_eq!(
+        report["distributed"].as_array().unwrap().len(),
+        reachable,
+        "{report}"
+    );
+    assert_eq!(report["complete"], workload != "sleeping", "{report}");
+    for peer in &peers[..reachable] {
+        for (id, text) in &originals {
+            assert_eq!(
+                peer.ok(&["show", id, "--all", "--json"], None)["text"],
+                *text
+            );
+        }
+    }
+    println!(
+        "MEASURE {}",
+        serde_json::json!({
+            "workload": workload, "iroh_paths": paths, "peers": count,
+            "complete": report["complete"], "failures": report["failures"],
+            "discovery_expired": report["traversal"]["discovery_expired"],
+            "exit_code": output.status.code(),
+            "elapsed_ms": elapsed.as_secs_f64() * 1000.0, "reachable": reachable,
+            "collected": report["collected"], "distributed": report["distributed"],
+            "originals_per_reachable_store": originals.len(), "relay_traffic": traffic,
+            "root_daemon_cpu_ms": (root_cpu_after - root_cpu_before).max(0.0),
+            "root_idle_rss_before_bytes": root_idle_rss_before,
+            "root_idle_rss_after_bytes": root_idle_rss_after,
+            "cpu_measurement": "daemon ps CPU delta; platform counter resolution; excludes client and Worker",
+            "topology": "same-host IPv4 discovery and local Worker; no injected WAN delay"
+        })
+    );
+}
+
+#[test]
+#[ignore = "requires an explicitly configured Worker"]
+fn completed_jobs_leave_no_status_and_consecutive_syncs_have_fresh_run_ids() {
+    let service = std::env::var("LINN_RELAY_TEST_URL").unwrap();
+    let a = Fixture::new();
+    let b = Fixture::new();
+    a.ok(
+        &[
+            "sync:pair",
+            "-y",
+            "--service",
+            service.trim_end_matches('/'),
+            "--json",
+        ],
+        None,
+    );
+    let invitation = a.ok(&["sync:pair", "-y", "--json"], None);
+    b.ok(
+        &[
+            "sync:pair",
+            "-y",
+            "--join",
+            invitation["token"].as_str().unwrap(),
+            "--no-sync",
+            "--json",
+        ],
+        None,
+    );
+    let first = a.ok(&["sync", "--json"], None);
+    assert_eq!(first["complete"], true);
+    for peer in [&a, &b] {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        loop {
+            let status = peer.ok(&["sync:status", "--json"], None);
+            if status["transport"]["jobs"].as_array().unwrap().is_empty() {
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "retained completed job: {status}"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+    let second = a.ok(&["sync", "--json"], None);
+    assert_eq!(second["complete"], true);
+    assert_ne!(first["run"], second["run"]);
+    assert_eq!(second["received"], 0);
+    assert!(a.ok(&["sync:status", "--json"], None)["reachability"].is_null());
 }
