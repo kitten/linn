@@ -492,3 +492,18 @@ Developer ID trust claim; local smoke tests do not establish Gatekeeper behavior
 for a browser-downloaded archive. Test that distribution path separately when
 needed. The first hosted runs establish actual Linux/runner compatibility;
 local workflow validation is not evidence those jobs have already passed.
+
+
+## Import attribution
+
+Import reports aggregate the immutable envelopes' `writer` values, without reading
+legacy `author` fields or substituting the importing caller's Git identity.
+The additive JSON `authors` array contains `{writer, records}` groups in sorted
+writer order (null first); absent/null writers share an unknown group.
+Counts cover all original record frames in the successful bundle, including
+already-present items and close envelopes, rather than only newly applied items.
+`deletion_markers` separately counts tombstone frames: these carry no author and
+are excluded from author groups. The existing changed/unchanged totals retain
+their meaning and include tombstones. No attribution changes original data,
+indexing, eligibility, ranking, merge rules or bundle format. Attribution is
+unverified metadata, not authenticated authorship.

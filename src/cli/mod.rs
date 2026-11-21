@@ -798,6 +798,33 @@ fn render(value: crate::application::Value, json_output: bool, closing: bool) ->
                     c.unchanged
                 );
             }
+            if !json_output {
+                if !c.authors.is_empty() {
+                    println!("{}", style.title("Authors:"));
+                    for author in &c.authors {
+                        println!(
+                            "  {} {} · {}",
+                            author.records,
+                            if author.records == 1 {
+                                "record"
+                            } else {
+                                "records"
+                            },
+                            author
+                                .writer
+                                .as_deref()
+                                .unwrap_or("Unknown")
+                                .replace(['\n', '\r', '\t'], " ")
+                        );
+                    }
+                }
+                if c.deletion_markers != 0 {
+                    println!(
+                        "Deletion markers: {} (no author attribution)",
+                        c.deletion_markers
+                    );
+                }
+            }
         }
         Value::Mesh(output) => {
             let incomplete = !output.successful();

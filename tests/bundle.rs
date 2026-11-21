@@ -364,3 +364,58 @@ async fn conflict_publishes_earlier_items_and_tombstone_prevents_revival() {
             .is_none()
     );
 }
+
+#[tokio::test]
+async fn import_reports_original_writers_and_keeps_deletion_markers_unattributed() {
+    let dir = tempfile::tempdir().unwrap();
+    let source = dir.path().join("authors.db");
+    let mut store = Store::build(
+        &source,
+        vec![
+            record(json!({"id":"alice","body":"Alice original.","writer":"alice@example.test"})),
+            record(json!({"id":"bob","body":"Bob original.","writer":"bob@example.test"})),
+            record(json!({"id":"legacy","body":"Legacy original.","author":"never read this"})),
+            record(json!({"id":"unknown","body":"Unknown original.","writer":null})),
+            record(
+                json!({"id":"deleted","body":"Deleted original.","writer":"alice@example.test"}),
+            ),
+        ],
+    )
+    .await
+    .unwrap();
+    store.forget("deleted").await.unwrap();
+    let mut selection = selection();
+    selection.all_states = true;
+    let mut bytes = Vec::new();
+    store.export_bundle(&selection, &mut bytes).await.unwrap();
+    let target = Replica::open(&dir.path().join("target-authors.db"))
+        .await
+        .unwrap();
+    for repeat in [false, true] {
+        let imported = import_bundle(&target, stage(&mut Cursor::new(&bytes)).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(imported.deletion_markers, 1);
+        let authors: Vec<_> = imported
+            .authors
+            .iter()
+            .map(|a| (a.writer.as_deref(), a.records))
+            .collect();
+        assert_eq!(
+            authors,
+            vec![
+                (None, 2),
+                (Some("alice@example.test"), 1),
+                (Some("bob@example.test"), 1)
+            ]
+        );
+        assert_eq!(
+            if repeat {
+                imported.unchanged
+            } else {
+                imported.changed
+            },
+            5
+        );
+    }
+}

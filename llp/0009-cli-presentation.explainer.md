@@ -101,7 +101,9 @@ by dim IDs in parentheses. The close confirmation labels its ID `Close record`:
 it identifies the new immutable close envelope, not the target. Plain writes
 retain their existing output. Human integrity checks say `Integrity check passed.`;
 rebuild retains `Index rebuilt.`. Import separates its outcome from applied-change
-and already-present counts, with singular/plural wording.
+and already-present counts, with singular/plural wording. Follow with author
+counts labelled `Authors:`, including unknown writers.
+Show deletion-marker counts separately when nonzero, with no author attribution.
 
 Human list entries put the original label first, then readable kind and labelled
 creation/expiry values, then the full record ID last on its own dim line. Preserve

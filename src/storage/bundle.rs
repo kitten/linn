@@ -211,8 +211,23 @@ pub fn stage(reader: &mut impl BufRead) -> Result<std::fs::File> {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Imported {
+    #[serde(default)]
+    pub authors: Vec<ImportedAuthor>,
+    #[serde(default)]
+    pub deletion_markers: u64,
     pub changed: u64,
     pub unchanged: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ImportedAuthor {
+    pub writer: Option<String>,
+    pub records: u64,
+}
+
+#[derive(Deserialize)]
+struct Attribution {
+    writer: Option<String>,
 }
 
 pub async fn import_bundle(replica: &Replica, staged: std::fs::File) -> Result<Imported> {
@@ -221,16 +236,33 @@ pub async fn import_bundle(replica: &Replica, staged: std::fs::File) -> Result<I
         let mut counts = Imported {
             changed: 0,
             unchanged: 0,
+            authors: Vec::new(),
+            deletion_markers: 0,
         };
+        let mut authors = std::collections::BTreeMap::<Option<String>, u64>::new();
         while let Some(bytes) = line(&mut reader)? {
             if let Frame::Item { item } = serde_json::from_slice(&bytes)? {
+                let writer = item
+                    .envelope
+                    .as_deref()
+                    .map(serde_json::from_str::<Attribution>)
+                    .transpose()?;
                 if replica.apply(&item, None).await? {
                     counts.changed += 1;
                 } else {
                     counts.unchanged += 1;
                 }
+                if let Some(attribution) = writer {
+                    *authors.entry(attribution.writer).or_default() += 1;
+                } else {
+                    counts.deletion_markers += 1;
+                }
             }
         }
+        counts.authors = authors
+            .into_iter()
+            .map(|(writer, records)| ImportedAuthor { writer, records })
+            .collect();
         Ok(counts)
     }
     .await;

@@ -482,6 +482,8 @@ fn remaining_command_outcomes_are_readable_without_decorating_bundle_bytes() {
     let imported = String::from_utf8(imported.stdout).unwrap();
     assert!(imported.contains("Import complete") && imported.contains("0 changes applied,"));
     assert!(imported.contains("already present."));
+    assert!(imported.contains("Authors:"));
+    assert!(imported.contains("1 record ·"));
     let daemon = terminal(command(&db, &["daemon:status"]), true);
     assert!(
         String::from_utf8(daemon.stdout)
