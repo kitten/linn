@@ -48,8 +48,16 @@ pub fn write_output(spool: &mut File, path: Option<PathBuf>) -> Result<()> {
         let mut file = tempfile::NamedTempFile::new_in(parent)?;
         io::copy(spool, file.as_file_mut())?;
         file.as_file().sync_all()?;
-        file.persist_noclobber(path)
+        file.persist_noclobber(&path)
             .map_err(|e| Error::Io(e.error))?;
+        let style = presentation::current().err;
+        if style.0 {
+            eprintln!(
+                "{} {}",
+                style.success("Export saved"),
+                style.quiet(&format!("({})", path.display()))
+            );
+        }
     } else {
         let mut out = io::stdout().lock();
         io::copy(spool, &mut out)?;

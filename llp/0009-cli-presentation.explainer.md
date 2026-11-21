@@ -84,7 +84,7 @@ status, action, reason and recovery advice. Keep full IDs copyable; do not
 shorten them. For a connection involving two peers, label source and target
 inside a trailing parenthesis. Plain status retains its
 compact line and ID-first peer format. A human close confirmation identifies
-successful closure and labels the returned ID as the close envelope, not the
+successful closure and labels the returned ID as the close record, not the
 target record. Plain close output remains the bare new envelope ID. An empty
 list says `No matching records.` so filters do not imply the store is empty.
 
@@ -93,6 +93,29 @@ unstyled, with a heading only in human presentation. Safety notices and essentia
 diagnostics remain visible in every mode. Do not interpret original content's
 control characters as newly generated decoration or claim that plain mode
 sanitizes original text.
+
+## Other command outcomes
+
+Human write confirmations lead with `Saved`, `Closed.` or `Forgotten`, followed
+by dim IDs in parentheses. The close confirmation labels its ID `Close record`:
+it identifies the new immutable close envelope, not the target. Plain writes
+retain their existing output. Human integrity checks say `Integrity check passed.`;
+rebuild retains `Index rebuilt.`. Import separates its outcome from applied-change
+and already-present counts, with singular/plural wording.
+
+Human list entries put the original label first, then readable kind and labelled
+creation/expiry values, then the full record ID last on its own dim line. Preserve
+exact timestamps, labels and copyable pagination commands.
+
+Human daemon output leads with running/stopped state and an optional PID, followed
+by the store path and version. Stopped is neutral; running is green. Human sync
+administration uses pairing, connection and leaving outcomes rather than internal
+membership revisions; full revisions remain in plain/JSON output. Conflict and
+pending-leave warnings remain explicit. Pairing consent and token bytes are unchanged.
+
+A successful named-file export gets a concise confirmation on human stderr only,
+after the file is safely persisted. Stdout bundle bytes, plain output and JSON
+remain unchanged; a streamed export receives no extra confirmation.
 
 ## Transient progress
 

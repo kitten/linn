@@ -400,7 +400,7 @@ fn close_confirmation_and_filtered_empty_lists_are_unambiguous() {
             }
             "human" => {
                 assert!(text.starts_with("\x1b[32mClosed.\x1b[0m"));
-                assert!(text.contains("Envelope:") && text.contains("close-"));
+                assert!(text.contains("Close record (") && text.contains("close-"));
                 assert!(
                     !text.contains(&id),
                     "returned envelope ID must not be confused with target ID"
@@ -416,7 +416,7 @@ fn close_confirmation_and_filtered_empty_lists_are_unambiguous() {
     }
     let status_help = command(&db, &["sync:status", "--help"]).output().unwrap();
     let status_help = String::from_utf8(status_help.stdout).unwrap();
-    assert!(status_help.contains("optionally check peer reachability"));
+    assert!(status_help.contains("optionally check peer connections"));
     assert!(!status_help.contains("without contacting peers"));
     let add_help = command(&db, &["add", "--help"]).output().unwrap();
     assert!(String::from_utf8_lossy(&add_help.stdout).contains("UTC expiry timestamp"));
@@ -438,6 +438,62 @@ fn close_confirmation_and_filtered_empty_lists_are_unambiguous() {
     assert!(
         String::from_utf8_lossy(&close_help.stdout)
             .contains("Existing replacement record reference")
+    );
+    assert!(
+        command(&db, &["daemon:stop"])
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+}
+
+#[test]
+fn remaining_command_outcomes_are_readable_without_decorating_bundle_bytes() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = dir.path().join("store.db");
+    let document = dir.path().join("example.md");
+    std::fs::write(&document, "# Example\nA presentation fixture.").unwrap();
+    let saved = terminal(command(&db, &["add", document.to_str().unwrap()]), true);
+    assert!(saved.status.success());
+    assert!(
+        String::from_utf8(saved.stdout)
+            .unwrap()
+            .starts_with("\x1b[32mSaved\x1b[0m")
+    );
+    let list = terminal(command(&db, &["list"]), true);
+    let list = String::from_utf8(list.stdout).unwrap();
+    assert!(list.contains("Document · Created:") && list.contains("Record ("));
+    let bundle = dir.path().join("backup.jsonl");
+    let exported = terminal(
+        command(&db, &["export", "--output", bundle.to_str().unwrap()]),
+        false,
+    );
+    assert!(exported.status.success());
+    assert!(exported.stdout.is_empty());
+    assert!(
+        String::from_utf8(exported.stderr)
+            .unwrap()
+            .contains("Export saved")
+    );
+    assert!(!std::fs::read(&bundle).unwrap().contains(&0x1b));
+    let imported = terminal(command(&db, &["import", bundle.to_str().unwrap()]), true);
+    assert!(imported.status.success());
+    let imported = String::from_utf8(imported.stdout).unwrap();
+    assert!(imported.contains("Import complete") && imported.contains("0 changes applied,"));
+    assert!(imported.contains("already present."));
+    let daemon = terminal(command(&db, &["daemon:status"]), true);
+    assert!(
+        String::from_utf8(daemon.stdout)
+            .unwrap()
+            .starts_with("\x1b[32mBackground process running")
+    );
+    let checked = terminal(command(&db, &["index:check"]), true);
+    assert!(checked.status.success());
+    assert!(
+        String::from_utf8(checked.stdout)
+            .unwrap()
+            .contains("Integrity check passed.")
     );
     assert!(
         command(&db, &["daemon:stop"])

@@ -36,32 +36,32 @@ struct Args {
 enum Command {
     #[command(
         name = "sync:pair",
-        about = "Create or redeem a whole-store mesh invitation",
+        about = "Pair stores using an invitation",
         after_help = "Service relays cannot read your private notes or data: transfers are end-to-end encrypted between your devices.\n\nInvitations authorize merging both entire stores and their meshes, including offline members.\nUse --join with a token, piped stdin, or a terminal prompt. Admission is independent of the optional first sync. Use --sync or --no-sync to choose explicitly."
     )]
     SyncPair(mesh::PairArgs),
     #[command(
         name = "sync:status",
         hide = true,
-        about = "Inspect local mesh state; optionally check peer reachability"
+        about = "Show sync status and optionally check peer connections"
     )]
     SyncStatus {
         #[arg(
             long,
-            help = "Check peer transport reachability (at most ten seconds; no record exchange)"
+            help = "Check peer connections (up to ten seconds; no records exchanged)"
         )]
         check: bool,
     },
     #[command(
         name = "sync:revoke",
         hide = true,
-        about = "Permanently revoke a peer by its full ID"
+        about = "Permanently remove a peer using its full ID"
     )]
     SyncRevoke { peer: String },
     #[command(
         name = "sync:leave",
         hide = true,
-        about = "Disable local transport and revoke this endpoint when reachable"
+        about = "Stop syncing locally and leave the mesh when the service is available"
     )]
     SyncLeave,
     #[command(
@@ -90,8 +90,8 @@ enum Command {
         file: String,
     },
     #[command(
-        about = "Collect and distribute records and deletions through the paired mesh",
-        after_help = "Sync administration (existing colon-separated commands):\n  linn sync:pair                  Create or redeem an invitation (-y confirms the notice)\n  linn sync:status [--check]      Inspect enrollment; optionally check peer transport reachability\n  linn sync:revoke <peer-id>      Permanently revoke a peer by its full ID\n  linn sync:leave                 Disable local transport and leave the mesh\n  linn sync:reset-identity        Remove a copied store's identity; preserve records and deletions\n\nPeer IDs identify store instances, not machines. Use each command with -h for details.\nEach invocation runs one finite mesh job; automatic sync is deferred.\nPartial progress is durable. Retry interrupted jobs; use index:rebuild to repair incomplete publication."
+        about = "Exchange records and deletions with paired stores",
+        after_help = "Manage sync:\n  linn sync:pair                  Create or redeem an invitation (-y confirms the notice)\n  linn sync:status [--check]      Show sync status; optionally check connections\n  linn sync:revoke <peer-id>      Permanently remove a peer using its full ID\n  linn sync:leave                 Stop syncing locally and leave the mesh\n  linn sync:reset-identity        Remove a copied store's identity; preserve records and deletions\n\nPeer IDs identify store instances, not machines. Use each command with -h for details.\nEach call runs one sync; sync does not run automatically.\nCompleted changes are kept if sync is interrupted. Retry with linn sync.\nIf an error asks you to rebuild the index, run linn index:rebuild."
     )]
     Sync,
     #[command(
@@ -179,7 +179,7 @@ Use --stale-after only for known expiry."#
     },
     #[command(
         name = "add:close",
-        about = "Write a close envelope; leave the target bytes immutable"
+        about = "Mark a record as no longer current; keep its original contents"
     )]
     Close {
         reference: String,
@@ -193,7 +193,7 @@ Use --stale-after only for known expiry."#
     },
     #[command(
         name = "add:forget",
-        about = "Forget a record with a tombstone and secure deletion"
+        about = "Permanently delete a record and retain a deletion marker"
     )]
     Forget { reference: String },
     #[command(
@@ -205,7 +205,7 @@ Use --stale-after only for known expiry."#
     #[command(
         name = "index:rebuild",
         hide = true,
-        about = "Rebuild derived indexes from immutable records"
+        about = "Rebuild search indexes from the stored original records"
     )]
     Rebuild,
 }
@@ -342,6 +342,35 @@ pub async fn run() -> Result<i32> {
         if args.json {
             println!("{}", serde_json::to_value(&state)?);
         } else {
+            if style.0 {
+                let text = if state.running {
+                    "Background process running"
+                } else {
+                    "Background process stopped"
+                };
+                println!(
+                    "{}{}",
+                    if state.running {
+                        style.success(text)
+                    } else {
+                        style.title(text)
+                    },
+                    state
+                        .pid
+                        .filter(|_| state.running)
+                        .map(|pid| format!(" (PID {pid})"))
+                        .unwrap_or_default()
+                );
+                println!(
+                    "{} {}",
+                    style.title("Store:"),
+                    style.quiet(&path.display().to_string())
+                );
+                if let Some(runtime) = &state.runtime {
+                    println!("{} {}", style.title("Version:"), runtime.release);
+                }
+                return Ok(0);
+            }
             println!("{} {}", style.title("Store:"), path.display());
             if let Some(runtime) = &state.runtime {
                 println!("{} {}", style.title("Linn release:"), runtime.release);
@@ -677,7 +706,14 @@ fn render(value: crate::application::Value, json_output: bool, closing: bool) ->
                         if i > 0 {
                             style.gap();
                         }
-                        println!("{}\n  {}", style.title(&label), style.quiet(&metadata));
+                        println!(
+                            "{}\n  {} · Created: {} · Expires: {}\n  {}",
+                            style.title(&label),
+                            if r.kind == "doc" { "Document" } else { "Note" },
+                            created,
+                            r.stale_after.as_deref().unwrap_or("never"),
+                            style.quiet(&format!("Record ({})", r.record))
+                        );
                     } else {
                         println!("{metadata}\n  {label}");
                     }
@@ -699,17 +735,29 @@ fn render(value: crate::application::Value, json_output: bool, closing: bool) ->
                 println!("{}", json!({"record":id}));
             } else if closing && style.0 {
                 println!(
-                    "{} {} {id}",
+                    "{} {}",
                     style.success("Closed."),
-                    style.quiet("Envelope:")
+                    style.quiet(&format!("Close record ({id})"))
+                );
+            } else if style.0 {
+                println!(
+                    "{} {}",
+                    style.success("Saved"),
+                    style.quiet(&format!("({id})"))
                 );
             } else {
-                println!("{}", style.title(&id));
+                println!("{id}");
             }
         }
         Value::Forgotten(id) => {
             if json_output {
                 println!("{}", json!({"forgotten":id}));
+            } else if style.0 {
+                println!(
+                    "{} {}",
+                    style.success("Forgotten"),
+                    style.quiet(&format!("({id})"))
+                );
             } else {
                 println!("{} {id}", style.success("Forgotten:"));
             }
@@ -717,6 +765,8 @@ fn render(value: crate::application::Value, json_output: bool, closing: bool) ->
         Value::Checked => {
             if json_output {
                 println!("{}", json!({"integrity":"ok"}));
+            } else if style.0 {
+                println!("{}", style.success("Integrity check passed."));
             } else {
                 println!("{} ok", style.success("Index integrity:"));
             }
@@ -732,6 +782,14 @@ fn render(value: crate::application::Value, json_output: bool, closing: bool) ->
         Value::Imported(c) => {
             if json_output {
                 println!("{}", serde_json::to_string(&c)?);
+            } else if style.0 {
+                println!(
+                    "{}\n{} {} applied, {} already present.",
+                    style.success("Import complete"),
+                    c.changed,
+                    if c.changed == 1 { "change" } else { "changes" },
+                    c.unchanged
+                );
             } else {
                 println!(
                     "{} {} record/deletion changes applied; {} items already present.",
