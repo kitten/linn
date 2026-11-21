@@ -219,6 +219,8 @@ pub(super) struct ProgressRenderer {
     columns: Option<usize>,
     interactive: bool,
     active: bool,
+    message: Option<(u8, String)>,
+    frame: usize,
 }
 impl Default for ProgressRenderer {
     fn default() -> Self {
@@ -234,6 +236,8 @@ impl ProgressRenderer {
             columns: None,
             interactive,
             active: false,
+            message: None,
+            frame: 0,
         }
     }
     pub(super) fn render(&mut self, progress: &crate::mesh::status::Progress) {
@@ -242,12 +246,28 @@ impl ProgressRenderer {
                 0,
                 "Joined the mesh. Starting the requested first sync.".into(),
             ),
-            crate::mesh::status::Progress::Sync(job) => (job.phase as u8 + 1, progress_line(job)),
+            crate::mesh::status::Progress::Sync(job) => (
+                job.phase as u8 + 1,
+                if self.interactive {
+                    human_progress_line(job)
+                } else {
+                    progress_line(job)
+                },
+            ),
             crate::mesh::status::Progress::Checked(probe) => (
                 self.phase.unwrap_or(0).wrapping_add(1),
-                format!("{}: {}", probe.peer, probe.result),
+                if self.interactive {
+                    format!(
+                        "{} ({})",
+                        sentence_case(&probe.result.to_string()),
+                        probe.peer
+                    )
+                } else {
+                    format!("{}: {}", probe.peer, probe.result)
+                },
             ),
         };
+        self.message = Some((phase, line.clone()));
         let _ = self.draw(
             &line,
             phase,
@@ -259,6 +279,60 @@ impl ProgressRenderer {
             },
             &mut std::io::stderr().lock(),
         );
+    }
+    pub(super) async fn execute(
+        &mut self,
+        path: &std::path::Path,
+        op: crate::application::Operation,
+        caller: crate::application::Caller,
+        input: Option<std::fs::File>,
+    ) -> Result<crate::application::Reply> {
+        if !self.interactive || !matches!(&op, crate::application::Operation::Mesh(_)) {
+            return crate::runtime::execute_with_progress(path, op, caller, input, |event| {
+                self.render(event)
+            })
+            .await;
+        }
+        let renderer = std::cell::RefCell::new(self);
+        let operation = crate::runtime::execute_with_progress(path, op, caller, input, |event| {
+            renderer.borrow_mut().render(event);
+        });
+        tokio::pin!(operation);
+        let mut ticks = tokio::time::interval(std::time::Duration::from_millis(200));
+        ticks.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        loop {
+            tokio::select! {
+                result = &mut operation => return result,
+                _ = ticks.tick() => renderer.borrow_mut().tick(),
+            }
+        }
+    }
+    fn tick(&mut self) {
+        let _ = self.spin(
+            std::time::Instant::now(),
+            super::presentation::stderr_columns(),
+            &mut std::io::stderr().lock(),
+        );
+    }
+    fn spin(
+        &mut self,
+        now: std::time::Instant,
+        width: Option<usize>,
+        out: &mut impl Write,
+    ) -> std::io::Result<()> {
+        if !self.interactive {
+            return Ok(());
+        }
+        let Some((phase, message)) = self.message.clone() else {
+            return Ok(());
+        };
+        let Some(columns) = width else {
+            return Ok(());
+        };
+        let frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+        let line = format!("{} {message}", frames[self.frame % frames.len()]);
+        self.frame += 1;
+        self.draw(&line, phase, now, Some(columns), out)
     }
     fn draw(
         &mut self,
@@ -290,9 +364,13 @@ impl ProgressRenderer {
             {
                 return Ok(());
             }
-            // All generated progress is ASCII; reserve the final column to avoid wrap.
-            debug_assert!(line.is_ascii());
-            let visible = &line[..line.len().min(columns - 1)];
+            // The Braille frame occupies one column, like each ASCII message character.
+            // Reserve the final column and slice only at UTF-8 boundaries.
+            let end = line
+                .char_indices()
+                .nth(columns - 1)
+                .map_or(line.len(), |(i, _)| i);
+            let visible = &line[..end];
             write!(out, "\r\x1b[2K{visible}")?;
             self.active = true;
             self.columns = Some(columns);
@@ -316,6 +394,7 @@ impl ProgressRenderer {
             self.active = false;
         }
         self.last = None;
+        self.message = None;
         self.phase = None;
         self.drawn = None;
         Ok(())
@@ -382,6 +461,79 @@ fn progress_line(job: &crate::mesh::status::Job) -> String {
     )
 }
 
+fn human_progress_line(job: &crate::mesh::status::Job) -> String {
+    use crate::mesh::jobs::Phase;
+    let r = &job.report;
+    let action = match job.phase {
+        Phase::Collecting => "Receiving changes",
+        Phase::Collected => "Received changes",
+        Phase::Distributing => "Sharing changes",
+        Phase::Complete => "Finishing sync",
+        Phase::Failed => "Sync failed",
+        Phase::Cancelled => "Sync cancelled",
+    };
+    format!(
+        "{action} (changes: {} sent / {} received)",
+        r.sent, r.received
+    )
+}
+
+fn human_summary(report: &crate::mesh::jobs::Report) -> String {
+    let outcome = if report.cohort.len() <= 1 && report.complete {
+        "Sync complete\nNo paired stores to sync with.".into()
+    } else if report.complete {
+        format!(
+            "Sync complete\n{} synced.",
+            counted(report.cohort.len().saturating_sub(1), "peer", "peers")
+        )
+    } else {
+        format!(
+            "Sync {}\nReceived from {}/{} peers; shared with {}/{} peers.",
+            if report.unavailable_only() {
+                "partial"
+            } else {
+                "incomplete"
+            },
+            report.collected.len().saturating_sub(1),
+            report.cohort.len().saturating_sub(1),
+            report.distributed.len().saturating_sub(1),
+            report.cohort.len().saturating_sub(1)
+        )
+    };
+    let changes = format!(
+        "{} {} applied, {} {} sent.",
+        report.received,
+        if report.received == 1 {
+            "change"
+        } else {
+            "changes"
+        },
+        report.sent,
+        if report.sent == 1 {
+            "change"
+        } else {
+            "changes"
+        }
+    );
+    let mut text = format!("{outcome}\n{changes}");
+    if !report.complete
+        && report
+            .traversal
+            .as_ref()
+            .is_some_and(|s| s.discovery_expired)
+    {
+        text.push_str("\nStopped looking for more stores; transfers already started kept running.");
+    }
+    if let Some(state) = &report.traversal {
+        for (source, target) in &state.no_known_direct_routes {
+            text.push_str(&format!(
+                "\nNo known direct connection between peers (from {source} to {target})"
+            ));
+        }
+    }
+    text
+}
+
 fn counted(count: usize, singular: &str, plural: &str) -> String {
     format!("{count} {}", if count == 1 { singular } else { plural })
 }
@@ -442,7 +594,11 @@ fn summary(report: &crate::mesh::jobs::Report) -> String {
 }
 fn render_report(report: &crate::mesh::jobs::Report) {
     let style = super::presentation::current().out;
-    let text = summary(report);
+    let text = if style.0 {
+        human_summary(report)
+    } else {
+        summary(report)
+    };
     let complete = report.complete || report.cohort.is_empty();
     let label = if complete {
         "Sync complete"
@@ -455,8 +611,10 @@ fn render_report(report: &crate::mesh::jobs::Report) {
         "{}{}",
         if complete {
             style.success(label)
-        } else {
+        } else if report.unavailable_only() {
             style.warning(label)
+        } else {
+            style.error(label)
         },
         &text[label.len()..]
     );
@@ -464,7 +622,21 @@ fn render_report(report: &crate::mesh::jobs::Report) {
         for peer in &report.cohort {
             let collected = report.collected.contains(peer);
             let distributed = report.distributed.contains(peer);
-            if !collected || !distributed {
+            if (!collected || !distributed)
+                && (!style.0 || !report.failures.iter().any(|f| &f.peer == peer))
+            {
+                if style.0 {
+                    eprintln!(
+                        "Sync unfinished: receiving {}; sharing {} ({peer})",
+                        if collected { "complete" } else { "incomplete" },
+                        if distributed {
+                            "complete"
+                        } else {
+                            "incomplete"
+                        }
+                    );
+                    continue;
+                }
                 eprintln!(
                     "Peer ID {peer}: collection {}; distribution {}.",
                     if collected {
@@ -481,6 +653,11 @@ fn render_report(report: &crate::mesh::jobs::Report) {
             }
         }
         for failure in &report.failures {
+            if style.0 {
+                let err = super::presentation::current().err;
+                eprintln!("{}", styled_failure(err, failure));
+                continue;
+            }
             let kind = serde_json::to_value(failure.kind).expect("failure kind serializes");
             eprintln!(
                 "Peer ID {} — {} [{}]: {}",
@@ -504,9 +681,80 @@ fn render_report(report: &crate::mesh::jobs::Report) {
             }
         }
         eprintln!(
-            "Accepted partial progress is durable. Retry with linn sync when peers are available."
+            "{}",
+            if style.0 {
+                "Changes kept. Retry with linn sync when peers are available."
+            } else {
+                "Accepted partial progress is durable. Retry with linn sync when peers are available."
+            }
         );
     }
+}
+
+fn human_reachability(
+    style: super::presentation::Style,
+    state: Option<&crate::mesh::status::Reachability>,
+) -> String {
+    use crate::mesh::{failure::Kind, status::Reachability};
+    let text = sentence_case(
+        &state
+            .map(ToString::to_string)
+            .unwrap_or_else(|| "unknown (not checked)".into()),
+    );
+    match state {
+        Some(Reachability::Reachable) => style.success(&text).into_owned(),
+        Some(Reachability::Failed { kind, .. }) if *kind != Kind::Offline => {
+            style.error(&text).into_owned()
+        }
+        _ => style.warning(&text).into_owned(),
+    }
+}
+
+fn sentence_case(text: &str) -> String {
+    let mut chars = text.chars();
+    match chars.next() {
+        Some(first) => first.to_uppercase().chain(chars).collect(),
+        None => String::new(),
+    }
+}
+
+fn human_failure(failure: &crate::mesh::jobs::Failure) -> String {
+    use crate::mesh::failure::Kind;
+    let reason = if failure.kind == Kind::Offline {
+        "unreachable".to_owned()
+    } else {
+        failure
+            .message
+            .replace(['\n', '\r'], " ")
+            .trim_end_matches('.')
+            .to_owned()
+    };
+    let recovery = match failure.kind {
+        Kind::Publication => " Run linn index:rebuild before retrying.",
+        Kind::Version => " Use compatible Linn versions on both peers.",
+        Kind::Authentication | Kind::Conflict => " Check enrollment with linn sync:status.",
+        _ => "",
+    };
+    if failure.kind == Kind::Offline {
+        format!("Unreachable peer ({})", failure.peer)
+    } else {
+        format!("{}.{recovery} ({})", sentence_case(&reason), failure.peer)
+    }
+}
+
+fn styled_failure(
+    style: super::presentation::Style,
+    failure: &crate::mesh::jobs::Failure,
+) -> String {
+    let text = human_failure(failure);
+    let suffix = format!(" ({})", failure.peer);
+    let message = &text[..text.len() - suffix.len()];
+    let message = if failure.kind == crate::mesh::failure::Kind::Offline {
+        style.warning(message)
+    } else {
+        style.error(message)
+    };
+    format!("{message} ({})", style.quiet(&failure.peer))
 }
 
 fn transport_text(
@@ -544,8 +792,12 @@ fn peer_text(
 ) -> String {
     if style.0 {
         format!(
-            "  {}  {}",
-            style.title(if local { "this store" } else { reachability }),
+            "  {} ({})",
+            if local {
+                style.title("This store").into_owned()
+            } else {
+                sentence_case(reachability)
+            },
             style.quiet(member)
         )
     } else if local {
@@ -591,12 +843,24 @@ pub(super) fn render(output: Output, json: bool) -> Result<()> {
             let err = super::presentation::current().err;
             eprintln!(
                 "{} {invitation}\n{} {expiry} (single use)\n{}",
-                err.title("Invitation ID:"),
+                err.title(if err.0 {
+                    "Invitation:"
+                } else {
+                    "Invitation ID:"
+                }),
                 err.title("Expires:"),
-                err.title("Known peer IDs (store instances, not machines):")
+                err.title(if err.0 {
+                    "Known peers:"
+                } else {
+                    "Known peer IDs (store instances, not machines):"
+                })
             );
             for member in members {
-                eprintln!("  {member}");
+                if err.0 {
+                    eprintln!("  Known peer ({member})");
+                } else {
+                    eprintln!("  {member}");
+                }
             }
             eprintln!("{}", err.title("On the other installation, run linn sync:pair --join and paste the invitation token."));
             if super::presentation::current().out.0 {
@@ -613,52 +877,102 @@ pub(super) fn render(output: Output, json: bool) -> Result<()> {
             if let Some(endpoint) = status.endpoint {
                 println!(
                     "{}",
-                    style.labelled(&format!("This store's peer ID: {endpoint}"))
+                    if style.0 {
+                        format!("This store ({})", style.quiet(&endpoint))
+                    } else {
+                        format!("This store's peer ID: {endpoint}")
+                    }
                 );
                 if let Some(service) = status.service {
                     println!("{} {service}", style.title("Mesh service:"));
                 }
                 if let Some(head) = status.head {
-                    println!("{} {head}", style.title("Membership revision:"));
+                    if !style.0 {
+                        println!("Membership revision: {head}");
+                    }
                 } else {
-                    println!("{}", style.title("Enrollment incomplete."));
+                    println!(
+                        "{}",
+                        style.warning(if style.0 {
+                            "Pairing incomplete."
+                        } else {
+                            "Enrollment incomplete."
+                        })
+                    );
                 }
                 if status.conflict {
-                    println!("Conflicting signed histories; network authorization suspended.");
+                    println!(
+                        "{}",
+                        style.error(if style.0 {
+                            "Sync blocked: membership histories conflict."
+                        } else {
+                            "Conflicting signed histories; network authorization suspended."
+                        })
+                    );
                 }
                 if status.pending_leave {
                     println!(
-                        "Local transport disabled; remote revocation outstanding. Retry linn sync:leave when the service is available."
+                        "{}", style.warning(if style.0 { "Leaving paused: sync is disabled locally. Retry with linn sync:leave when the service is available." } else { "Local transport disabled; remote revocation outstanding. Retry linn sync:leave when the service is available." })
                     );
                 } else if !status.enabled {
-                    println!("{}", style.title("Local transport disabled."));
+                    println!(
+                        "{}",
+                        style.warning(if style.0 {
+                            "Sync disabled on this store."
+                        } else {
+                            "Local transport disabled."
+                        })
+                    );
                 }
                 println!("{}", transport_text(style, &status.transport));
                 if let Some(error) = status.transport.error {
-                    eprintln!("Transport: {error}");
+                    eprintln!(
+                        "{}",
+                        super::presentation::current().err.error(&format!(
+                            "{}: {error}",
+                            if super::presentation::current().err.0 {
+                                "Connection error"
+                            } else {
+                                "Transport"
+                            }
+                        ))
+                    );
                 }
                 println!(
                     "{}",
-                    style.labelled("Peers (IDs identify store instances, not machines):")
+                    style.labelled(if style.0 {
+                        "Peers:"
+                    } else {
+                        "Peers (IDs identify store instances, not machines):"
+                    })
                 );
                 style.gap();
                 for member in status.members {
-                    let reachability = status
-                        .reachability
-                        .as_ref()
-                        .and_then(|r| r.get(&member))
-                        .map(ToString::to_string)
-                        .unwrap_or_else(|| "unknown (not checked)".into());
+                    let state = status.reachability.as_ref().and_then(|r| r.get(&member));
+                    let reachability = if style.0 {
+                        human_reachability(style, state)
+                    } else {
+                        state
+                            .map(ToString::to_string)
+                            .unwrap_or_else(|| "unknown (not checked)".into())
+                    };
                     println!(
                         "{}",
                         peer_text(style, &member, &reachability, member == endpoint)
                     );
                 }
                 if status.reachability.is_none() {
-                    println!("Use linn sync:status --check to check peer transport reachability.");
+                    println!(
+                        "{}",
+                        style.quiet(if style.0 {
+                            "Check connections: linn sync:status --check"
+                        } else {
+                            "Use linn sync:status --check to check peer transport reachability."
+                        })
+                    );
                 } else {
                     println!(
-                        "Reachability is a transport snapshot; it does not guarantee a successful sync."
+                        "{}", style.quiet(if style.0 { "Connections checked; a successful sync is not guaranteed." } else { "Reachability is a transport snapshot; it does not guarantee a successful sync." })
                     );
                 }
             } else {
@@ -674,43 +988,48 @@ pub(super) fn render(output: Output, json: bool) -> Result<()> {
             use crate::mesh::pairing::Change;
             match operation {
                 Change::Paired => {
-                    println!("{}", style.title("This store joined the mesh."));
+                    println!("{}", style.success(if style.0 { "Pairing complete" } else { "This store joined the mesh." }));
                     if initial_sync.is_none() && initial_sync_error.is_none() {
                         println!("Run linn sync to exchange records and deletions.");
                     }
                 }
-                Change::Revoked => println!(
-                    "Peer revoked from the mesh. Offline peers learn the revocation when they reconnect."
-                ),
+                Change::Revoked => println!("{}", style.success(if style.0 { "Peer removed. Offline peers will learn this when they reconnect." } else { "Peer revoked from the mesh. Offline peers learn the revocation when they reconnect." })),
                 Change::Left => {
                     println!(
                         "{}",
-                        style.title("This store's peer transport is disabled.")
+                        style.title(if style.0 { "Sync disabled on this store." } else { "This store's peer transport is disabled." })
                     );
                     if status.pending_leave {
                         println!(
-                            "Remote revocation is outstanding. Retry linn sync:leave when the service is available."
+                            "{}", style.warning(if style.0 { "Leaving paused. Retry with linn sync:leave when the service is available." } else { "Remote revocation is outstanding. Retry linn sync:leave when the service is available." })
                         );
                     } else {
                         println!(
                             "{}",
-                            style.title("This store's peer ID has been revoked from the mesh.")
+                            style.success(if style.0 { "Left the mesh." } else { "This store's peer ID has been revoked from the mesh." })
                         );
                     }
                 }
-                Change::Cancelled => println!("Unused invitation cancelled."),
-                Change::IdentityReset => println!(
-                    "This store's identity and local enrollment were removed. Records and deletions were preserved. Enroll as a new peer with linn sync:pair."
-                ),
+                Change::Cancelled => println!("{}", style.success("Unused invitation cancelled.")),
+                Change::IdentityReset => {
+                    if style.0 { println!("{}\nRecords and deletions kept. Pair again with linn sync:pair.", style.success("Identity reset")); }
+                    else { println!("This store's identity and local enrollment were removed. Records and deletions were preserved. Enroll as a new peer with linn sync:pair."); }
+                },
             }
             if let Some(endpoint) = status.endpoint {
                 println!(
                     "{}",
-                    style.labelled(&format!("This store's peer ID: {endpoint}"))
+                    if style.0 {
+                        format!("This store ({})", style.quiet(&endpoint))
+                    } else {
+                        format!("This store's peer ID: {endpoint}")
+                    }
                 );
             }
-            if let Some(head) = status.head {
-                println!("{} {head}", style.title("Membership revision:"));
+            if let Some(head) = status.head
+                && !style.0
+            {
+                println!("Membership revision: {head}");
             }
             if let Some(report) = initial_sync {
                 render_report(&report);
@@ -727,6 +1046,121 @@ mod tests {
         jobs::{Phase, Report},
         status::Job,
     };
+
+    #[test]
+    fn human_sync_reports_local_changes_without_claiming_global_freshness() {
+        let mut report = Report {
+            cohort: vec!["local".into(), "remote".into()],
+            complete: true,
+            ..Default::default()
+        };
+        assert_eq!(
+            human_summary(&report),
+            "Sync complete\n1 peer synced.\n0 changes applied, 0 changes sent."
+        );
+        report.complete = false;
+        report.received = 1;
+        let text = human_summary(&report);
+        assert!(text.starts_with("Sync incomplete\n"));
+        assert!(text.contains("1 change applied, 0 changes sent."));
+        assert!(!text.contains("up to date"));
+    }
+
+    #[test]
+    fn human_failures_are_single_line_and_keep_recovery_advice() {
+        let mut failure = crate::mesh::jobs::Failure {
+            peer: "remote".into(),
+            phase: Phase::Collecting,
+            kind: crate::mesh::failure::Kind::Offline,
+            message: "protocol details".into(),
+        };
+        assert_eq!(human_failure(&failure), "Unreachable peer (remote)");
+        failure.kind = crate::mesh::failure::Kind::Publication;
+        failure.message = "publication\nfailed.".into();
+        assert_eq!(
+            human_failure(&failure),
+            "Publication failed. Run linn index:rebuild before retrying. (remote)"
+        );
+    }
+
+    #[test]
+    fn human_progress_keeps_transfer_counters_in_every_phase() {
+        let mut job = Job {
+            id: String::new(),
+            phase: Phase::Collecting,
+            report: Report {
+                sent: 6,
+                received: 5,
+                ..Default::default()
+            },
+        };
+        assert_eq!(
+            human_progress_line(&job),
+            "Receiving changes (changes: 6 sent / 5 received)"
+        );
+        job.phase = Phase::Complete;
+        assert_eq!(
+            human_progress_line(&job),
+            "Finishing sync (changes: 6 sent / 5 received)"
+        );
+    }
+
+    #[test]
+    fn peer_colors_follow_semantics_and_keep_ids_dim() {
+        use super::super::presentation::Style;
+        use crate::mesh::{failure::Kind, status::Reachability};
+        assert_eq!(
+            human_reachability(Style(true), Some(&Reachability::Reachable)),
+            "\x1b[32mReachable (transport only)\x1b[0m"
+        );
+        assert_eq!(
+            human_reachability(Style(true), None),
+            "\x1b[33mUnknown (not checked)\x1b[0m"
+        );
+        let failure = Reachability::Failed {
+            kind: Kind::Authentication,
+            message: "not authorized".into(),
+        };
+        assert_eq!(
+            human_reachability(Style(true), Some(&failure)),
+            "\x1b[31mNot authorized\x1b[0m"
+        );
+        assert_eq!(
+            human_reachability(Style(false), Some(&failure)),
+            "Not authorized"
+        );
+        let failure = crate::mesh::jobs::Failure {
+            peer: "Ab09".into(),
+            phase: Phase::Collecting,
+            kind: Kind::Offline,
+            message: String::new(),
+        };
+        assert_eq!(
+            styled_failure(Style(true), &failure),
+            "\x1b[33mUnreachable peer\x1b[0m (\x1b[2mAb09\x1b[0m)"
+        );
+        assert_eq!(
+            styled_failure(Style(false), &failure),
+            "Unreachable peer (Ab09)"
+        );
+    }
+
+    #[test]
+    fn human_status_uses_sentence_case_without_changing_identifiers() {
+        assert_eq!(
+            sentence_case("reachable (transport only)"),
+            "Reachable (transport only)"
+        );
+        assert_eq!(
+            sentence_case("unknown: TLS handshake failed"),
+            "Unknown: TLS handshake failed"
+        );
+        assert_eq!(sentence_case(""), "");
+        let id = "aB09";
+        let text = peer_text(super::super::presentation::Style(true), id, "", true);
+        assert!(text.contains("This store"));
+        assert!(text.ends_with("aB09\x1b[0m)"));
+    }
 
     #[test]
     fn human_status_prioritizes_state_while_plain_status_keeps_its_format() {
@@ -761,7 +1195,7 @@ mod tests {
             .replace("\x1b[1m", "")
             .replace("\x1b[2m", "")
             .replace("\x1b[0m", "");
-        assert_eq!(human, format!("  unknown (not checked)  {id}"));
+        assert_eq!(human, format!("  Unknown (not checked) ({id})"));
     }
     #[test]
     fn peer_phase_counts_do_not_imply_record_changes() {
@@ -848,6 +1282,57 @@ mod progress_tests {
             Ok(())
         }
     }
+    #[test]
+    fn spinner_advances_without_events_and_stops_after_finish() {
+        let now = Instant::now();
+        let mut renderer = ProgressRenderer::new(true);
+        renderer.message = Some((1, "Receiving changes (changes: 6 sent / 5 received)".into()));
+        let mut screen = Screen::default();
+        renderer.spin(now, Some(80), &mut screen).unwrap();
+        assert!(screen.row.starts_with("⠋ Receiving changes".as_bytes()));
+        renderer
+            .spin(now + Duration::from_millis(200), Some(80), &mut screen)
+            .unwrap();
+        assert!(screen.row.starts_with("⠙ Receiving changes".as_bytes()));
+        renderer.clear(Some(80), &mut screen).unwrap();
+        renderer
+            .spin(now + Duration::from_secs(1), Some(80), &mut screen)
+            .unwrap();
+        assert!(screen.row.is_empty());
+        for (interactive, width) in [(false, Some(80)), (true, None)] {
+            let mut renderer = ProgressRenderer::new(interactive);
+            renderer.message = Some((1, "Waiting".into()));
+            let mut output = Vec::new();
+            renderer.spin(now, width, &mut output).unwrap();
+            assert!(output.is_empty());
+        }
+    }
+
+    #[test]
+    fn braille_spinner_cycles_and_fits_a_narrow_terminal() {
+        let mut renderer = ProgressRenderer::new(true);
+        renderer.message = Some((1, "Waiting".into()));
+        let mut output = Vec::new();
+        let now = Instant::now();
+        for (index, frame) in ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏", "⠋"]
+            .iter()
+            .enumerate()
+        {
+            output.clear();
+            renderer
+                .spin(
+                    now + Duration::from_millis(index as u64 * 200),
+                    Some(2),
+                    &mut output,
+                )
+                .unwrap();
+            assert_eq!(
+                String::from_utf8(output.clone()).unwrap(),
+                format!("\r\x1b[2K{frame}")
+            );
+        }
+    }
+
     #[test]
     fn shorter_progress_and_completion_do_not_leave_suffixes_or_erase_results() {
         let mut renderer = ProgressRenderer::new(true);

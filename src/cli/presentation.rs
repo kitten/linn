@@ -98,7 +98,7 @@ pub(super) fn current() -> &'static Presentation {
     })
 }
 
-// Generated progress consists only of fixed ASCII phase names and integer counts.
+// Progress uses one-column Braille frames with fixed phase names and counts.
 // Native width inspection does not send escape queries or read terminal input.
 pub(super) fn stderr_columns() -> Option<usize> {
     #[cfg(unix)]

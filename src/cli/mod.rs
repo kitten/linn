@@ -391,7 +391,11 @@ pub async fn run() -> Result<i32> {
         options.confirm(enrolled)?;
     }
     let mesh_context = match &args.command {
-        Command::SyncRevoke { peer } => Some(format!("Revoked peer ID: {peer}")),
+        Command::SyncRevoke { peer } => Some(if presentation::current().out.0 {
+            format!("Revoked peer ({peer})")
+        } else {
+            format!("Revoked peer ID: {peer}")
+        }),
         Command::SyncPair(options) => options.cancel_context(),
         _ => None,
     };
@@ -482,11 +486,7 @@ pub async fn run() -> Result<i32> {
         input.seek(SeekFrom::Start(0))?;
     }
     let mut progress = mesh::ProgressRenderer::default();
-    let reply = match crate::runtime::execute_with_progress(&path, op, caller, input, |event| {
-        progress.render(event)
-    })
-    .await
-    {
+    let reply = match progress.execute(&path, op, caller, input).await {
         Ok(r) => r,
         Err(e)
             if check
@@ -535,18 +535,18 @@ pub async fn run() -> Result<i32> {
     );
     if joined && first_sync.is_none() && !args.json && mesh::offer_sync()? {
         render(reply.value, false, closing)?;
-        let reply = crate::runtime::execute_with_progress(
-            &path,
-            Op::Mesh(crate::mesh::pairing::Command::Sync),
-            Caller {
-                scope: None,
-                writer: None,
-                diagnostics: Default::default(),
-            },
-            None,
-            |event| progress.render(event),
-        )
-        .await?;
+        let reply = progress
+            .execute(
+                &path,
+                Op::Mesh(crate::mesh::pairing::Command::Sync),
+                Caller {
+                    scope: None,
+                    writer: None,
+                    diagnostics: Default::default(),
+                },
+                None,
+            )
+            .await?;
         progress.finish();
         return render(reply.value, false, closing);
     }

@@ -42,7 +42,13 @@ alternate screen or cursor hiding are introduced.
 Use one terminal-palette accent for existing search/outline navigation markers,
 bold titles, and dim supporting metadata. Related pointers remain secondary;
 near-miss headings use warning emphasis and retain the words “not results”.
-Successful outcome labels use green, warnings yellow and errors red. Text always
+Use sentence case for human labels, standalone statuses, progress and diagnostics:
+capitalize the first word, preserving the remaining casing and exact identifiers.
+Values after a label, such as `Relay: connected`, remain lowercase.
+Successful outcome labels and reachable peer states use green; unknown and
+offline states use yellow; other peer failures use red. Peer IDs remain dim and
+neutral, and local-store labels use bold. Resolve diagnostic colors against stderr
+capability independently of stdout. Transient progress stays uncolored. Text always
 carries the meaning independently of color. Avoid decorative symbols, guide
 rails, padded tables or banners that add content without helping a decision.
 
@@ -61,8 +67,22 @@ Interactive prompt lines end explicitly on stderr after input and on error or
 cancellation; input echo is not evidence that stderr received a newline. Never
 attach a diagnostic or follow-up instruction to a partially written prompt.
 
+Human sync progress shows receiving/sharing phases without traversal rounds,
+levels or contact queues. Final peer totals exclude this store.
+Progress keeps sent/received change counts; completion shows applied/sent counts.
+Unreachable peers have one human diagnostic rather than separate phase and failure
+lines. Keep other failure reasons and recovery instructions on the same line. The final human
+summary leads with completion or partial status, then stores synced and changes
+applied locally. It never claims that no local changes proves all stores are up
+to date. Partial results retain connection warnings and repair/retry diagnostics.
+Plain sync summaries and progress retain their existing detailed format.
+
 Human sync status presents transport, relay and discovery on separate labelled
-lines and places peer status before complete peer IDs. Plain status retains its
+lines and places peer status before complete peer IDs. Across human command
+output, progress and diagnostics, put peer IDs last in parentheses after the
+status, action, reason and recovery advice. Keep full IDs copyable; do not
+shorten them. For a connection involving two peers, label source and target
+inside a trailing parenthesis. Plain status retains its
 compact line and ID-first peer format. A human close confirmation identifies
 successful closure and labels the returned ID as the close envelope, not the
 target record. Plain close output remains the bare new envelope ID. An empty
@@ -82,15 +102,19 @@ add or rebuild operations. Plain, JSON and unknown-width output remains deduplic
 line-based stderr text, with no generated cursor controls.
 
 For human presentation with known native width, own at most one physical row.
-Generated phase/count messages are ASCII; fit within width minus one column to
-avoid wrapping. Clear the row with carriage return and erase-line before a redraw,
+Generated phase/count messages use ASCII with a one-column Braille spinner; fit
+within width minus one column and truncate only at UTF-8 character boundaries to
+avoid wrapping or splitting a frame. Clear the row with carriage return and erase-line before a redraw,
 and flush writes and clears. Deduplicate identical messages, but inspect resize
 before deduplication. On an observed width change, stop erasing and fall back to
 line output because reflow can move the old status across rows.
 
-Limit same-phase counter redraws to five per second, coalescing to the latest
-available event; phase changes remain immediate. This is event-driven, with no
-polling or animation timer. Show real phases and counts rather than an invented
+Limit same-phase redraws to five per second; phase changes remain immediate.
+An async 200-millisecond presentation timer animates the Braille frames
+`⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏` in order while
+sync events are pending, even when no new event arrives. It never polls the
+store or network and stops before results, diagnostics or prompts. Plain, JSON
+and unknown-width streams never animate. Show real phases and counts rather than an invented
 overall percentage, ETA or stall assertion. LLP 0008 defines those counters.
 
 Clear and flush before results, diagnostics and prompts, then leave the ordinary
