@@ -18,7 +18,9 @@ test("shared native fixtures have identical hashes, signatures and membership", 
 });
 
 test("duplicate JSON properties and alternate encodings cannot enter signed messages", () => {
-  for (const malformed of ['{"a":1,"a":1}', '{ "a":1}', '{"a":1.0}', '{"a":-0}']) {
+  for (const malformed of ['{"a":1,"a":1}', '{ "a":1}', '{"a":1.0}', '{"a":-0}',
+    '"\\ud800"', '"\\udfff"', '{"\\ud800":1}', '["a\\udfffz"]']) {
     assert.throws(() => parse(malformed));
   }
+  assert.deepEqual(parse(canonical({ scalar: "😀" })), { scalar: "😀" });
 });

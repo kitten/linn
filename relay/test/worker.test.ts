@@ -11,6 +11,44 @@ before(async () => {
 });
 after(async () => { await runtime?.dispose(); });
 
+async function device() {
+  const pair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
+  const publicKey = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
+  return { pair, publicKey, id: hex(publicKey) };
+}
+async function connect(key: Awaited<ReturnType<typeof device>>, extensions: Record<string, string> = {}) {
+  const response = await runtime.dispatchFetch("https://local/relay", {
+    headers: { upgrade: "websocket", "sec-websocket-protocol": "iroh-relay-v2", ...extensions },
+  });
+  assert.equal(response.status, 101);
+  assert.equal(response.headers.get("sec-websocket-protocol"), "iroh-relay-v2");
+  for (const header of ["x-linn-dial-check", "x-linn-target-watch"]) {
+    assert.equal(response.headers.get(header), extensions[header] ?? null);
+  }
+  const socket = response.webSocket!;
+  socket.accept();
+  const challenge = decode(await next(socket)).payload;
+  const payload = new Uint8Array(97);
+  payload.set(key.publicKey); payload[32] = 64;
+  payload.set(new Uint8Array(await crypto.subtle.sign("Ed25519", key.pair.privateKey, challengeMessage(challenge))), 33);
+  const auth = frame(1, payload);
+  assert.equal(await authenticate(auth.buffer, challenge), key.id);
+  const result = next(socket);
+  socket.send(auth);
+  return { socket, result };
+}
+async function connected(key: Awaited<ReturnType<typeof device>>, extensions: Record<string, string> = {}) {
+  const { socket, result } = await connect(key, extensions);
+  assert.equal(decode(await result).kind, 2);
+  return socket;
+}
+function targetToken(target: Uint8Array, token: number): Uint8Array {
+  const payload = new Uint8Array(48);
+  payload.set(target);
+  new DataView(payload.buffer).setUint32(44, token);
+  return payload;
+}
+
 test("relay rejects setup without credentials and does not expose an unversioned socket", async () => {
   assert.equal((await runtime.dispatchFetch("https://local/v1/interop", { method: "PUT", body: "[]" })).status, 404);
   assert.equal((await runtime.dispatchFetch("https://local/relay")).status, 426);
@@ -27,34 +65,9 @@ test("relay rejects setup without credentials and does not expose an unversioned
 });
 
 test("real Worker authentication, routing, rejection and duplicate-key isolation", async () => {
-  const keys = await Promise.all([0, 1, 2, 3].map(async () => {
-    const pair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
-    const publicKey = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
-    return { pair, publicKey, id: hex(publicKey) };
-  }));
+  const keys = await Promise.all(Array.from({ length: 4 }, device));
   await enroll(keys.slice(0, 2).map((key) => key.pair));
   await enroll([keys[3]!.pair]);
-  const connect = async (key: typeof keys[number]) => {
-    const response = await runtime.dispatchFetch("https://local/relay", {
-      headers: { upgrade: "websocket", "sec-websocket-protocol": "iroh-relay-v2" },
-    });
-    assert.equal(response.status, 101);
-    assert.equal(response.headers.get("sec-websocket-protocol"), "iroh-relay-v2");
-    const socket = response.webSocket!;
-    socket.accept();
-    const challengeFrame = await next(socket);
-    const challenge = decode(challengeFrame).payload;
-    const signature = new Uint8Array(await crypto.subtle.sign("Ed25519", key.pair.privateKey, challengeMessage(challenge)));
-    const payload = new Uint8Array(97);
-    payload.set(key.publicKey);
-    payload[32] = 64;
-    payload.set(signature, 33);
-    const auth = frame(1, payload);
-    assert.equal(await authenticate(auth.buffer, challenge), key.id);
-    const result = next(socket);
-    socket.send(auth);
-    return { socket, result };
-  };
   const inspect = async () => (await runtime.dispatchFetch("https://local/_inspect")).json() as Promise<{
     alarmOperations: { sets: number; deletes: number };
     alarm: number | null; sockets: Array<{ endpoint?: string; awaitingPong?: number }>;
@@ -178,13 +191,20 @@ test("real Worker authentication, routing, rejection and duplicate-key isolation
   assert.equal(decode(await pong).kind, 10);
   // Another mesh gets the same denial whether the target is offline or online.
   for (const target of [keys[0]!, keys[1]!]) {
-    const outsider = await connect(keys[3]!);
-    assert.equal(decode(await outsider.result).kind, 2);
-    const denied = closed(outsider.socket);
-    const packet = new Uint8Array(33);
-    packet.set(target.publicKey);
-    outsider.socket.send(frame(4, packet));
-    assert.equal(await denied, 1008);
+    for (const tag of [4, 14, 16]) {
+      const extensions: Record<string, string> = tag === 14 ? { "x-linn-dial-check": "1" }
+        : tag === 16 ? { "x-linn-target-watch": "1" } : {};
+      const outsider = await connect(keys[3]!, extensions);
+      assert.equal(decode(await outsider.result).kind, 2);
+      const replies: number[] = [];
+      outsider.socket.addEventListener("message", event => { replies.push(decode(event.data as ArrayBuffer).kind); });
+      const denied = closed(outsider.socket);
+      const packet = tag === 4 ? new Uint8Array(33) : targetToken(target.publicKey, 1);
+      packet.set(target.publicKey);
+      outsider.socket.send(frame(tag, packet));
+      assert.equal(await denied, 1008);
+      assert.deepEqual(replies, [], "foreign-mesh checks/watches must not reveal registration");
+    }
   }
   b.socket.close();
 });
@@ -260,4 +280,127 @@ test("pending handshake expires without another request", async () => {
     });
     assert.ok(socket.readyState === WebSocket.CLOSING || socket.readyState === WebSocket.CLOSED);
   } finally { await isolated.dispose(); }
+});
+
+test("negotiated dial checks correlate absence and survive target reconnect without trusting disconnect notices", async () => {
+  const keys = await Promise.all([device(), device()]);
+  await enroll(keys.map(key => key.pair));
+  const source = await connected(keys[0]!, { "x-linn-dial-check": "1" });
+  const check = async (value: number) => {
+    const payload = new Uint8Array(48);
+    payload.set(keys[1]!.publicKey);
+    payload.fill(value, 32);
+    const reply = next(source, 15);
+    source.send(frame(14, payload));
+    const result = decode(await reply).payload;
+    assert.deepEqual(result.subarray(0, 48), payload);
+    return result[48];
+  };
+  assert.equal(await check(1), 0);
+  const target = await connected(keys[1]!);
+  assert.equal(await check(2), 1);
+  const notice = next(source, 8);
+  const departed = closed(target);
+  target.close();
+  await departed;
+  const oldNotice = await notice;
+  assert.equal(decode(oldNotice).payload.length, 32);
+  const replacement = await connected(keys[1]!);
+  assert.equal(await check(3), 1);
+  assert.equal(decode(oldNotice).kind, 8); // no nonce: this remains advisory
+  await disconnect(replacement, source);
+});
+
+test("negotiated registration watches survive notifications, close setup races and fence unsubscribe", async () => {
+  const keys = await Promise.all([device(), device()]);
+  await enroll(keys.map(key => key.pair));
+  const source = await connected(keys[0]!, { "x-linn-target-watch": "1" });
+  const notifications: Uint8Array[] = [];
+  source.addEventListener("message", event => {
+    const parsed = decode(event.data as ArrayBuffer);
+    if (parsed.kind === 18) notifications.push(parsed.payload);
+  });
+  const watch = (token: number) => {
+    const payload = new Uint8Array(48);
+    payload.set(keys[1]!.publicKey); payload.fill(token, 32);
+    source.send(frame(16, payload));
+    return payload;
+  };
+  const first = next(source, 18);
+  const payload = watch(1);
+  const target = await connected(keys[1]!);
+  assert.deepEqual(decode(await first).payload, payload);
+  const current = next(source, 18);
+  const secondPayload = watch(2);
+  assert.deepEqual(decode(await current).payload, secondPayload);
+  await runtime.unsafeEvictDurableObject("relay", "RelayCoordinator", {
+    name: "private-mesh-v1", webSockets: "hibernate",
+  });
+  const gone = next(source, 8); const ended = closed(target); target.close(); await ended; await gone;
+  const retired = watch(3);
+  source.send(frame(17, retired));
+  const fenced = next(source, 10); source.send(frame(9, new Uint8Array(8))); await fenced;
+  const replacement = await connected(keys[1]!);
+  const pong = next(source, 10); source.send(frame(9, new Uint8Array(8))); await pong;
+  assert.equal(notifications.filter(value => value[32] === 3).length, 0);
+  assert.equal(notifications.filter(value => value[32] === 1).length, 2);
+  await disconnect(replacement, source);
+});
+
+async function disconnect(...sockets: Awaited<ReturnType<typeof connected>>[]) {
+  const ended = sockets.map(socket => closed(socket));
+  for (const socket of sockets) socket.close();
+  await Promise.all(ended);
+}
+async function watchCount(): Promise<number> {
+  const state = await (await runtime.dispatchFetch("https://local/_inspect")).json() as { watchCount: number };
+  return state.watchCount;
+}
+
+async function subscribeToCapacity(socket: Awaited<ReturnType<typeof connected>>, target: Uint8Array) {
+  const barrier = next(socket, 10);
+  for (let token = 0; token < 1024; token++) socket.send(frame(16, targetToken(target, token)));
+  socket.send(frame(9, new Uint8Array(8)));
+  await barrier;
+}
+
+test("target watch capacity and close retirement survive hibernation", async () => {
+  const keys = await Promise.all([device(), device()]);
+  await enroll(keys.map(key => key.pair));
+  const source = await connected(keys[0]!, { "x-linn-target-watch": "1" });
+  await subscribeToCapacity(source, keys[1]!.publicKey);
+  assert.equal(await watchCount(), 1024);
+  const ended = closed(source);
+  source.send(frame(16, targetToken(keys[1]!.publicKey, 1024)));
+  assert.equal(await ended, 1008);
+  assert.equal(await watchCount(), 0);
+  // A replacement observer has its own empty routing state, including after wake.
+  await runtime.unsafeEvictDurableObject("relay", "RelayCoordinator", {
+    name: "private-mesh-v1", webSockets: "hibernate",
+  });
+  const replacement = await connected(keys[0]!, { "x-linn-target-watch": "1" });
+  await subscribeToCapacity(replacement, keys[1]!.publicKey);
+  assert.equal(await watchCount(), 1024);
+  await disconnect(replacement);
+  assert.equal(await watchCount(), 0);
+});
+
+test("registration fan-out closes an exhausted observer rather than dropping its trigger", async () => {
+  const keys = await Promise.all([device(), device()]);
+  await enroll(keys.map(key => key.pair));
+  const source = await connected(keys[0]!, { "x-linn-target-watch": "1" });
+  await subscribeToCapacity(source, keys[1]!.publicKey);
+  const ended = closed(source, 10_000);
+  let observerClosed = false;
+  source.addEventListener("close", () => { observerClosed = true; });
+  for (let registration = 0; registration < 6 && !observerClosed; registration++) {
+    const notified = next(source, 18).then(() => {}, () => {});
+    const target = await connected(keys[1]!);
+    await Promise.race([notified, ended]);
+    const departed = closed(target);
+    target.close();
+    await departed;
+  }
+  assert.equal(await ended, 1013);
+  assert.equal(await watchCount(), 0);
 });

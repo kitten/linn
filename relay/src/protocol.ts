@@ -8,8 +8,8 @@ export function hex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export function unhex(value: string): Uint8Array {
-  if (!/^[0-9a-f]{64}$/.test(value)) throw new Error("invalid endpoint key");
+export function unhex(value: string, bytes = 32): Uint8Array {
+  if (value.length !== bytes * 2 || !/^[0-9a-f]+$/.test(value)) throw new Error("invalid hex encoding");
   return Uint8Array.from(value.match(/../g)!, (byte) => Number.parseInt(byte, 16));
 }
 
@@ -28,7 +28,7 @@ export function decode(input: ArrayBuffer): { kind: number; payload: Uint8Array 
   if (data.length < width) throw new Error("truncated tag");
   let kind = data[0]! & 63;
   for (let i = 1; i < width; i++) kind = kind * 256 + data[i]!;
-  if (kind > 13 || !Number.isSafeInteger(kind)) throw new Error("unknown frame tag");
+  if (kind > 18 || !Number.isSafeInteger(kind)) throw new Error("unknown frame tag");
   const payload = data.subarray(width);
   if (payload.length > MAX_PACKET) throw new Error("oversized frame");
   return { kind, payload };
@@ -54,12 +54,20 @@ export async function authenticate(input: ArrayBuffer, challenge: Uint8Array): P
 }
 
 export type ClientMessage =
+  | { type: "target-watch"; destination: string; token: Uint8Array }
+  | { type: "target-unwatch"; destination: string; token: Uint8Array }
+  | { type: "dial-check"; destination: string; token: Uint8Array }
   | { type: "ping"; payload: Uint8Array }
   | { type: "pong"; payload: Uint8Array }
   | { type: "datagram"; destination: string; batch: boolean; payload: Uint8Array };
 
 export function clientMessage(input: ArrayBuffer): ClientMessage {
   const { kind, payload } = decode(input);
+  if (kind === 14 || kind === 16 || kind === 17) {
+    if (payload.length !== 48) throw new Error("invalid target/token control frame");
+    const type = kind === 14 ? "dial-check" : kind === 16 ? "target-watch" : "target-unwatch";
+    return { type, destination: hex(payload.subarray(0, 32)), token: payload.slice(32) };
+  }
   if (kind === 9 || kind === 10) {
     if (payload.length !== 8) throw new Error("invalid ping/pong");
     return { type: kind === 9 ? "ping" : "pong", payload };

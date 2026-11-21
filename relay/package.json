@@ -11,12 +11,18 @@
     "build": "wrangler deploy --dry-run --outdir dist",
     "test": "node --test test/*.test.ts",
     "test:interop": "node scripts/interop.ts",
+    "test:dial-check": "node scripts/native.ts dial-check",
+    "test:sync-bench": "node scripts/sync-bench.ts",
     "test:heartbeats": "node scripts/heartbeats.ts",
     "test:backoff": "node scripts/backoff.ts",
     "test:control": "node scripts/control.ts",
     "test:offline": "node scripts/offline.ts",
     "dev": "wrangler dev --ip 127.0.0.1",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test:adoption": "node scripts/native.ts adoption",
+    "test:registration": "node scripts/native.ts registration",
+    "test:native": "node scripts/native.ts",
+    "test:pipeline": "node scripts/native.ts pipeline"
   },
   "dependencies": {
     "@noble/hashes": "2.4.0",
@@ -27,6 +33,7 @@
     "@types/node": "26.6.6",
     "miniflare": "5.20261113.0-beta",
     "typescript": "7.0.2",
-    "wrangler": "4.162.0"
+    "wrangler": "4.162.0",
+    "esbuild": "0.28.2"
   }
 }

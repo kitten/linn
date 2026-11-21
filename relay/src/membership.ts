@@ -7,6 +7,7 @@ export const MAX_EVENT_BYTES = 16 * 1024;
 export const EVENT_DOMAIN = "linn mesh event v1\0";
 export const RECEIPT_DOMAIN = "linn mesh receipt v1\0";
 export const READ_DOMAIN = "linn mesh read v1\0";
+const UNPAIRED_SURROGATE = /[\uD800-\uDFFF]/u;
 export type Action =
   | { kind: "genesis"; actor: string; root: string; receipt_key: string }
   | { kind: "invite"; actor: string; key: string; receipt_key: string; not_before: number; expires: number }
@@ -56,15 +57,19 @@ export function origin(value: unknown): asserts value is string {
   if ((url.protocol !== "https:" && !(url.protocol === "http:" && local)) || url.origin !== value || url.port === "0") reject("invalid service origin");
 }
 export function parse(text: string): unknown {
-  const value: unknown = JSON.parse(text);
-  // Also rejects duplicate properties, alternate number spellings and lone surrogates.
+  const value: unknown = JSON.parse(text, (key, value: unknown) => {
+    // In Unicode mode, paired surrogates are one scalar outside this range.
+    if (UNPAIRED_SURROGATE.test(key) || (typeof value === "string" && UNPAIRED_SURROGATE.test(value))) reject("invalid Unicode scalar");
+    return value;
+  });
+  // Comparison rejects duplicate properties and alternate number spellings.
   if (canonical(value) !== text) reject("canonical JSON required");
   return value;
 }
 export async function verify(publicKey: string, signature: string, domain: string, value: unknown): Promise<void> {
   key(publicKey);
-  if (!/^[0-9a-f]{128}$/.test(signature)) reject("invalid signature encoding");
-  const sig = Uint8Array.from(signature.match(/../g)!, (byte) => Number.parseInt(byte, 16));
+  let sig: Uint8Array;
+  try { sig = unhex(signature, 64); } catch { return reject("invalid signature encoding"); }
   const imported = await crypto.subtle.importKey("raw", unhex(publicKey), "Ed25519", false, ["verify"]);
   if (!await crypto.subtle.verify("Ed25519", imported, sig, message(domain, value))) reject("invalid signature");
 }

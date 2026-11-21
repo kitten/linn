@@ -19,11 +19,7 @@ nix develop -c npm --prefix relay ci
 nix develop -c npm --prefix relay run typecheck
 nix develop -c npm --prefix relay run build
 nix develop -c npm --prefix relay test
-nix develop -c npm --prefix relay run test:interop
-nix develop -c npm --prefix relay run test:heartbeats
-nix develop -c npm --prefix relay run test:backoff
-nix develop -c npm --prefix relay run test:control
-nix develop -c npm --prefix relay run test:offline
+nix develop -c npm --prefix relay run test:native
 ```
 
 The Worker tests execute in workerd, including challenge verification, rejection,
@@ -48,7 +44,15 @@ history, permanent deletion and refusal of first-time offline pairing. These
 are independent-process tests under one UID; actual Linux/macOS cross-account
 tests are deferred and remain distinct security checks.
 
-`npm test` requires the dry-run bundle from `npm run build`. Never commit `dist`,
+The native suite runs correlated-dial negotiation and fallback, registration
+wakeups, speculative evidence adoption, delayed relay-only transfer coverage, interoperability, control, offline,
+backoff and heartbeat tests. Use `test:dial-check`, `test:adoption`, `test:registration`,
+`test:pipeline`, `test:interop`, `test:control`, `test:offline`, `test:backoff` or
+`test:heartbeats` to select a group. Run `test:sync-bench` separately for the
+cold/warm product timing matrix; it checks original-byte coverage before emitting
+measurements. Worker tests bundle their test entry point in memory.
+
+Never commit `dist`,
 `.wrangler`, `.dev.vars`, credentials or node_modules. Dependency versions
 and integrity hashes are committed in package-lock.json; the flake pins Node.
 

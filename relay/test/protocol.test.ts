@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { authenticate, challengeMessage, clientMessage, decode, forward, frame, hex } from "../src/protocol.ts";
+import { authenticate, challengeMessage, clientMessage, decode, forward, frame, hex, unhex } from "../src/protocol.ts";
 
 test("challenge proves key possession and cannot be replayed for a new challenge", async () => {
   const pair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
@@ -41,4 +41,31 @@ test("invalid control messages and oversized/truncated datagrams are rejected", 
     assert.throws(() => clientMessage(bytes.buffer));
   }
   assert.deepEqual(clientMessage(frame(9, new Uint8Array(8)).buffer).type, "ping");
+});
+
+test("dial check has an exact target/token payload and cannot be confused with a disconnect", () => {
+  const payload = new Uint8Array(48);
+  payload.fill(0x11, 0, 32); payload.fill(0x22, 32);
+  const request = clientMessage(frame(14, payload).buffer);
+  assert.equal(request.type, "dial-check");
+  if (request.type !== "dial-check") throw new Error("expected dial-check");
+  assert.equal(request.destination, "11".repeat(32));
+  assert.equal(hex(request.token), "22".repeat(16));
+  for (const length of [0, 32, 47, 49]) assert.throws(() => clientMessage(frame(14, new Uint8Array(length)).buffer));
+  assert.throws(() => clientMessage(frame(8, new Uint8Array(32)).buffer));
+});
+
+test("registration subscription frames require exact target/token lengths", () => {
+  const payload = new Uint8Array(48);
+  payload.fill(7);
+  assert.deepEqual(unhex(hex(payload.subarray(32)), 16), payload.subarray(32));
+  assert.throws(() => unhex(hex(payload.subarray(32))));
+  for (const [tag, type] of [[16, "target-watch"], [17, "target-unwatch"]] as const) {
+    const decoded = clientMessage(frame(tag, payload).buffer);
+    assert.equal(decoded.type, type);
+    if (decoded.type !== type) throw new Error("wrong subscription type");
+    assert.deepEqual(decoded.token, payload.subarray(32));
+    for (const length of [0, 32, 47, 49]) assert.throws(() => clientMessage(frame(tag, new Uint8Array(length)).buffer));
+  }
+  assert.throws(() => clientMessage(frame(18, payload).buffer));
 });

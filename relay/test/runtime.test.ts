@@ -1,16 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { instrumentAlarmOperations } from "./runtime.ts";
+import { createRuntime } from "./runtime.ts";
 
-const bundle = "await storage.setAlarm(next);\nawait storage.deleteAlarm();";
-for (const operation of ["setAlarm(next)", "deleteAlarm()"] as const) {
-  const target = `await storage.${operation}`;
-  for (const scenario of ["missing", "duplicated"] as const) {
-    test(`inspection rejects ${scenario} ${operation} instrumentation`, () => {
-      const changed = scenario === "missing" ? bundle.replace(target, "") : `${bundle}\n${target};`;
-      assert.throws(() => instrumentAlarmOperations(changed), error =>
-        error instanceof assert.AssertionError &&
-        error.message.startsWith(`expected exactly one alarm instrumentation target: ${operation}`));
-    });
-  }
+for (const enabled of [false, true]) {
+  test(`test bindings negotiate extensions ${enabled ? "on" : "off"} without editing the bundle`, async () => {
+    const runtime = await createRuntime(true, enabled, true, 0, enabled);
+    try {
+      const response = await runtime.dispatchFetch("https://local/relay", { headers: {
+        upgrade: "websocket", "sec-websocket-protocol": "iroh-relay-v2",
+        "x-linn-dial-check": "1", "x-linn-target-watch": "1",
+      }});
+      assert.equal(response.headers.get("x-linn-dial-check"), enabled ? "1" : null);
+      assert.equal(response.headers.get("x-linn-target-watch"), enabled ? "1" : null);
+      response.webSocket!.accept();
+      response.webSocket!.close();
+    } finally { await runtime.dispose(); }
+  });
 }

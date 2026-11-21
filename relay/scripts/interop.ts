@@ -6,7 +6,7 @@ const runtime = await createRuntime(true);
 try {
   const address = await runtime.ready;
   const result = await new Promise<number | null>((resolve, reject) => {
-    const command = spawn("cargo", ["test", "--test", "relay_interop", "--", "--ignored", "--nocapture"], {
+    const command = spawn("cargo", ["test", "--test", "relay_interop", "native_iroh_relay_only_roundtrip", "--", "--ignored", "--nocapture"], {
       cwd: new URL("../../", import.meta.url),
       env: { ...process.env, LINN_RELAY_TEST_URL: address.href, LINN_RELAY_TEST_INSPECT: "1" },
       stdio: "inherit", timeout: 180_000,

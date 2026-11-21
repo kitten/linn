@@ -4,7 +4,7 @@ import { ingress, type IngressEnv } from "./ingress.ts";
 import { admitMessage, heartbeatDeadline, type Heartbeat, type MessageBudget } from "./limits.ts";
 import { ControlPlane } from "./control.ts";
 
-interface Env extends IngressEnv {
+export interface Env extends IngressEnv {
   COORDINATOR: DurableObjectNamespace<RelayCoordinator>;
 }
 interface Attachment extends MessageBudget, Heartbeat {
@@ -13,6 +13,9 @@ interface Attachment extends MessageBudget, Heartbeat {
   deadline: number;
   endpoint?: string;
   authenticating?: boolean;
+  dialCheck?: boolean;
+  targetWatch?: boolean;
+  session?: string;
   group?: string;
   budget: number;
   budgetAt: number;
@@ -21,6 +24,7 @@ interface Attachment extends MessageBudget, Heartbeat {
   checkpointBytes?: number;
 }
 
+const MAX_WATCHES = 1024;
 const MAX_SOCKETS = 128;
 const MAX_PENDING = 16;
 const MAX_BUFFER = 256 * 1024;
@@ -39,6 +43,21 @@ export default {
 // @ref LLP 0008#worker-and-durable-object-architecture
 export class RelayCoordinator extends DurableObject<Env> {
   private readonly control = new ControlPlane(this.ctx);
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    // Socket routing metadata survives hibernation; it contains no sync results.
+    this.ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS target_watches (
+      session TEXT NOT NULL, token TEXT NOT NULL, target TEXT NOT NULL,
+      active INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(session, token))`);
+    this.ctx.storage.sql.exec("DROP INDEX IF EXISTS target_watch_target");
+    this.ctx.storage.sql.exec("CREATE INDEX IF NOT EXISTS target_watch_observer ON target_watches(session, target, active)");
+    const sessions = new Set(this.ctx.getWebSockets().map(socket =>
+      (socket.deserializeAttachment() as Attachment | null)?.session).filter(Boolean));
+    for (const row of this.ctx.storage.sql.exec<{session: string}>("SELECT DISTINCT session FROM target_watches").toArray()) {
+      if (!sessions.has(row.session)) this.ctx.storage.sql.exec("DELETE FROM target_watches WHERE session = ?", row.session);
+    }
+  }
 
   async fetch(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;
@@ -62,13 +81,18 @@ export class RelayCoordinator extends DurableObject<Env> {
     const attachment: Attachment = {
       version: 1, challenge: [...challenge], deadline: Date.now() + HANDSHAKE_MS,
       budget: BYTES_PER_SECOND, budgetAt: Date.now(),
+      dialCheck: request.headers.get("x-linn-dial-check") === "1",
+      targetWatch: request.headers.get("x-linn-target-watch") === "1",
+      session: hex(challenge),
     };
     pair[1].serializeAttachment(attachment);
     this.ctx.acceptWebSocket(pair[1]);
     pair[1].send(frame(0, challenge));
     await this.armAlarm();
     return new Response(null, {
-      status: 101, webSocket: pair[0], headers: { "sec-websocket-protocol": "iroh-relay-v2" },
+      status: 101, webSocket: pair[0], headers: { "sec-websocket-protocol": "iroh-relay-v2",
+        ...(attachment.dialCheck ? { "x-linn-dial-check": "1" } : {}),
+        ...(attachment.targetWatch ? { "x-linn-target-watch": "1" } : {}) },
     });
   }
 
@@ -78,25 +102,7 @@ export class RelayCoordinator extends DurableObject<Env> {
       const state = socket.deserializeAttachment() as Attachment;
       if (!state || state.version !== 1) throw new Error("invalid session");
       if (!state.endpoint) {
-        if (Date.now() >= state.deadline) throw new Error("authentication timed out");
-        if (state.authenticating) throw new Error("authentication already in progress");
-        state.authenticating = true;
-        socket.serializeAttachment(state);
-        const endpoint = await authenticate(input, new Uint8Array(state.challenge));
-        const group = await this.control.group(endpoint);
-        if (!group) throw new Error("endpoint not enrolled");
-        if (!(socket.deserializeAttachment() as Attachment | null)?.authenticating) return;
-        if (Date.now() >= state.deadline) throw new Error("authentication timed out");
-        if (this.find(endpoint)) {
-          socket.send(frame(13, new Uint8Array([1])));
-          return this.close(socket, 1008, "duplicate endpoint identity");
-        }
-        state.endpoint = endpoint;
-        state.authenticating = undefined;
-        state.group = group;
-        state.challenge = [];
-        socket.serializeAttachment(state);
-        socket.send(frame(2));
+        await this.authenticateSocket(socket, state, input);
         return;
       }
       const now = Date.now();
@@ -127,15 +133,65 @@ export class RelayCoordinator extends DurableObject<Env> {
         }
         return;
       }
+      if (message.type === "target-watch" || message.type === "target-unwatch") {
+        if (!state.targetWatch || !state.session) throw new Error("target watch not negotiated");
+        const token = hex(message.token);
+        if (message.type === "target-unwatch") {
+          this.ctx.storage.sql.exec("DELETE FROM target_watches WHERE session = ? AND token = ? AND target = ?", state.session, token, message.destination);
+          return;
+        }
+        const existing = this.ctx.storage.sql.exec<{target: string}>("SELECT target FROM target_watches WHERE session = ? AND token = ?", state.session, token).toArray()[0];
+        if (existing && existing.target !== message.destination) throw new Error("conflicting watch token");
+        const count = this.ctx.storage.sql.exec<{n: number}>("SELECT COUNT(*) AS n FROM target_watches WHERE session = ?", state.session).toArray()[0]!.n;
+        if (!existing && count >= MAX_WATCHES) throw new Error("target watch capacity");
+        this.ctx.storage.sql.exec("INSERT OR IGNORE INTO target_watches(session, token, target) VALUES (?, ?, ?)", state.session, token, message.destination);
+        if (!await this.control.sameGroup(state.endpoint, message.destination)) throw new Error("mesh authorization denied");
+        if ((socket.deserializeAttachment() as Attachment | null)?.session !== state.session) return;
+        // Unsubscribe/close may interleave with the membership authorization await.
+        const activated = this.ctx.storage.sql.exec("UPDATE target_watches SET active = 1 WHERE session = ? AND token = ? AND target = ? RETURNING target", state.session, token, message.destination).toArray();
+        if (activated.length && this.find(message.destination)) this.notifyWatch(socket, state.session, message.destination, token);
+        return;
+      }
       if (!await this.control.sameGroup(state.endpoint, message.destination)) throw new Error("mesh authorization denied");
       if ((socket.deserializeAttachment() as Attachment | null)?.endpoint !== state.endpoint) return;
       const destination = this.find(message.destination);
+      if (message.type === "dial-check") {
+        if (!state.dialCheck) throw new Error("dial check not negotiated");
+        const payload = new Uint8Array(49);
+        payload.set(unhex(message.destination));
+        payload.set(message.token, 32);
+        payload[48] = destination ? 1 : 0;
+        return this.send(socket, frame(15, payload));
+      }
       if (!destination) return this.send(socket, frame(8, unhex(message.destination)));
       this.send(destination, forward(state.endpoint, message));
     } catch {
       // Do not log packet, key, challenge, token or authentication bytes.
       this.close(socket, 1008, "invalid or unauthorized relay message");
     }
+  }
+
+  private async authenticateSocket(socket: WebSocket, state: Attachment, input: ArrayBuffer): Promise<void> {
+    if (Date.now() >= state.deadline) throw new Error("authentication timed out");
+    if (state.authenticating) throw new Error("authentication already in progress");
+    state.authenticating = true;
+    socket.serializeAttachment(state);
+    const endpoint = await authenticate(input, new Uint8Array(state.challenge));
+    const group = await this.control.group(endpoint);
+    if (!group) throw new Error("endpoint not enrolled");
+    if (!(socket.deserializeAttachment() as Attachment | null)?.authenticating) return;
+    if (Date.now() >= state.deadline) throw new Error("authentication timed out");
+    if (this.find(endpoint)) {
+      socket.send(frame(13, new Uint8Array([1])));
+      return this.close(socket, 1008, "duplicate endpoint identity");
+    }
+    state.endpoint = endpoint;
+    state.authenticating = undefined;
+    state.group = group;
+    state.challenge = [];
+    socket.serializeAttachment(state);
+    socket.send(frame(2));
+    await this.notifyRegistration(endpoint);
   }
 
   webSocketClose(socket: WebSocket): void { this.close(socket, 1000, "closed"); }
@@ -168,13 +224,46 @@ export class RelayCoordinator extends DurableObject<Env> {
     await this.armAlarm();
   }
 
+  private notifyWatch(socket: WebSocket, session: string, target: string, token: string): void {
+    const state = socket.deserializeAttachment() as Attachment | null;
+    if (state?.session !== session) return;
+    if ((state.queuedBytes ?? 0) + 49 > MAX_BUFFER) {
+      this.close(socket, 1013, "registration notification backpressure");
+      return;
+    }
+    const payload = new Uint8Array(48);
+    payload.set(unhex(target));
+    payload.set(unhex(token, 16), 32);
+    this.send(socket, frame(18, payload));
+  }
+  private watchTokens(session: string, target: string): Set<string> {
+    return new Set(this.ctx.storage.sql.exec<{token: string}>(
+      "SELECT token FROM target_watches WHERE session = ? AND target = ? AND active = 1", session, target,
+    ).toArray().map(row => row.token));
+  }
+  private async notifyRegistration(target: string): Promise<void> {
+    for (const socket of this.ctx.getWebSockets()) {
+      const observer = socket.deserializeAttachment() as Attachment | null;
+      if (!observer?.endpoint || !observer.session) continue;
+      const tokens = this.watchTokens(observer.session, target);
+      if (!tokens.size || !await this.control.sameGroup(observer.endpoint, target)) continue;
+      if (!this.find(target)) continue;
+      // Authorization may yield to unsubscribe/close. Recheck the captured
+      // tokens without including subscriptions that activated during the await.
+      const current = this.watchTokens(observer.session, target);
+      for (const token of tokens) {
+        if (current.has(token)) this.notifyWatch(socket, observer.session, target, token);
+      }
+    }
+  }
+
   private find(endpoint: string): WebSocket | undefined {
     return this.ctx.getWebSockets().find((socket) => {
       const state = socket.deserializeAttachment() as Attachment;
       return state?.endpoint === endpoint;
     });
   }
-  private send(socket: WebSocket, data: Uint8Array): void {
+  protected send(socket: WebSocket, data: Uint8Array): void {
     const state = socket.deserializeAttachment() as Attachment | null;
     if (!state?.endpoint) return;
     // Workers exposes no awaitable send backpressure. A matching protocol Pong
@@ -204,6 +293,9 @@ export class RelayCoordinator extends DurableObject<Env> {
     const state = socket.deserializeAttachment() as Attachment | null;
     // Clear before notifications so a closing socket cannot be selected again.
     socket.serializeAttachment(null);
+    try {
+      if (state?.session) this.ctx.storage.sql.exec("DELETE FROM target_watches WHERE session = ?", state.session);
+    } catch { /* Closing still invalidates observers; orphan rows are pruned on rehydration. */ }
     try { socket.close(code, reason); } catch { /* Already closed. */ }
     this.ctx.waitUntil(this.armAlarm(true));
     if (state?.endpoint) {
@@ -216,6 +308,8 @@ export class RelayCoordinator extends DurableObject<Env> {
       }
     }
   }
+  protected alarmOperation(_operation: "sets" | "deletes"): void {}
+
   private async armAlarm(clearIdle = false): Promise<void> {
     await this.ctx.storage.transaction(async (storage) => {
       const current = await storage.getAlarm();
@@ -226,8 +320,12 @@ export class RelayCoordinator extends DurableObject<Env> {
         next = Math.min(next, state.endpoint ? heartbeatDeadline(state) : state.deadline);
       }
       if (Number.isFinite(next)) {
-        if (current === null || current > next) await storage.setAlarm(next);
+        if (current === null || current > next) {
+          this.alarmOperation("sets");
+          await storage.setAlarm(next);
+        }
       } else if (clearIdle && current !== null) {
+        this.alarmOperation("deletes");
         await storage.deleteAlarm();
       }
     });
