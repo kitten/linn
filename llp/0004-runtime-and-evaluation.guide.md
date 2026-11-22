@@ -317,7 +317,7 @@ The opaque s1 cursor is URL-safe unpadded base64 of JSON (query, caller scope, n
 
 ## Native build
 
-Use the Nix flake for cargo fmt, cargo clippy --workspace --all-targets --all-features -- -D warnings, cargo test --workspace --all-features, and nix build. The build assets contain config.json, tokenizer.json and model.safetensors for the pinned SSE v2 model in LLP 0002. Fetch weights and tokenizer from revision-pinned, SHA-256-checked upstream URLs at build time; generate the byte-stable Linn model descriptor. Never download on ingest/search or commit weights. No developer-local path is a flake input. The installed binary embeds the model and requires no Nix-store dynamic dependency. See LLP 0005 for local scoring.
+Use the Nix flake for cargo fmt, cargo clippy --workspace --all-targets --all-features -- -D warnings, cargo test --workspace --all-features, and nix build. The package derivation installs the binary and does not run unit, integration, or verification tests in its check phase. The build assets contain config.json, tokenizer.json and model.safetensors for the pinned SSE v2 model in LLP 0002. Fetch weights and tokenizer from revision-pinned, SHA-256-checked upstream URLs at build time; generate the byte-stable Linn model descriptor. Never download on ingest/search or commit weights. No developer-local path is a flake input. The installed binary embeds the model and requires no Nix-store dynamic dependency. See LLP 0005 for local scoring.
 
 The native package builds Cargo's vendored libgit2 with experimental SHA-256
 support. Its build phase explicitly sets `LIBGIT2_NO_VENDOR=0`, overriding

@@ -12,22 +12,14 @@ pkgs.rustPlatform.buildRustPackage {
     "--package"
     "linn"
   ];
-  cargoTestFlags = [
-    "--package"
-    "linn"
-  ];
+  # Unit, integration, and verification tests stay explicit development commands.
+  doCheck = false;
   LINN_MODEL = assets.model;
   LINN_POS_TOKENIZER_BUILD = assets.tokenizer;
   nativeBuildInputs = [
     native.pkg-config
     native.cmake
   ];
-  nativeCheckInputs = [ native.git ];
-  preCheck = ''
-    export LINN_TEST_TMPDIR="$TMPDIR"
-    export XDG_RUNTIME_DIR="$TMPDIR/linn-runtime"
-    mkdir -m 700 "$XDG_RUNTIME_DIR"
-  '';
   postInstall = ''
     mkdir -p "$out/share/doc/linn"
     cp LICENSE THIRD_PARTY_NOTICES "$out/share/doc/linn/"
