@@ -2514,6 +2514,9 @@ one delta stream and at most one full-inventory fallback under that operation;
 a full fallback atomically cancels the old delta stream and its queued reads,
 including when its FIN/reset has not arrived. Never permit a second delta,
 second full fallback, another connection, or an earlier round to reuse the grant.
+Receiving completion belongs to the exact live role incarnation, not merely its signed
+run ID. A late completion after retirement and re-registration of identical signed bytes
+must not decrement the replacement's transfer count or permit overlapping rounds.
 Revoke source authority on operation cancellation/completion, parent loss,
 recovery, terminal cleanup or role eviction. Fence queued Get/chunk work and
 late store replies, erase registered source buffers, and leave receiving valid

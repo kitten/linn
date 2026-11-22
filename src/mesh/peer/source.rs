@@ -166,6 +166,7 @@ impl Drop for Stream {
 pub(super) struct Receiving {
     peer: Weak<Peer>,
     run: String,
+    owner: tokio::sync::watch::Receiver<bool>,
 }
 impl Receiving {
     pub(super) fn begin(peer: &Arc<Peer>, run: &str, round: u8) -> Result<Self> {
@@ -179,6 +180,7 @@ impl Receiving {
         Ok(Self {
             peer: Arc::downgrade(peer),
             run: run.into(),
+            owner: entry.ended.subscribe(),
         })
     }
 }
@@ -186,6 +188,7 @@ impl Drop for Receiving {
     fn drop(&mut self) {
         if let Some(peer) = self.peer.upgrade()
             && let Some(entry) = peer.runs.lock().unwrap().get_mut(&self.run)
+            && self.owner.same_channel(&entry.ended.subscribe())
         {
             entry.transfers -= 1;
         }
