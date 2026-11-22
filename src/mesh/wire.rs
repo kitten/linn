@@ -153,16 +153,35 @@ pub(crate) mod metrics {
 }
 
 struct Limited(Vec<u8>);
-struct Transmission<'a> {
-    send: &'a mut SendStream,
+trait Reset {
+    fn reset_kind(&mut self, kind: Kind);
+}
+impl Reset for SendStream {
+    fn reset_kind(&mut self, kind: Kind) {
+        let _ = self.reset(kind.code().into());
+    }
+}
+struct Transmission<'a, T: Reset = SendStream> {
+    send: &'a mut T,
     delivery: Option<tokio::sync::oneshot::Sender<()>>,
-    complete: bool,
+    settled: bool,
     failure: Kind,
 }
-impl Drop for Transmission<'_> {
+impl<T: Reset> Transmission<'_, T> {
+    fn release_attempt(&mut self, result: &Result<usize>) {
+        if let Err(error) = result {
+            self.failure = Kind::of(error);
+            self.send.reset_kind(self.failure);
+            self.settled = true;
+        }
+        // A failed write is cancelled at the transport before forget may proceed.
+        drop(self.delivery.take());
+    }
+}
+impl<T: Reset> Drop for Transmission<'_, T> {
     fn drop(&mut self) {
-        if !self.complete {
-            let _ = self.send.reset(self.failure.code().into());
+        if !self.settled {
+            self.send.reset_kind(self.failure);
         }
         // Reset a partial frame before releasing its original-byte delivery lease.
         drop(self.delivery.take());
@@ -201,7 +220,7 @@ async fn send_inner(
     let mut output = Transmission {
         send,
         delivery: None,
-        complete: false,
+        settled: false,
         failure: Kind::Cancelled,
     };
     let result = async {
@@ -250,7 +269,7 @@ async fn send_inner(
     if let Err(error) = &result {
         output.failure = Kind::of(error);
     }
-    output.complete = result.is_ok();
+    output.settled |= result.is_ok();
     result
 }
 
@@ -283,7 +302,7 @@ async fn receive_inner(
         .map_err(|_| Kind::Timeout.error("mesh frame header timed out"))?
         .map_err(Kind::read_exact)?;
     let len = u32::from_be_bytes(header) as usize;
-    if len == 0 || len > limit.min(MAX_FRAME) {
+    if !valid_frame_size(len, limit) {
         return Err(Kind::Protocol.error("invalid mesh frame size"));
     }
     let mut body = vec![0; len];
@@ -308,9 +327,51 @@ async fn receive_inner(
     .map_err(|_| Error::Invalid("mesh decoder stopped".into()))?
 }
 
+fn valid_frame_size(len: usize, limit: usize) -> bool {
+    len != 0 && len <= limit.min(MAX_FRAME)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+    use tokio::sync::oneshot::error::TryRecvError;
+
+    #[tokio::test]
+    async fn failed_write_resets_before_the_delivery_lease_closes() {
+        struct Probe {
+            receiver: std::sync::Arc<Mutex<tokio::sync::oneshot::Receiver<()>>>,
+            leased_at_reset: Vec<bool>,
+        }
+        impl Reset for Probe {
+            fn reset_kind(&mut self, _: Kind) {
+                self.leased_at_reset.push(matches!(
+                    self.receiver.lock().unwrap().try_recv(),
+                    Err(TryRecvError::Empty)
+                ));
+            }
+        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let receiver = std::sync::Arc::new(Mutex::new(rx));
+        let mut probe = Probe {
+            receiver: receiver.clone(),
+            leased_at_reset: vec![],
+        };
+        let mut output = Transmission {
+            send: &mut probe,
+            delivery: Some(tx),
+            settled: false,
+            failure: Kind::Cancelled,
+        };
+        let result = Err(Kind::Timeout.error("stalled write"));
+        output.release_attempt(&result);
+        drop(output);
+        assert_eq!(probe.leased_at_reset, vec![true]);
+        assert!(matches!(
+            receiver.lock().unwrap().try_recv(),
+            Err(TryRecvError::Closed)
+        ));
+    }
     use crate::{
         mesh::{control_stream::Control, store},
         storage::sync::Item,

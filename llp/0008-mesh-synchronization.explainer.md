@@ -1820,7 +1820,8 @@ queuing its reply. Retain the existing original-valued Get and authorized chunk
 delivery barriers; metadata completion is not original-byte delivery.
 Retain a mesh delivery lease through each authorized chunk write, dropping it
 on progress or transport cancellation before obtaining another chunk or waiting
-for a peer acknowledgement. The chunk revalidation rules are specified below.
+for a peer acknowledgement. A failed or timed-out chunk write resets that stream
+before its delivery lease is released. The chunk revalidation rules are specified below.
 Never put original bytes into a later application send queue after releasing
 that lease. Bytes already handed to the transport may remain in flight, as with
 existing QUIC transfers; forgetting cannot retract them or erase remote copies.

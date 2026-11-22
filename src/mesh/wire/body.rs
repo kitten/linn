@@ -46,7 +46,7 @@ pub(crate) async fn send_body(
     let mut output = Transmission {
         send,
         delivery: None,
-        complete: false,
+        settled: false,
         failure: Kind::Cancelled,
     };
     let result = async {
@@ -91,19 +91,17 @@ pub(crate) async fn send_body(
                 };
                 Ok(bytes[offset..(offset + 64 * 1024).min(len)].to_vec())
             })?;
-            let written = tokio::time::timeout(WAIT, output.send.write(&chunk)).await;
-            // No original copy survives release of this delivery lease.
+            let written = match tokio::time::timeout(WAIT, output.send.write(&chunk)).await {
+                Ok(Ok(n)) if n > 0 => Ok(n),
+                Ok(Err(error)) => Err(Kind::write(error)),
+                Err(_) => Err(Kind::Timeout.error("mesh write made no progress")),
+                _ => Err(Kind::Unresolved.error("mesh write ended")),
+            };
+            // No application copy survives release, including a timed-out attempt.
             drop(chunk);
-            drop(output.delivery.take());
-            match written {
-                Ok(Ok(n)) if n > 0 => {
-                    offset += n;
-                    progress.advance();
-                }
-                Ok(Err(error)) => return Err(Kind::write(error)),
-                Err(_) => return Err(Kind::Timeout.error("mesh write made no progress")),
-                _ => return Err(Kind::Unresolved.error("mesh write ended")),
-            }
+            output.release_attempt(&written);
+            offset += written?;
+            progress.advance();
         }
         Ok(())
     }
@@ -118,7 +116,7 @@ pub(crate) async fn send_body(
     if let Err(error) = &result {
         output.failure = Kind::of(error);
     }
-    output.complete = result.is_ok();
+    output.settled |= result.is_ok();
     result
 }
 
@@ -159,7 +157,7 @@ async fn read_body(
         .map_err(|_| Kind::Timeout.error("mesh item frame header timed out"))?
         .map_err(Kind::read_exact)?;
     let len = u32::from_be_bytes(header) as usize;
-    if len == 0 || len > MAX_FRAME {
+    if !valid_frame_size(len, MAX_FRAME) {
         return Err(Kind::Protocol.error("item exceeds the absolute frame limit"));
     }
     if (len + 4) as u64 > entry.frame_bytes {
