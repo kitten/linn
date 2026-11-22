@@ -200,7 +200,9 @@ IP or a one-connection-per-IP limit. Duplicate-identity handling applies only
 to the same endpoint key.
 
 Stopping, upgrading, leaving or revoking the agent peer affects that identity,
-not the operator peer or every peer on the host. Independent daemons may use
+not the operator peer or every peer on the host. Reloading resident peer
+transport reads verified membership after the identity read and closes that
+peer when the local key is absent from current members or is revoked. Independent daemons may use
 compatible different builds; network version checks happen per connection,
 separately from each account's local IPC/schema compatibility. One account's
 dispatcher and ownership locks are never shared with another account. A slow

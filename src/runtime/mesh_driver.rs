@@ -286,6 +286,12 @@ impl Owner {
         let state = store::membership(&self.store, None)
             .await?
             .ok_or_else(|| Error::Invalid("missing verified mesh state".into()))?;
+        // The membership reply may include revocation committed after the identity read.
+        let local = identity.key.public().to_string();
+        if !state.members.contains(&local) || state.revoked.contains(&local) {
+            self.close().await?;
+            return Ok(None);
+        }
         if let Some(peer) = &self.peer
             && peer.running()
             && peer.endpoint.id() == identity.key.public()
@@ -300,5 +306,93 @@ impl Owner {
         self.peer = Some(peer.clone());
         self.view.lock().unwrap().peer = Some(peer.clone());
         Ok(Some(peer))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{mesh::membership::Membership, mesh::store::Value, storage::mesh::Identity};
+    use std::collections::{BTreeMap, BTreeSet};
+
+    #[tokio::test]
+    async fn reload_checks_membership_after_reading_identity() {
+        for case in 0..3 {
+            let key = iroh::SecretKey::from_bytes(&[71; 32]);
+            let local = key.public().to_string();
+            let other = iroh::SecretKey::from_bytes(&[72; 32]).public().to_string();
+            let service = if case == 2 {
+                "http://["
+            } else {
+                "http://127.0.0.1:1"
+            };
+            let membership = Membership {
+                head: "1".repeat(64),
+                service: service.into(),
+                receipt_key: "0".repeat(64),
+                roots: BTreeSet::from(["2".repeat(64)]),
+                members: match case {
+                    0 => BTreeSet::new(),
+                    1 => BTreeSet::from([other]),
+                    _ => BTreeSet::from([local.clone()]),
+                },
+                revoked: if case < 2 {
+                    BTreeSet::from([local])
+                } else {
+                    BTreeSet::new()
+                },
+                invitations: BTreeMap::new(),
+            };
+            let (store, mut requests) = store::channel();
+            // A commit between the two requests can return these coherent snapshots.
+            let worker = tokio::spawn(async move {
+                let mut observed = Vec::new();
+                while let Some(request) = requests.recv().await {
+                    let value = match request.step {
+                        Step::Identity => {
+                            observed.push("identity");
+                            Ok(Value::Identity(Some(Identity {
+                                key: key.clone(),
+                                service: service.into(),
+                                receipt_key: Some("0".repeat(64)),
+                                head: Some("0".repeat(64)),
+                                enabled: true,
+                                pending_leave: false,
+                                conflict: false,
+                            })))
+                        }
+                        Step::Membership(None) => {
+                            observed.push("membership");
+                            Ok(Value::Membership(Some(membership.clone())))
+                        }
+                        _ => {
+                            observed.push("unexpected");
+                            Err(Error::Invalid("unexpected reload store request".into()))
+                        }
+                    };
+                    let _ = request.reply.send(value);
+                }
+                observed
+            });
+            let mut owner = Owner {
+                store,
+                allowed: true,
+                peer: None,
+                listener: None,
+                view: Arc::new(Mutex::new(View::default())),
+            };
+            let result = owner.reload(false).await;
+            if case < 2 {
+                assert!(result.is_ok_and(|peer| peer.is_none()));
+            } else {
+                // Local membership must reach binding; an invalid URL stops before I/O.
+                assert!(matches!(result, Err(Error::Mesh(error))
+                    if error.kind == crate::mesh::failure::Kind::Protocol
+                    && error.message == "mesh peer: invalid relay URL"));
+            }
+            assert!(owner.peer.is_none());
+            drop(owner);
+            assert_eq!(worker.await.unwrap(), ["identity", "membership"]);
+        }
     }
 }
