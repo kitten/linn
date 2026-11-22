@@ -360,6 +360,11 @@ contract changes independently. Compatible implementation fixes, CLI presentatio
 changes and performance-only changes retain the number. Review protocol changes
 against this rule; no build system can infer that compatibility decision.
 
+Application compatibility 8 adds the serialized `sent` counter to sync reports,
+progress and active-job status. Compatibility-7 clients reject unknown report
+fields, so reject their application handshakes before sending these values.
+Lifecycle status/stop remains version 1.
+
 Authenticate peer account and compare lifecycle protocol, application compatibility,
 schema capability and full store identity before operations. Before sending any
 application invocation, a newer CLI can replace an older owner through the

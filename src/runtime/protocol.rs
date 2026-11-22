@@ -10,7 +10,7 @@ use std::path::PathBuf;
 // Keep lifecycle framing stable across application compatibility changes.
 pub(super) const VERSION: u32 = 1;
 // @ref LLP 0007#automatic-detached-lifecycle
-pub(super) const COMPATIBILITY: u32 = 7;
+pub(super) const COMPATIBILITY: u32 = 8;
 #[derive(Serialize, Deserialize)]
 pub(super) struct Hello {
     pub version: u32,

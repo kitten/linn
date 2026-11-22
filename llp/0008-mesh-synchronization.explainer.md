@@ -29,7 +29,7 @@ Migration 11 (`src/storage/migrations/0011-sync-sizes.sql`) adds the current-ite
 encoded-response/original-envelope sizes and monotonic ordinals in the same
 libSQL file. Original envelopes remain unchanged.
 Original records, history and tombstones survive these migrations. Local
-RPC compatibility is 7, mesh job/ALPN profile is 2, and signed membership
+RPC compatibility is 8, mesh job/ALPN profile is 2, and signed membership
 event/receipt profile is 1.
 
 Address discovery consists of IPv4 LAN/loopback mDNS and Iroh's connection
@@ -2572,10 +2572,10 @@ records, delegate jobs or fall back to recursive fan-out with these peers.
 Unknown protocol versions receive an equally explicit unsupported-version update
 error without inventing a profile number from an ambiguous transport timeout.
 
-Use local RPC compatibility 7 for the structured round/assignment progress,
+Use local RPC compatibility 8 for the structured round/assignment progress,
 including no-known-direct-route source/target pairs, and
-expanded partial-result reasons. Signed membership and original-item formats
-remain unchanged. The specified level protocol supersedes the recursive
+expanded partial-result reasons and sent-item report counters. Signed membership
+and original-item formats remain unchanged. The specified level protocol supersedes the recursive
 profile-1 traversal. [The peer implementation](../src/mesh/peer.rs) and its
 job/control/progress types implement profile 2 unconditionally; retain old
 profile-1 behavior only as an external compatibility-rejection fixture.
