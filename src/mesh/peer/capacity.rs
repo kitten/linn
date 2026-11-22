@@ -9,6 +9,25 @@ pub(super) struct Transfers {
     slots: Semaphore,
     readiness: watch::Sender<bool>,
 }
+type PendingSlot<'a> = std::pin::Pin<
+    Box<
+        dyn std::future::Future<
+                Output = std::result::Result<SemaphorePermit<'a>, tokio::sync::AcquireError>,
+            > + Send
+            + 'a,
+    >,
+>;
+// Pending cancellation must return any assigned semaphore permit before publishing.
+struct Acquisition<'a> {
+    pending: Option<PendingSlot<'a>>,
+    owner: &'a Transfers,
+}
+impl Drop for Acquisition<'_> {
+    fn drop(&mut self) {
+        drop(self.pending.take());
+        self.owner.notify();
+    }
+}
 pub(super) struct Permit<'a> {
     slot: Option<SemaphorePermit<'a>>,
     owner: &'a Transfers,
@@ -23,8 +42,12 @@ impl Transfers {
     pub(super) async fn acquire(
         &self,
     ) -> std::result::Result<Permit<'_>, tokio::sync::AcquireError> {
-        let slot = self.slots.acquire().await?;
-        self.notify();
+        let mut acquisition = Acquisition {
+            pending: Some(Box::pin(self.slots.acquire())),
+            owner: self,
+        };
+        let slot = acquisition.pending.as_mut().unwrap().await?;
+        drop(acquisition);
         Ok(Permit {
             slot: Some(slot),
             owner: self,
@@ -186,5 +209,28 @@ mod tests {
         sources.forget("a");
         assert!(!sources.snapshot().1.contains_key("a"));
         assert!(Sources::default().snapshot().1.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod cancellation_regression {
+    use super::*;
+    use futures_util::FutureExt;
+    #[tokio::test]
+    async fn cancelling_an_assigned_unpolled_waiter_restores_readiness() {
+        let slots = Transfers::new();
+        let first = slots.acquire().await.unwrap();
+        let second = slots.acquire().await.unwrap();
+        let mut waiting = Box::pin(slots.acquire());
+        assert!(waiting.as_mut().now_or_never().is_none());
+        drop(first);
+        assert!(!slots.has_free());
+        drop(waiting);
+        assert_eq!(slots.available(), 1);
+        assert!(
+            slots.has_free(),
+            "cancelled assigned permit must advertise free capacity"
+        );
+        drop(second);
     }
 }

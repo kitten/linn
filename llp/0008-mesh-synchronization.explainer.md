@@ -465,6 +465,9 @@ four independent jobs, plus eight connections of admission/probe headroom.
 This is a per-store resource allowance, not a target connection count or a
 reason to preconnect. It does not guarantee room for every simultaneous losing
 dial: queue excess work and retire duplicate contacts under the existing limits.
+Cancellation of a queued or assigned-but-unpolled transfer acquisition must release
+its permit before publishing restored readiness. Stale readiness cannot strand available
+capacity.
 Count connecting and admitted transports in both directions against the same
 budget, including status probes, duplicate contacts and connections still
 waiting for application authorization; do not exempt unverified arrivals.
