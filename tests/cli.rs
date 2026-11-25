@@ -268,7 +268,16 @@ fn list_filters_paginates_and_validates_input() {
     let output = cli(
         &db,
         &[
-            "list", "--kind", "note", "--since", "7d", "--limit", "1", "--json",
+            "list",
+            "--kind",
+            "note",
+            "--since",
+            "7d",
+            "--before",
+            "2099-01-01T00:00:00Z",
+            "--limit",
+            "1",
+            "--json",
         ],
         None,
     );
@@ -296,6 +305,15 @@ fn list_filters_paginates_and_validates_input() {
     );
     for args in [
         vec!["list", "--since", "🦀"],
+        vec!["list", "--since", "2026-11-02t00:00:00z"],
+        vec!["export", "--since", "2026-11-02 00:00:00Z"],
+        vec!["list", "--before", "0d"],
+        vec!["list", "--before", "2026-12-31T23:59:60Z"],
+        vec!["list", "--before", "9999-12-31T23:59:59-23:59"],
+        vec!["list", "--since", "9999-12-31T23:59:59-23:59"],
+        vec!["export", "--since", "9999-12-31T23:59:59-23:59"],
+        vec!["list", "--before", "2026-11-02T00:00:00.001Z"],
+        vec!["list", "--cursor", next, "--before", "30d"],
         vec!["list", "--limit", "0"],
         vec!["list", "--cursor", "invalid"],
         vec!["list", "--cursor", next, "--kind", "note"],

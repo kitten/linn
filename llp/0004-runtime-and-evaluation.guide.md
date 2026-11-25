@@ -425,13 +425,20 @@ not invoke retrieval, POS or embeddings, load bodies, or infer agent sessions.
 - Default: 20 records, creation timestamp descending, then record id descending.
 - `--kind note|doc` restricts the kind. `--since 7d` accepts a positive duration
   (`m`, `h`, `d`, `w`) or RFC3339 timestamp; creation at the boundary is included.
+- Use `--before 30d` to list records created strictly before that duration ago,
+  or pass an RFC3339 timestamp with an explicit timezone and uppercase `T`
+  separator, as printed by Linn and accepted by `--since`. Durations use the
+  same positive whole-number `m`, `h`, `d`, `w` syntax as `--since`; timestamp
+  offsets normalize to UTC. Nonzero fractional seconds and leap seconds are
+  rejected. Unknown creation dates are excluded. Combine `--since` and `--before`
+  for an inclusive lower and exclusive upper bound.
 - `--expiring-within 30d` accepts a positive duration and selects expiries strictly
   after now and at or before the upper boundary. Sort by expiry then record id,
   both ascending. It combines with kind and creation filters.
 - Exclude expired, closed, superseded, non-accepted and close-envelope records,
   using the word-search lifecycle predicate. No automatic repository filter.
 - `--limit 1..100` controls page size. `--cursor <token>` continues a page;
-  it conflicts with kind/since/expiry filters but permits a different limit.
+  it conflicts with kind/since/before/expiry filters but permits a different limit.
   The opaque `l1.` cursor retains normalized filters, clock, last sort key/id
   and publication identity. A changed store requires starting a new list.
 - Print id, kind, creation, expiry and label. Missing creation displays as unknown
@@ -442,7 +449,8 @@ not invoke retrieval, POS or embeddings, load bodies, or infer agent sessions.
   creation is the stored string (empty when unknown), expiry and next may be null. Each listed record additionally carries `writer`
 (string or null), including when human presentation omits the local author.
   Exit 0 for a nonempty page, 1 for an empty page, 2 for invalid options/cursors.
-  Listing uses the stored timestamp comparison convention; CLI-created dates are UTC.
+  `--since` and `--before` compare stored timestamp strings, not chronological
+  instants across arbitrary imported offsets; CLI-created dates are UTC.
 
 
 ## Flake consumers and package acceptance

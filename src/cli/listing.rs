@@ -21,6 +21,12 @@ pub(super) struct ListArgs {
     since: Option<String>,
     #[arg(
         long,
+        help = "Created strictly before a duration ago (30d) or RFC3339 time (uppercase T; whole seconds)",
+        conflicts_with = "cursor"
+    )]
+    before: Option<String>,
+    #[arg(
+        long,
         help = "Expire within a duration (30d); earliest expiry first",
         conflicts_with = "cursor"
     )]
@@ -53,6 +59,7 @@ impl ListArgs {
             writer: self.writer,
             kind: self.kind,
             since: self.since,
+            before: self.before,
             expiring_within: self.expiring_within,
             limit: self.limit,
             cursor: self.cursor,

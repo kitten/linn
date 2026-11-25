@@ -11,6 +11,8 @@ pub struct ListQuery {
     #[serde(default)]
     pub scope: Option<String>,
     pub since: Option<String>,
+    #[serde(default)]
+    pub before: Option<String>,
     pub expires_before: Option<String>,
 }
 
@@ -146,6 +148,11 @@ fn list_statement(
     } else {
         "record_headers h INDEXED BY record_created CROSS JOIN record_read_index r ON r.record=h.record"
     };
+    // A tie seek fixes the sort key by equality. Keep its other bounds residual
+    // so redundant ranges cannot make SQLite lose the index's record-id order.
+    let fixed_key = same_key && query.before.is_some();
+    let created_range = format!("{}{created}", if fixed_key && !expiry { "+" } else { "" });
+    let expiry_range = format!("{}{expiry_key}", if fixed_key && expiry { "+" } else { "" });
     let mut sql = format!(
         "SELECT h.record,coalesce(json_extract(CAST(h.data AS TEXT),'$.label'),''),{kind},{created},r.expires,json_extract(CAST(h.data AS TEXT),'$.writer') FROM {from} WHERE (r.eligible&1)!=0"
     );
@@ -159,7 +166,7 @@ fn list_statement(
         values.push(scope.clone().into());
     }
     if expiry {
-        sql.push_str(&format!(" AND {expiry_key}>? AND {expiry_key}<=?"));
+        sql.push_str(&format!(" AND {expiry_range}>? AND {expiry_range}<=?"));
         values.push(query.now.clone().into());
         values.push(query.expires_before.clone().unwrap().into());
     } else {
@@ -171,7 +178,11 @@ fn list_statement(
         values.push(value.clone().into());
     }
     if let Some(value) = &query.since {
-        sql.push_str(&format!(" AND {created}>=?"));
+        sql.push_str(&format!(" AND {created_range}>=?"));
+        values.push(value.clone().into());
+    }
+    if let Some(value) = &query.before {
+        sql.push_str(&format!(" AND {created_range}>'' AND {created_range}<?"));
         values.push(value.clone().into());
     }
     let key = if expiry { expiry_key } else { created };
@@ -210,6 +221,217 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn before_boundaries_filters_cursors_and_plans() {
+        use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("before.db");
+        let records = [
+            ("a", "2026-11-01T00:00:00Z", "note", "owner/repo"),
+            ("b", "2026-11-01T00:00:00Z", "note", "owner/repo"),
+            ("boundary", "2026-11-02T00:00:00Z", "note", "owner/repo"),
+            ("newer", "2026-11-03T00:00:00Z", "note", "owner/repo"),
+            ("doc", "2026-11-01T00:00:00Z", "doc", "other/repo"),
+            ("unknown", "", "note", "owner/repo"),
+        ]
+        .into_iter()
+        .map(|(id, created, kind, scope)| {
+            serde_json::from_value(
+                serde_json::json!({"id":id,"body":"Original finding", "created":created,
+                "kind":kind,"scope":scope,"writer":"a@example.test",
+                "stale_after":"2026-12-01T00:00:00Z"}),
+            )
+            .unwrap()
+        })
+        .collect();
+        let store = Store::build(&path, records).await.unwrap();
+        let now = "2026-11-03T00:00:00Z";
+        for expiry in [false, true] {
+            for before in [
+                "1d",
+                "24h",
+                "1440m",
+                "2026-11-02T00:00:00Z",
+                "2026-11-02T01:00:00+01:00",
+                "2026-11-01T23:00:00-01:00",
+                "2026-11-02T00:00:00.000Z",
+            ] {
+                let mut options = serde_json::json!({"before":before,"since":"2026-11-01T00:00:00Z",
+                "kind":"note","scope":"OWNER/REPO","writer":"a@example.test","limit":1});
+                if expiry {
+                    options["expiring_within"] = serde_json::json!("30d");
+                }
+                let (first, cursor) = crate::application::listing::run(
+                    &store,
+                    serde_json::from_value(options).unwrap(),
+                    now,
+                )
+                .await
+                .unwrap();
+                assert_eq!(
+                    first.iter().map(|r| r.record.as_str()).collect::<Vec<_>>(),
+                    [if expiry { "a" } else { "b" }]
+                );
+                let cursor = cursor.unwrap();
+                if before == "1d" && expiry {
+                    let bytes = URL_SAFE_NO_PAD
+                        .decode(cursor.strip_prefix("l1.").unwrap())
+                        .unwrap();
+                    let mut legacy: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+                    legacy["query"].as_object_mut().unwrap().remove("before");
+                    let legacy = format!(
+                        "l1.{}",
+                        URL_SAFE_NO_PAD.encode(serde_json::to_vec(&legacy).unwrap())
+                    );
+                    let (records, _) = crate::application::listing::run(
+                        &store,
+                        serde_json::from_value(serde_json::json!({"cursor":legacy,"limit":20}))
+                            .unwrap(),
+                        now,
+                    )
+                    .await
+                    .unwrap();
+                    assert_eq!(
+                        records
+                            .iter()
+                            .map(|r| r.record.as_str())
+                            .collect::<Vec<_>>(),
+                        ["b", "boundary", "newer"]
+                    );
+                }
+                let (second, next) = crate::application::listing::run(
+                    &store,
+                    serde_json::from_value(serde_json::json!({"cursor":cursor,"limit":20}))
+                        .unwrap(),
+                    "2026-11-20T00:00:00Z",
+                )
+                .await
+                .unwrap();
+                assert_eq!(
+                    second.iter().map(|r| r.record.as_str()).collect::<Vec<_>>(),
+                    [if expiry { "b" } else { "a" }]
+                );
+                assert!(next.is_none());
+            }
+        }
+        for before in [
+            "0d",
+            "-1h",
+            "1.5d",
+            "999999999999999999d",
+            "1000000000w",
+            "🦀",
+            "2026-11-02",
+            "2026-11-02T00:00:00",
+            "2026-11-02t00:00:00z",
+            "2026-11-02 00:00:00Z",
+            "2026-11-02T00:00:00.001Z",
+            "2026-11-02T00:00:00.0000000001Z",
+            "2026-12-31T23:59:60Z",
+            "9999-12-31T23:59:59-23:59",
+            "0000-01-01T00:00:00+23:59",
+        ] {
+            let error = crate::application::listing::run(
+                &store,
+                serde_json::from_value(serde_json::json!({"before":before,"limit":20})).unwrap(),
+                now,
+            )
+            .await
+            .unwrap_err();
+            assert!(error.to_string().contains("--before"), "{error}");
+        }
+        let mut query = ListQuery {
+            now: now.into(),
+            kind: None,
+            writer: None,
+            scope: None,
+            since: None,
+            before: Some("2026-11-02T00:00:00Z".into()),
+            expires_before: None,
+        };
+        for since in ["2026-11-02T00:00:00Z", "2026-11-03T00:00:00Z"] {
+            query.since = Some(since.into());
+            assert!(
+                store
+                    .list_records(&query, None, 20, None)
+                    .await
+                    .unwrap()
+                    .records
+                    .is_empty()
+            );
+        }
+        for writer in [false, true] {
+            query.writer = writer.then(|| "a@example.test".into());
+            for expiry in [false, true] {
+                query.expires_before = expiry.then(|| "2026-12-02T00:00:00Z".into());
+                for kind in [false, true] {
+                    query.kind = kind.then(|| "note".into());
+                    for scope in [false, true] {
+                        query.scope = scope.then(|| "OWNER/REPO".into());
+                        for since in [false, true] {
+                            query.since = since.then(|| "2026-11-01T00:00:00Z".into());
+                            let page = store.list_records(&query, None, 20, None).await.unwrap();
+                            let mut expected = if kind || scope {
+                                vec!["a", "b"]
+                            } else {
+                                vec!["a", "b", "doc"]
+                            };
+                            if !expiry {
+                                expected.reverse();
+                            }
+                            assert_eq!(
+                                page.records
+                                    .iter()
+                                    .map(|r| r.record.as_str())
+                                    .collect::<Vec<_>>(),
+                                expected
+                            );
+                            let time = if expiry {
+                                "2026-12-01T00:00:00Z"
+                            } else {
+                                "2026-11-01T00:00:00Z"
+                            };
+                            for (after, same) in [
+                                (None, false),
+                                (Some((time.into(), "a".into())), true),
+                                (Some((time.into(), "a".into())), false),
+                            ] {
+                                let (sql, values) = list_statement(&query, after.as_ref(), 2, same);
+                                let mut rows = store
+                                    .db
+                                    .query(&format!("EXPLAIN QUERY PLAN {sql}"), values)
+                                    .await
+                                    .unwrap();
+                                let mut plan = String::new();
+                                while let Some(row) = rows.next().await.unwrap() {
+                                    plan.push_str(&row.get::<String>(3).unwrap());
+                                    plan.push('\n');
+                                }
+                                let index = match (writer, expiry, kind) {
+                                    (true, true, _) => "records_writer_expiry",
+                                    (true, false, _) => "records_writer_created",
+                                    (false, true, _) => "record_expiry_list",
+                                    (false, false, true) => "record_kind_created",
+                                    _ => "record_created",
+                                };
+                                assert!(
+                                    plan.lines()
+                                        .any(|line| line.starts_with("SEARCH ")
+                                            && line.contains(index)),
+                                    "{plan}"
+                                );
+                                assert!(
+                                    !plan.contains("SCAN ") && !plan.contains("TEMP B-TREE"),
+                                    "{plan}"
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
     async fn scope_filters_original_scope_before_pagination() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("scope.db");
@@ -230,6 +452,7 @@ mod tests {
             writer: None,
             scope: Some("OWNER/REPO".into()),
             since: None,
+            before: None,
             expires_before: None,
         };
         let first = store.list_records(&query, None, 1, None).await.unwrap();
@@ -268,6 +491,7 @@ mod tests {
             writer: None,
             scope: None,
             since: None,
+            before: None,
             expires_before: None,
         };
         let first = store.list_records(&query, None, 2, None).await.unwrap();
@@ -297,6 +521,18 @@ mod tests {
             .unwrap();
         assert_eq!(third.records[0].record, "unknown");
         assert!(third.next.is_none());
+
+        query.before = Some("2026-11-03T00:00:00Z".into());
+        let older = store.list_records(&query, None, 20, None).await.unwrap();
+        assert_eq!(
+            older
+                .records
+                .iter()
+                .map(|r| r.record.as_str())
+                .collect::<Vec<_>>(),
+            ["child", "c", "b", "a"]
+        );
+        query.before = None;
 
         query.kind = Some("note".into());
         query.since = Some("2026-11-01T00:00:00Z".into());
@@ -401,6 +637,7 @@ mod writer_tests {
             writer: Some("a@example.test".into()),
             scope: None,
             since: None,
+            before: None,
             expires_before: None,
         };
         for expiry in [false, true] {

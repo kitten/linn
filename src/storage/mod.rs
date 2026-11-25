@@ -4973,6 +4973,7 @@ mod sync_snapshot_tests {
                 writer: None,
                 scope: None,
                 since: None,
+                before: None,
                 expires_before: None,
             };
             let error = store

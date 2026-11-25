@@ -7,6 +7,7 @@ pub struct ListOptions {
     pub writer: Option<String>,
     pub kind: Option<String>,
     pub since: Option<String>,
+    pub before: Option<String>,
     pub expiring_within: Option<String>,
     pub limit: u32,
     pub cursor: Option<String>,
@@ -44,7 +45,8 @@ pub fn duration(value: &str) -> Result<Duration> {
 
 pub fn timestamp(value: OffsetDateTime) -> Result<String> {
     value
-        .to_offset(time::UtcOffset::UTC)
+        .checked_to_offset(time::UtcOffset::UTC)
+        .ok_or_else(|| Error::Invalid("timestamp is outside the supported UTC range".into()))?
         .replace_nanosecond(0)
         .unwrap()
         .format(&Rfc3339)
@@ -70,21 +72,32 @@ pub async fn run(
     } else {
         let clock =
             OffsetDateTime::parse(now, &Rfc3339).map_err(|e| Error::Invalid(e.to_string()))?;
-        let since = args
-            .since
+        let since = since(args.since.as_deref(), now)?;
+        let before = args
+            .before
             .as_deref()
             .map(|value| {
-                let date = if value.contains('T') {
-                    OffsetDateTime::parse(value, &Rfc3339)
-                        .map_err(|e| Error::Invalid(e.to_string()))?
-                } else {
-                    clock
-                        .checked_sub(duration(value)?)
-                        .ok_or_else(|| Error::Invalid("duration out of range".into()))?
-                };
+                let date = cutoff(value, clock)?;
+                let fractional = value.split_once('.').is_some_and(|(_, fraction)| {
+                    fraction
+                        .chars()
+                        .take_while(char::is_ascii_digit)
+                        .any(|c| c != '0')
+                });
+                if date.nanosecond() != 0 || fractional {
+                    return Err(Error::Invalid(
+                        "use whole seconds; nonzero fractions or leap seconds are unsupported"
+                            .into(),
+                    ));
+                }
                 timestamp(date)
             })
-            .transpose()?;
+            .transpose()
+            .map_err(|e| {
+                Error::Invalid(format!(
+                    "--before: use a duration or RFC3339 timestamp: {e}"
+                ))
+            })?;
         let expires_before = args
             .expiring_within
             .as_deref()
@@ -103,6 +116,7 @@ pub async fn run(
                 writer: args.writer,
                 scope: args.scope,
                 since,
+                before,
                 expires_before,
             },
             None,
@@ -135,15 +149,16 @@ pub async fn run(
 pub fn since(value: Option<&str>, now: &str) -> Result<Option<String>> {
     let clock = OffsetDateTime::parse(now, &Rfc3339).map_err(|e| Error::Invalid(e.to_string()))?;
     value
-        .map(|v| {
-            let date = if v.contains('T') {
-                OffsetDateTime::parse(v, &Rfc3339).map_err(|e| Error::Invalid(e.to_string()))?
-            } else {
-                clock
-                    .checked_sub(duration(v)?)
-                    .ok_or_else(|| Error::Invalid("duration out of range".into()))?
-            };
-            timestamp(date)
-        })
+        .map(|v| cutoff(v, clock).and_then(timestamp))
         .transpose()
+}
+
+fn cutoff(value: &str, clock: OffsetDateTime) -> Result<OffsetDateTime> {
+    if value.contains('T') {
+        OffsetDateTime::parse(value, &Rfc3339).map_err(|e| Error::Invalid(e.to_string()))
+    } else {
+        clock
+            .checked_sub(duration(value)?)
+            .ok_or_else(|| Error::Invalid("duration out of range".into()))
+    }
 }

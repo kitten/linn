@@ -922,6 +922,11 @@ indexes with the existing header/catalog writes, rebuild and forget operations.
 Listing optionally checks exact original scope via a record primary-key lookup,
 without loading bodies or changing shared-search scope semantics.
 Listing drives an ordered index range and joins metadata by record primary key.
+The optional before filter bounds the existing creation expression strictly above
+the empty string and below the cutoff; expiry-ordered lists apply it after the
+expiry seek. On a timestamp-tie continuation with before, keep the sort key's
+other bounds as residual checks using unary `+`; the unchanged equality/id seek
+then retains index order instead of adding a temporary sort.
 Use a sort-key/id seek cursor rather than OFFSET: first seek remaining ids at
 the cursor’s timestamp, then seek beyond that timestamp if needed. These two
 scalar ranges let SQLite use expression-index keys, including timestamp ties,
