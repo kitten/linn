@@ -120,7 +120,7 @@ fn workdir() -> Option<PathBuf> {
     repository().ok()?.workdir()?.canonicalize().ok()
 }
 fn scope_in(repo: &git2::Repository) -> Option<String> {
-    let root = repo.workdir()?;
+    repo.workdir()?;
     let config = repo.config().ok()?;
     let mut entries = config.entries(None).ok()?;
     let mut names = std::collections::BTreeSet::new();
@@ -142,7 +142,17 @@ fn scope_in(repo: &git2::Repository) -> Option<String> {
     selected
         .and_then(|name| fetch_remote(repo, &config, name))
         .and_then(|remote| remote_scope(String::from_utf8_lossy(remote.url_bytes()).trim()))
-        .or_else(|| Some(format!("local:{}", root.canonicalize().ok()?.display())))
+        .or_else(|| {
+            let common = git2::Repository::open(repo.commondir()).ok()?;
+            let root = if common.commondir().file_name() == Some(std::ffi::OsStr::new(".git"))
+                || common.config().ok()?.get_entry("core.worktree").is_ok()
+            {
+                common.workdir().unwrap_or(common.commondir())
+            } else {
+                common.commondir()
+            };
+            Some(format!("local:{}", root.canonicalize().ok()?.display()))
+        })
 }
 // libgit2's named-remote API selects the last URL; Linn uses Git's first fetch URL.
 fn fetch_remote<'a>(

@@ -72,6 +72,142 @@ async fn check(cwd: &Path, db: &Path, env: &[(&str, &str)], expected: Option<&st
     );
 }
 #[tokio::test]
+async fn local_scope_is_shared_across_worktrees_and_preserves_source_paths() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path();
+    let db = root.join("context.db");
+    let repo = root.join("repo");
+    std::fs::create_dir(&repo).unwrap();
+    git(&repo, &["init", "-q"]);
+    git(
+        &repo,
+        &[
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.invalid",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "seed",
+        ],
+    );
+    let worktree = root.join("worktree");
+    git(
+        &repo,
+        &[
+            "worktree",
+            "add",
+            "-qb",
+            "linked",
+            worktree.to_str().unwrap(),
+        ],
+    );
+    let local = format!("local:{}", repo.canonicalize().unwrap().display());
+    for checkout in [&repo, &worktree] {
+        let subdir = checkout.join("nested");
+        std::fs::create_dir(&subdir).unwrap();
+        std::fs::write(
+            subdir.join("document.md"),
+            format!("Original bytes from {}.\n", checkout.display()),
+        )
+        .unwrap();
+        let out = command(env!("CARGO_BIN_EXE_linn"), &subdir, &[])
+            .arg("--store")
+            .arg(&db)
+            .args(["add", "document.md", "--json"])
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let value: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+        let database = libsql::Builder::new_local(&db).build().await.unwrap();
+        let connection = database.connect().unwrap();
+        let mut rows = connection
+            .query(
+                "SELECT original_scope,envelope FROM records WHERE id=?",
+                [value["record"].as_str().unwrap()],
+            )
+            .await
+            .unwrap();
+        let row = rows.next().await.unwrap().unwrap();
+        assert_eq!(row.get::<String>(0).unwrap(), local);
+        let envelope: serde_json::Value =
+            serde_json::from_slice(&row.get::<Vec<u8>>(1).unwrap()).unwrap();
+        assert_eq!(envelope["source_path"], "nested/document.md");
+    }
+    let bare = root.join("bare.git");
+    git(
+        root,
+        &[
+            "clone",
+            "--bare",
+            "-q",
+            repo.to_str().unwrap(),
+            bare.to_str().unwrap(),
+        ],
+    );
+    git(&bare, &["remote", "remove", "origin"]);
+    let local = format!("local:{}", bare.canonicalize().unwrap().display());
+    for branch in ["bare-one", "bare-two"] {
+        let checkout = root.join(branch);
+        git(
+            &bare,
+            &["worktree", "add", "-qb", branch, checkout.to_str().unwrap()],
+        );
+        check(&checkout, &db, &[], Some(&local)).await;
+    }
+
+    git(
+        &repo,
+        &[
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            bare.to_str().unwrap(),
+            "module",
+        ],
+    );
+    let module = repo.join("module");
+    git(&module, &["remote", "remove", "origin"]);
+    let local = format!("local:{}", module.canonicalize().unwrap().display());
+    check(&module, &db, &[], Some(&local)).await;
+
+    let gitdirs = root.join("gitdirs");
+    std::fs::create_dir(&gitdirs).unwrap();
+    for name in ["separate-a", "separate-b"] {
+        let common = gitdirs.join(name);
+        let checkout = root.join(name);
+        git(
+            root,
+            &[
+                "clone",
+                "-q",
+                "--separate-git-dir",
+                common.to_str().unwrap(),
+                repo.to_str().unwrap(),
+                checkout.to_str().unwrap(),
+            ],
+        );
+        git(&checkout, &["remote", "remove", "origin"]);
+        let linked = root.join(format!("{name}-linked"));
+        git(
+            &checkout,
+            &["worktree", "add", "-qb", "linked", linked.to_str().unwrap()],
+        );
+        let local = format!("local:{}", common.canonicalize().unwrap().display());
+        for cwd in [&checkout, &linked] {
+            check(cwd, &db, &[], Some(&local)).await;
+        }
+    }
+}
+
+#[tokio::test]
 async fn file_configuration_scope_covers_legacy_includes_and_worktrees() {
     let directory = tempfile::tempdir().unwrap();
     let root = directory.path();

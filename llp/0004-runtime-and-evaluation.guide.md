@@ -105,13 +105,19 @@ Commands are in three groups. An agent that reads memory needs only the first.
 | | `linn sync:reset-identity` | Remove a copied store's identity while preserving records |
 
 - **Scope.** The scope of a directory is computed, never configured:
-  1. If the directory is not inside a git repository, it is unscoped.
+  1. If the directory is not inside a git repository or the discovered repository has no
+     workdir, leave it unscoped.
   2. Otherwise, take the repository's remotes (a worktree shares its repository's). Use `upstream`
      if it exists, else `origin`, else the only remote.
   3. The scope is that remote URL's path without host and `.git`, usually `<owner>/<repo>`. SSH,
      HTTPS and `ssh://` forms of one URL give the same scope; a GitLab subgroup keeps every part.
-  4. A repository with no usable remote (none, or several without these names) gets
-     `local:<path of the repository>`, so its records stay with that repository on this machine.
+  4. For a repository with no usable remote (none, or several without these names), open
+     its common directory without environment-based discovery. If the reopened repository's
+     resolved common directory is named `.git` or its configuration sets `core.worktree`,
+     use `local:<canonical reported workdir>`. Otherwise, or if it has no workdir, use
+     `local:<canonical common directory>`. Honor `core.worktree` for submodules and share
+     this identity across linked worktrees.
+     Keep source paths relative to the active worktree's workdir.
 
   Scopes compare case-insensitively.
   Read scope with git2/libgit2 repository discovery and effective file configuration,
