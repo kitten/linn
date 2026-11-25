@@ -1,5 +1,6 @@
 //! Typed application operations, independent of CLI and transport.
 //! @ref LLP 0007#application-boundary
+pub(crate) mod hygiene;
 pub(crate) mod input;
 pub(crate) mod listing;
 mod mesh;
@@ -20,7 +21,7 @@ use serde_json::json;
 use std::{
     collections::{BTreeMap, HashSet},
     fs::File,
-    io::{BufReader, Read, Seek, SeekFrom},
+    io::{BufRead, BufReader, Read, Seek, SeekFrom},
     path::PathBuf,
 };
 #[derive(Serialize, Deserialize)]
@@ -393,7 +394,27 @@ async fn execute_store(
             output.seek(SeekFrom::Start(0))?;
             return Ok(Reply {
                 value: Value::Exported,
-                warnings: Vec::new(),
+                warnings: {
+                    let mut warnings = Vec::new();
+                    for line in BufReader::new(&mut output)
+                        .lines()
+                        .map_while(std::result::Result::ok)
+                    {
+                        if let Ok(frame) = serde_json::from_str::<serde_json::Value>(&line)
+                            && let Some(envelope) = frame["item"]["envelope"].as_str()
+                            && let Ok(record) = serde_json::from_str(envelope)
+                            && let Some(body_hash) = frame["item"]["body_hash"].as_str()
+                        {
+                            warnings.extend(
+                                hygiene::scan(&record, hygiene::Check::Export)
+                                    .into_iter()
+                                    .map(|warning| format!("{}: {warning}", &body_hash[..12])),
+                            );
+                        }
+                    }
+                    output.seek(SeekFrom::Start(0))?;
+                    warnings
+                },
                 output: Some(output),
             });
         }
@@ -586,6 +607,10 @@ async fn execute_store(
                 stored_body: None,
                 projected_eligible: None,
             };
+            warnings.extend(hygiene::scan(
+                &serde_json::to_value(&record)?,
+                hygiene::Check::Add,
+            ));
             store.add(record).await?;
             return Ok(Reply {
                 value: Value::Added(id),

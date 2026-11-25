@@ -764,3 +764,103 @@ fn help_guides_bounded_source_navigation_without_opening_a_store() {
     }
     assert!(!db.exists());
 }
+
+#[test]
+fn hygiene_warnings_preserve_json_original_bytes_and_exit_status() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = dir.path().join("hygiene.db");
+    let token = format!("ghp_{}", "A".repeat(36));
+    let body = format!("Fake credential test\n{token}\n[temporary](/tmp/fake-citation.md)\n");
+    let added = cli(
+        &db,
+        &["--json", "add", "-", "--source-path", "/tmp/fake-note.md"],
+        Some(&body),
+    );
+    assert_eq!(added.status.code(), Some(0));
+    serde_json::from_slice::<Value>(&added.stdout).unwrap();
+    let warnings = String::from_utf8(added.stderr).unwrap();
+    assert!(warnings.contains("Possible secret: GitHub token"));
+    assert!(warnings.contains("Ephemeral citation in source_path"));
+    assert!(warnings.contains("Ephemeral citation in Markdown link"));
+    assert!(!warnings.contains(&token));
+    let exported = cli(&db, &["--json", "export"], None);
+    assert_eq!(exported.status.code(), Some(0));
+    let export_warnings = String::from_utf8(exported.stderr).unwrap();
+    assert_eq!(export_warnings.matches("Possible secret:").count(), 1);
+    assert!(!export_warnings.contains("Ephemeral"));
+    assert!(!export_warnings.contains(&token));
+    let frames: Vec<Value> = std::str::from_utf8(&exported.stdout)
+        .unwrap()
+        .lines()
+        .map(|s| serde_json::from_str(s).unwrap())
+        .collect();
+    let envelope = frames[1]["item"]["envelope"].as_str().unwrap();
+    let original: Value = serde_json::from_str(envelope).unwrap();
+    let body_hash = frames[1]["item"]["body_hash"].as_str().unwrap();
+    assert!(export_warnings.contains(&format!("{}: Possible secret:", &body_hash[..12])));
+    assert_eq!(original["body"], body);
+    assert_eq!(original["source_path"], "/tmp/fake-note.md");
+    let _ = cli(&db, &["daemon:stop"], None);
+}
+
+#[test]
+fn note_links_use_callers_checkout() {
+    let dir = tempfile::tempdir().unwrap();
+    git2::Repository::init(dir.path()).unwrap();
+    std::fs::create_dir(dir.path().join("notes")).unwrap();
+    std::fs::write(dir.path().join("README.md"), "exists").unwrap();
+    let db = dir.path().join("links.db");
+    let mut child = Command::new(env!("CARGO_BIN_EXE_linn"))
+        .current_dir(dir.path())
+        .args([
+            "--store",
+            db.to_str().unwrap(),
+            "--json",
+            "add",
+            "-",
+            "--source-path",
+            "notes/note.md",
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(b"[existing](../README.md) [missing](missing.md)\n")
+        .unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert_eq!(output.status.code(), Some(0));
+    serde_json::from_slice::<Value>(&output.stdout).unwrap();
+    assert_eq!(
+        String::from_utf8_lossy(&output.stderr)
+            .matches("Unresolved relative repository link")
+            .count(),
+        1
+    );
+    let _ = cli(&db, &["daemon:stop"], None);
+}
+
+#[tokio::test]
+async fn export_warning_uses_hash_instead_of_secret_like_record_id() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = dir.path().join("export-warning.db");
+    let fake = format!("ghp_{}", "A".repeat(36));
+    let record =
+        serde_json::from_value(serde_json::json!({"id":fake,"body":fake,"kind":"note"})).unwrap();
+    drop(
+        linn::storage::Store::build(&db, vec![record])
+            .await
+            .unwrap(),
+    );
+    let output = cli(&db, &["--json", "export"], None);
+    assert_eq!(output.status.code(), Some(0));
+    let warnings = String::from_utf8(output.stderr).unwrap();
+    assert_eq!(warnings.matches("Possible secret:").count(), 1);
+    assert!(!warnings.contains(&fake));
+    assert!(warnings.starts_with(&linn::storage::record::hash(fake.as_bytes())[..12]));
+    let _ = cli(&db, &["daemon:stop"], None);
+}

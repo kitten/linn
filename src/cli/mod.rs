@@ -12,7 +12,7 @@ use crate::{
 use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 use serde_json::json;
 use std::{
-    io::{self},
+    io::{self, Read, Seek, SeekFrom},
     path::PathBuf,
 };
 #[derive(Parser)]
@@ -435,6 +435,7 @@ pub async fn run() -> Result<i32> {
     };
     let mut input = None;
     let mut output_path = None;
+    let mut hygiene_warnings = Vec::new();
     let check = matches!(args.command, Command::Check);
     let op = match args.command {
         Command::Search { query } => Op::Search { query },
@@ -490,6 +491,20 @@ pub async fn run() -> Result<i32> {
             let mut bytes = tempfile::tempfile()?;
             let task = if file == std::path::Path::new("-") {
                 io::copy(&mut io::stdin().lock(), &mut bytes)?;
+                if let Some(root) = paths::file_input(std::path::Path::new("."))
+                    .ok()
+                    .and_then(|input| input.repository)
+                {
+                    use crate::application::hygiene::{Check, scan};
+                    bytes.seek(SeekFrom::Start(0))?;
+                    let mut body = String::new();
+                    if bytes.read_to_string(&mut body).is_ok() {
+                        hygiene_warnings = scan(
+                            &serde_json::json!({"body": body, "source_path": source_path}),
+                            Check::NoteLinks(&root),
+                        );
+                    }
+                }
                 crate::application::InputTask::Note { source_path }
             } else {
                 if source_path.is_some() {
@@ -510,12 +525,11 @@ pub async fn run() -> Result<i32> {
         }
         _ => unreachable!(),
     };
-    use std::io::{Seek, SeekFrom};
     if let Some(input) = &mut input {
         input.seek(SeekFrom::Start(0))?;
     }
     let mut progress = mesh::ProgressRenderer::default();
-    let reply = match progress.execute(&path, op, caller, input).await {
+    let mut reply = match progress.execute(&path, op, caller, input).await {
         Ok(r) => r,
         Err(e)
             if check
@@ -549,6 +563,7 @@ pub async fn run() -> Result<i32> {
     {
         println!("{context}");
     }
+    reply.warnings.append(&mut hygiene_warnings);
     for warning in reply.warnings {
         eprintln!("{}", presentation::current().err.warning(&warning));
     }

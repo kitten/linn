@@ -278,6 +278,49 @@ linn add -      [--label <text>] [--unscoped] [--parent <ref>] [--stale-after <t
   - `add:close` writes an envelope and never edits the target.
   - `add:forget` deletes the record and its index rows with secure delete.
 
+### Write-time hygiene warnings
+
+On successful `add`, emit advisory warnings through `Reply.warnings` for possible
+secrets in body or textual metadata and ephemeral citations in `source_path` or
+inline Markdown link destinations. Match prefixes `/tmp/`, `/private/tmp/`,
+`/var/folders/`, `/private/var/folders/`; exact components `scratchpad`,
+`scratchpads`, `.scratchpad` in any non-URL path; and component pairs
+`.claude/projects` or `.codex/sessions` only in absolute or `~/` paths. Strip a
+leading `file://` for this check; exclude URL paths and ordinary prose.
+
+On notes, check relative inline links against the caller's checkout and the
+directory of `source_path`; drop fragments and queries. Skip this check when
+`source_path` contains a colon, starts with `~`, or is ephemeral. Skip destination
+paths containing a colon, absolute or home-relative paths, ephemeral paths and fragment-only links.
+Warn only on confirmed missing filesystem targets; skip checks without a checkout
+or on other filesystem errors. For link warnings, skip single-line backtick code
+spans; do not parse fences, percent-encoded destinations or destinations with
+parentheses specially. Scan secrets inside code spans too.
+
+On `export`, scan decoded original-envelope string values for possible secrets
+only. Prefix each warning with the first 12 hex digits of the validated body hash,
+not an arbitrary record id that could itself contain a secret.
+
+For both commands, use these case-sensitive secret patterns:
+
+| Family | Match |
+|---|---|
+| GitHub | `gh[pousr]_` plus 36–255 ASCII alphanumeric characters |
+| GitHub fine-grained | `github_pat_` plus 50–255 ASCII alphanumeric or underscore characters |
+| AWS | `AKIA` plus exactly 16 uppercase ASCII letters or digits |
+| Slack | `xox[abprs]-` plus 20–255 ASCII alphanumeric or hyphen characters |
+| API keys | `sk-ant-`, `sk-proj-` or `sk-svcacct-` plus 20–255 ASCII alphanumeric, underscore or hyphen characters; or `sk-` plus exactly 48 ASCII alphanumeric characters |
+| Private keys | PEM BEGIN marker for PRIVATE KEY, optionally qualified by RSA, EC, DSA, OPENSSH or ENCRYPTED |
+
+Reject a match immediately adjacent to an ASCII letter, digit, underscore or
+hyphen. Do not use entropy or password-assignment heuristics. Deduplicate each
+warning class within a record. Never include matched values in diagnostics.
+
+Keep these checks advisory: retain original bytes, envelope identity, index and
+retrieval behavior, successful exit status, and stdout/JSON output. Emit warnings
+on stderr in human and JSON modes. Add no flags, configuration, allowlists,
+dependencies, persistent state or transport fields for hygiene checks.
+
 ### Maintaining: `index:check`, `index:rebuild`
 
 Both commands remain callable with their own `--help`, but are hidden from
